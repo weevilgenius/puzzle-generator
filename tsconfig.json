@@ -1,0 +1,17 @@
+{
+  "extends": "@tsconfig/recommended/tsconfig.json",
+    "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "useDefineForClassFields": true,
+    "noEmit": true,
+
+    /* Vite-specific Best Practices */
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+  },
+  "include": [
+    "src"
+  ]
+}

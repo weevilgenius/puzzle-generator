@@ -1,0 +1,34 @@
+{
+  "name": "puzzle-generator",
+  "version": "0.1.0",
+  "description": "Browser application for generating jigsaw puzzles",
+  "main": "index.js",
+  "scripts": {
+    "lint": "eslint src",
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "analyze": "vite build --mode analyze",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "packageManager": "pnpm@10.12.2+sha512.a32540185b964ee30bb4e979e405adc6af59226b438ee4cc19f9e8773667a66d302f5bfee60a39d3cac69e35e4b96e708a71dd002b7e9359c4112a1722ac323f",
+  "private": true,
+  "devDependencies": {
+    "@eslint/js": "^9.29.0",
+    "@stylistic/eslint-plugin": "^5.0.0",
+    "@tsconfig/recommended": "^1.0.10",
+    "@types/d3-delaunay": "^6.0.4",
+    "@types/poisson-disk-sampling": "^2.2.4",
+    "eslint": "^9.29.0",
+    "eslint-plugin-unused-imports": "^4.1.4",
+    "globals": "^16.2.0",
+    "rollup-plugin-visualizer": "^6.0.3",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.35.0",
+    "vite": "^6.3.5"
+  },
+  "dependencies": {
+    "d3-delaunay": "^6.0.4",
+    "poisson-disk-sampling": "^2.3.1"
+  }
+}

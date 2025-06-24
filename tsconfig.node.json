@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // tell TypeScript that these files are Node.js modules
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    // allow Typescript to build each project separately.
+    "composite": true
+  },
+  "include": [
+    "vite.config.ts",
+    "eslint.config.mjs"
+  ]
+}

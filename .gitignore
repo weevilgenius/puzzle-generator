@@ -1,0 +1,11 @@
+# locally installed dependencies
+node_modules/
+
+# environment files
+.env
+.env.development
+.env.production
+.env.test
+
+# typescript build output
+/dist

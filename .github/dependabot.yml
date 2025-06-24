@@ -1,0 +1,31 @@
+# This file configures GitHub's dependabot
+# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+
+version: 2
+updates:
+  - package-ecosystem: npm # keep pnpm dependencies up to date
+    open-pull-requests-limit: 8 # use 0 to disable version updates
+    directory: "/" # location of package.json
+    versioning-strategy: increase
+    schedule:
+      interval: weekly
+    assignees:
+      - weevilgenius
+    commit-message:
+      prefix: deps
+    groups: # groups of dependencies to be updated together in one pull request
+      vite:
+        patterns:
+          - "vite*"
+          - rollup-plugin-visualizer
+      lint:
+        patterns:
+          - "@eslint/js"
+          - "@stylistic/*"
+          - globals
+          - eslint*
+          - typescript-eslint
+      mithril:
+        patterns:
+          - mithril
+          - "@types/mithril"
