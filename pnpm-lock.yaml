@@ -11,6 +11,9 @@ importers:
       d3-delaunay:
         specifier: ^6.0.4
         version: 6.0.4
+      mithril:
+        specifier: ^2.3.2
+        version: 2.3.2
       poisson-disk-sampling:
         specifier: ^2.3.1
         version: 2.3.1
@@ -27,6 +30,9 @@ importers:
       '@types/d3-delaunay':
         specifier: ^6.0.4
         version: 6.0.4
+      '@types/mithril':
+        specifier: ^2.2.7
+        version: 2.2.7
       '@types/poisson-disk-sampling':
         specifier: ^2.2.4
         version: 2.2.4
@@ -395,6 +401,9 @@ packages:
 
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
+
+  '@types/mithril@2.2.7':
+    resolution: {integrity: sha512-uetxoYizBMHPELl6DSZUfO6Q/aOm+h0NUCv9bVAX2iAxfrdBSOvU9KKFl+McTtxR13F+BReYLY814pJsZvnSxg==}
 
   '@types/poisson-disk-sampling@2.2.4':
     resolution: {integrity: sha512-S91hu3CW2P9Aib0uN0VO3VnL6BqlDFcmduHbcxW+I6/DwZjPkzgQM7zQaIscqxNg7aIm+QhXIFe4RSN2xFjL6g==}
@@ -771,6 +780,9 @@ packages:
   minimatch@9.0.5:
     resolution: {integrity: sha512-G6T0ZX48xgozx7587koeX9Ys2NYy6Gmv//P89sEte9V9whIapMNF4idKxnW2QtCcLiTWlb/wfCabAtAFWhhBow==}
     engines: {node: '>=16 || 14 >=14.17'}
+
+  mithril@2.3.2:
+    resolution: {integrity: sha512-5FbFCbAaYSP4+ipaLAX10qJ6jKx6c4QrTQUGabBB8doH8PRcXV/Yd1lI+azu3TBuY6W2Evw0DuJtJJALLv3gQA==}
 
   moore@1.0.0:
     resolution: {integrity: sha512-xcsFo/jgtMuVaGePHod5TdSzxnRAQQ4wFpDmFuu34lHvx5sNMsioA84NW7iBWYZ10jHR/nyGaDkhunMJxqAzkw==}
@@ -1246,6 +1258,8 @@ snapshots:
 
   '@types/json-schema@7.0.15': {}
 
+  '@types/mithril@2.2.7': {}
+
   '@types/poisson-disk-sampling@2.2.4': {}
 
   '@typescript-eslint/eslint-plugin@8.35.0(@typescript-eslint/parser@8.35.0(eslint@9.29.0)(typescript@5.8.3))(eslint@9.29.0)(typescript@5.8.3)':
@@ -1657,6 +1671,8 @@ snapshots:
   minimatch@9.0.5:
     dependencies:
       brace-expansion: 2.0.2
+
+  mithril@2.3.2: {}
 
   moore@1.0.0: {}
 
