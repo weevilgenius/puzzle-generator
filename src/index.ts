@@ -9,6 +9,7 @@ const Page: m.ClosureComponent<unknown> = () => {
 
   // component state
   const state = {
+    seed: 1234,
     /** Width of canvas in pixels */
     canvasWidth: 800,
     /** Height of canvas in pixels */
@@ -21,7 +22,7 @@ const Page: m.ClosureComponent<unknown> = () => {
 
   function rebuildVoronoi() {
     if (!state.canvas) return;
-    const { voronoi } = generateVoronoi(state.canvasWidth, state.canvasHeight, state.distance);
+    const { voronoi } = generateVoronoi(state.canvasWidth, state.canvasHeight, state.distance, state.seed);
     renderToCanvas(voronoi, state.canvas);
   }
 

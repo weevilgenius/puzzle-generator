@@ -4,14 +4,27 @@ export type { Voronoi } from 'd3-delaunay';
 
 export type Vec2 = [number, number];
 
+// this is a simple seeded PNRG, see https://github.com/cprosche/mulberry32
+function mulberry32(seed: number) {
+  return function() {
+    let t = seed += 0x6D2B79F5;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
 // utility to generate random points and the Voronoi diagram from them
-export function generateVoronoi(width: number, height: number, distance: number): { points: Vec2[], voronoi: Voronoi<Vec2> } {
+export function generateVoronoi(width: number, height: number, distance: number, seed: number): { points: Vec2[], voronoi: Voronoi<Vec2> } {
   // generate points randomly in a Poisson disk sampling
-  const poisson = new PoissonDiskSampling({
-    shape: [width, height],
-    minDistance: distance,
-    tries: 20,
-  });
+  const poisson = new PoissonDiskSampling(
+    {
+      shape: [width, height],
+      minDistance: distance,
+      tries: 20,
+    },
+    mulberry32(seed) // RNG
+  );
   const points = poisson.fill() as Vec2[];
   console.log(`generated ${points.length} points`);
 
