@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "d3-delaunay": "^6.0.4",
-    "mithril": "^2.3.2",
+    "mithril": "^2.3.3",
     "poisson-disk-sampling": "^2.3.1"
   }
 }
