@@ -1,5 +1,5 @@
 import m from 'mithril';
-import { generateVoronoi, renderToCanvas } from "./shared/geometry";
+import Puzzle from './ui/Puzzle';
 
 // include our CSS
 import './index.css';
@@ -9,75 +9,89 @@ const Page: m.ClosureComponent<unknown> = () => {
 
   // component state
   const state = {
-    seed: 1234,
+    /** Random seed */
+    seed: new Date().getTime() % 10240,
     /** Width of canvas in pixels */
     canvasWidth: 800,
     /** Height of canvas in pixels */
     canvasHeight: 600,
     /** Minimum distance between control points (pixels) */
     distance: 40,
-    /** Canvas HTML element */
-    canvas: null as HTMLCanvasElement | null,
+    /** Color of pieces */
+    color: "#333333",
     /** User uploaded image */
-    imageUrl: null as string | null,
+    imageUrl: undefined as string | undefined,
   };
-
-  function rebuildVoronoi() {
-    if (!state.canvas) return;
-    const { voronoi } = generateVoronoi(state.canvasWidth, state.canvasHeight, state.distance, state.seed);
-    renderToCanvas(voronoi, state.canvas);
-  }
 
   // Mithril component
   return {
 
-    // component lifecycle: called after our DOM element is created and attached
-    oncreate: ({ dom }) => {
-      state.canvas = dom.querySelector<HTMLCanvasElement>("canvas");
-      rebuildVoronoi();
-    },
-
     // component lifecycle: render our output
     view: () => {
 
-      return m(".container", [
+      return m(".page", [
         m("h1", "Puzzle Generator"),
+        m(".container", [
 
-        m(".puzzle-stack", [
-          // canvas rendering the current puzzle
-          m('canvas.puzzle', {
+          // render the puzzle
+          m(Puzzle, {
             width: state.canvasWidth,
             height: state.canvasHeight,
+            distance: state.distance,
+            seed: state.seed,
+            color: state.color,
+            imageUrl: state.imageUrl,
           }),
-          // user uploaded image
-          m("img.background", {
-            width: state.canvasWidth,
-            height: state.canvasHeight,
-            src: state.imageUrl,
-          }),
-        ]),
 
-        // controls
-        m(".controls", [
-          m("button.rebuild", {
-            onclick: () => {
-              rebuildVoronoi();
-            },
-          }, "Rebuild"),
-          m("input[type=file]#image-upload", {
-            accept: "image/*",
-            onchange: (e: Event) => {
-              const file = (e.target as HTMLInputElement).files?.[0];
-              if (file?.type.startsWith("image/")) {
-                // clear any previous image
-                if (state.imageUrl) {
-                  URL.revokeObjectURL(state.imageUrl);
-                }
-                state.imageUrl = URL.createObjectURL(file);
-              }
-            },
-          }),
-        ]),
+          // puzzle generation controls
+          m(".controls", [
+            m("label.button", [
+              "Choose Image",
+              m("input[type=file]#image-upload", {
+                accept: "image/*",
+                style: { display: "none" },
+                onchange: (e: Event) => {
+                  const file = (e.target as HTMLInputElement).files?.[0];
+                  if (file?.type.startsWith("image/")) {
+                    // clear any previous image
+                    if (state.imageUrl) {
+                      URL.revokeObjectURL(state.imageUrl);
+                    }
+                    state.imageUrl = URL.createObjectURL(file);
+                  }
+                },
+              }),
+            ]),
+            m("label", [
+              "Seed: ",
+              m("input[type=number]", {
+                value: state.seed,
+                onchange: (e: Event) => {
+                  state.seed = parseInt((e.target as HTMLInputElement).value);
+                },
+              }),
+            ]),
+            m("label", [
+              "Piece size: ",
+              m("input[type=number]", {
+                value: state.distance,
+                onchange: (e: Event) => {
+                  state.distance = parseInt((e.target as HTMLInputElement).value);
+                },
+              }),
+            ]),
+            m("label", [
+              "Color: ",
+              m("input[type=color]", {
+                value: state.color,
+                onchange: (e: Event) => {
+                  state.color = (e.target as HTMLInputElement).value;
+                },
+              }),
+            ]),
+          ]), // .controls
+
+        ]), // .container
       ]);
     }, // view()
   };

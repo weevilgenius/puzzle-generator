@@ -1,0 +1,18 @@
+.puzzle-stack {
+  position: relative;
+}
+
+.puzzle-stack .puzzle {
+  /* canvas on top */
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2; /* above image */
+}
+
+.puzzle-stack .background {
+  display: block;
+  position: relative;
+  z-index: 1; /* below canvas */
+}
+
