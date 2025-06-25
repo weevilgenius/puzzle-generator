@@ -18,6 +18,8 @@ const Page: m.ClosureComponent<unknown> = () => {
     distance: 40,
     /** Canvas HTML element */
     canvas: null as HTMLCanvasElement | null,
+    /** User uploaded image */
+    imageUrl: null as string | null,
   };
 
   function rebuildVoronoi() {
@@ -39,15 +41,43 @@ const Page: m.ClosureComponent<unknown> = () => {
     view: () => {
 
       return m(".container", [
-        m('canvas', {
-          width: state.canvasWidth,
-          height: state.canvasHeight,
-        }),
-        m("button.rebuild", {
-          onclick: () => {
-            rebuildVoronoi();
-          },
-        }, "Rebuild"),
+        m("h1", "Puzzle Generator"),
+
+        m(".puzzle-stack", [
+          // canvas rendering the current puzzle
+          m('canvas.puzzle', {
+            width: state.canvasWidth,
+            height: state.canvasHeight,
+          }),
+          // user uploaded image
+          m("img.background", {
+            width: state.canvasWidth,
+            height: state.canvasHeight,
+            src: state.imageUrl,
+          }),
+        ]),
+
+        // controls
+        m(".controls", [
+          m("button.rebuild", {
+            onclick: () => {
+              rebuildVoronoi();
+            },
+          }, "Rebuild"),
+          m("input[type=file]#image-upload", {
+            accept: "image/*",
+            onchange: (e: Event) => {
+              const file = (e.target as HTMLInputElement).files?.[0];
+              if (file?.type.startsWith("image/")) {
+                // clear any previous image
+                if (state.imageUrl) {
+                  URL.revokeObjectURL(state.imageUrl);
+                }
+                state.imageUrl = URL.createObjectURL(file);
+              }
+            },
+          }),
+        ]),
       ]);
     }, // view()
   };

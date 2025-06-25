@@ -43,8 +43,6 @@ export function renderToCanvas(voronoi: Voronoi<Vec2>, canvas: HTMLCanvasElement
 
   // draw the background
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // draw the voronoi cells and bounds
   ctx.beginPath();
@@ -55,10 +53,10 @@ export function renderToCanvas(voronoi: Voronoi<Vec2>, canvas: HTMLCanvasElement
   ctx.stroke();
 
   // draw the control points
-  ctx.beginPath();
-  voronoi.delaunay.renderPoints(ctx, 2);
-  ctx.fillStyle = "crimson";
-  ctx.fill();
+  // ctx.beginPath();
+  // voronoi.delaunay.renderPoints(ctx, 2);
+  // ctx.fillStyle = "crimson";
+  // ctx.fill();
 }
 
 // utility to render the voronoi and control points to SVG
