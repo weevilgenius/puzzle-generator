@@ -2,7 +2,6 @@ import { defineConfig, type PluginOption, type UserConfig } from 'vite';
 import { visualizer } from 'rollup-plugin-visualizer';
 
 // https://vitejs.dev/config/
-// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 export default defineConfig(({ mode }) => {
 
   const plugins: PluginOption[] = [];
@@ -39,6 +38,5 @@ export default defineConfig(({ mode }) => {
     },
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   return config;
 });
