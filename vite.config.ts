@@ -22,6 +22,8 @@ export default defineConfig(({ mode }) => {
   const config: UserConfig = {
     plugins,
     build: {
+      // browser target
+      target: 'baseline-widely-available',
       // build stand-alone source maps
       sourcemap: true,
       // Clean the output directory before each build.
