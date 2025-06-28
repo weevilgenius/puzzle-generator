@@ -12,7 +12,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "packageManager": "pnpm@10.12.2+sha512.a32540185b964ee30bb4e979e405adc6af59226b438ee4cc19f9e8773667a66d302f5bfee60a39d3cac69e35e4b96e708a71dd002b7e9359c4112a1722ac323f",
-  "private": true,
+  "license": "MIT",
   "devDependencies": {
     "@eslint/js": "^9.30.0",
     "@stylistic/eslint-plugin": "^5.0.0",
