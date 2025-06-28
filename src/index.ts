@@ -1,5 +1,13 @@
 import m from 'mithril';
 import Puzzle from './ui/Puzzle';
+import PuzzleSVG from './ui/PuzzleSVG';
+import type { PuzzleGeometry } from './generator/types';
+import PoissonPointGenerator from './generator/PoissonPointGenerator';
+import VoronoiTopologyGenerator from './generator/VoronoiTopologyGenerator';
+import TraditionalTabGenerator from './generator/TraditionalTabGenerator';
+import { generatePuzzle } from './generator/PuzzleGenerator';
+
+
 
 // include our CSS
 import './index.css';
@@ -19,12 +27,60 @@ const Page: m.ClosureComponent<unknown> = () => {
     distance: 40,
     /** Color of pieces */
     color: "#333333",
+    /** Dirty flag that keeps us from hitting the puzzle generation function too hard */
+    dirty: true,
+    /** Strategy for creating points (which drive piece generation) */
+    pointGenerator: PoissonPointGenerator,
+    /** Strategory for turning points into puzzle pieces */
+    topologyGenerator: VoronoiTopologyGenerator,
+    /** Style of tabs to generate */
+    tabGenerator: TraditionalTabGenerator({ size: 20, jitter: 8, minTabSize: 15, maxTabSize: 20}),
+    /** Generated puzzle geometry */
+    puzzle: undefined as PuzzleGeometry | undefined,
     /** User uploaded image */
     imageUrl: undefined as string | undefined,
   };
 
   // Mithril component
   return {
+
+    oncreate: () => {
+      generatePuzzle({
+        width: state.canvasWidth,
+        height: state.canvasHeight,
+        pieceSize: state.distance,
+        pointGenerator: state.pointGenerator,
+        topologyGenerator: state.topologyGenerator,
+        tabGenerator: state.tabGenerator,
+        seed: state.seed,
+      }).then((puzzle) => {
+        state.puzzle = puzzle;
+        m.redraw();
+      }).catch((err) => {
+        console.error(err);
+      });
+    },
+
+    onupdate: () => {
+      if (state.dirty) {
+        state.dirty = false;
+        // rebuild the puzzle geometry
+        generatePuzzle({
+          width: state.canvasWidth,
+          height: state.canvasHeight,
+          pieceSize: state.distance,
+          pointGenerator: state.pointGenerator,
+          topologyGenerator: state.topologyGenerator,
+          tabGenerator: state.tabGenerator,
+          seed: state.seed,
+        }).then((puzzle) => {
+          state.puzzle = puzzle;
+          m.redraw();
+        }).catch((err) => {
+          console.error(err);
+        });
+      }
+    },
 
     // component lifecycle: render our output
     view: () => {
@@ -34,13 +90,12 @@ const Page: m.ClosureComponent<unknown> = () => {
         m(".container", [
 
           // render the puzzle
-          m(Puzzle, {
+          state.puzzle && m(Puzzle, {
             width: state.canvasWidth,
             height: state.canvasHeight,
-            distance: state.distance,
-            seed: state.seed,
             color: state.color,
             imageUrl: state.imageUrl,
+            puzzle: state.puzzle,
           }),
 
           // puzzle generation controls
@@ -68,6 +123,7 @@ const Page: m.ClosureComponent<unknown> = () => {
                 value: state.seed,
                 onchange: (e: Event) => {
                   state.seed = parseInt((e.target as HTMLInputElement).value);
+                  state.dirty = true;
                 },
               }),
             ]),
@@ -77,6 +133,7 @@ const Page: m.ClosureComponent<unknown> = () => {
                 value: state.distance,
                 onchange: (e: Event) => {
                   state.distance = parseInt((e.target as HTMLInputElement).value);
+                  state.dirty = true;
                 },
               }),
             ]),
@@ -85,13 +142,23 @@ const Page: m.ClosureComponent<unknown> = () => {
               m("input[type=color]", {
                 value: state.color,
                 onchange: (e: Event) => {
-                  state.color = (e.target as HTMLInputElement).value;
+                  const elt = e.target as HTMLInputElement;
+                  state.color = elt.value;
                 },
               }),
             ]),
           ]), // .controls
 
         ]), // .container
+
+        // SVG
+        state.puzzle && m(PuzzleSVG, {
+          className: 'hidden',
+          width: state.canvasWidth,
+          height: state.canvasHeight,
+          puzzle: state.puzzle,
+          color: state.color,
+        }),
       ]);
     }, // view()
   };

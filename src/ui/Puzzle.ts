@@ -1,6 +1,6 @@
 import m from 'mithril';
-import { generateVoronoi, renderToCanvas, type Voronoi } from "../geometry/geometry";
-import { type Vec2 } from '../geometry/types';
+import { drawPuzzle } from "../generator/PuzzleGenerator";
+import type { PuzzleGeometry } from '../generator/types';
 
 // include our CSS
 import './Puzzle.css';
@@ -11,12 +11,10 @@ export interface PuzzleAttrs extends m.Attributes {
   width: number;
   /** Height of rendered puzzle in pixels */
   height: number;
-  /** Minimum distance between control points (pixels). Roughly defines piece size */
-  distance: number;
-  /** Random seed */
-  seed: number;
   /** Color of pieces */
   color: string;
+  /** Generated puzzle geometry */
+  puzzle: PuzzleGeometry,
   /** User uploaded image */
   imageUrl?: string;
 }
@@ -26,33 +24,31 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
 
   // component state
   const state = {
-    /** Control points defining each voronoi cell */
-    points: [] as Vec2[],
-    /** Voronoi cells defining each piece */
-    voronoi: null as Voronoi<Vec2> | null,
     /** Canvas HTML element */
     canvas: null as HTMLCanvasElement | null,
   };
-
-  function rebuildVoronoi(attrs: PuzzleAttrs) {
-    if (!state.canvas) return;
-    const { points, voronoi } = generateVoronoi(attrs.width, attrs.height, attrs.distance, attrs.seed);
-    state.points = points;
-    state.voronoi = voronoi;
-    renderToCanvas(state.voronoi, state.canvas, attrs.color);
-  }
 
   return {
     // component lifecycle: called after our DOM element is created and attached
     oncreate: ({ dom, attrs }) => {
       state.canvas = dom.querySelector<HTMLCanvasElement>("canvas.puzzle");
-      rebuildVoronoi(attrs);
+      if (!state.canvas) {
+        console.log('couldn\'t get canvas element');
+        return;
+      }
+      drawPuzzle(attrs.puzzle, state.canvas, attrs.color, false);
+    },
+
+    onupdate: ({ attrs }) => {
+      if (!state.canvas) {
+        console.log('couldn\'t get canvas element');
+        return;
+      }
+      drawPuzzle(attrs.puzzle, state.canvas, attrs.color, false);
     },
 
     // component lifecycle: render our output
     view: ({ attrs }) => {
-
-      rebuildVoronoi(attrs);
 
       return m(".puzzle-stack", [
         // user uploaded image
