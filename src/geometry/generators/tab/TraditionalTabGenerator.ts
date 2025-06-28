@@ -1,5 +1,24 @@
-import type { TabGenerator, RandomFn, Edge, PuzzleTopology, Vec2, EdgeSegment, CurveTo } from "./types";
+import type { TabGenerator, TabGeneratorRuntimeOptions } from "./TabGenerator";
+import type { CurveTo, Edge, EdgeSegment, RandomFn, Vec2 } from "../../types";
+import type { GeneratorConfig, GeneratorFactory } from "../Generator";
+import { TabGeneratorRegistry } from "../Generator";
 
+// Name of this generator, uniquely identifies it from all the other TabGenerators
+type TraditionalTabGeneratorName = "TraditionalTabGenerator";
+export const Name: TraditionalTabGeneratorName = "TraditionalTabGenerator";
+
+/** Custom config for this generator */
+export interface TraditionalTabGeneratorConfig extends GeneratorConfig {
+  name: TraditionalTabGeneratorName;
+  /** Size of the tab relative to its edge as a percent (0-100) */
+  size?: number;
+  /** Amount of randomness to apply to each tab (0-100) */
+  jitter?: number;
+  /** If provided, tabs will not generate on edges shorter than this value */
+  minTabSize?: number;
+  /** If provided, the width of a tab's features will be clamped to this value */
+  maxTabSize?: number;
+}
 
 
 /**
@@ -110,17 +129,6 @@ function invertCurve(segment: CurveTo, newEndPoint: Vec2): CurveTo {
   };
 }
 
-export interface TraditionalTabGeneratorOptions {
-  /** Size of the tab relative to its edge as a percent (0-100) */
-  size?: number;
-  /** Amount of randomness to apply to each tab (0-100) */
-  jitter?: number;
-  /** If provided, tabs will not generate on edges shorter than this value */
-  minTabSize?: number;
-  /** If provided, the width of a tab's features will be clamped to this value */
-  maxTabSize?: number;
-}
-
 /**
  * A factory that creates a TabGenerator for creating traditional, smoothly curved
  * puzzle piece tabs using a provided geometry function. The nub is built using
@@ -128,11 +136,12 @@ export interface TraditionalTabGeneratorOptions {
  * gentle S-curve up to the nub edge, Curve 2 is the arch across the top of the
  * nub, Curve 3 is the mirror of curve 1 back to the baseline.
  */
-export const TraditionalTabGenerator = (options: TraditionalTabGeneratorOptions = {}): TabGenerator => {
-  const { size = 20, jitter = 8, minTabSize, maxTabSize } = options;
+export const TraditionalTabGeneratorFactory: GeneratorFactory<TabGenerator> = (config: TraditionalTabGeneratorConfig): TabGenerator => {
+  const { size = 20, jitter = 8, minTabSize, maxTabSize } = config;
 
-  return {
-    addTab(edge: Edge, topology: PuzzleTopology, random: RandomFn) {
+  const TraditionalTabGenerator: TabGenerator = {
+    addTab(edge: Edge, runtimeOpts: TabGeneratorRuntimeOptions) {
+      const { topology, random } = runtimeOpts;
       const he1 = topology.halfEdges.get(edge.heLeft);
       const he2 = topology.halfEdges.get(edge.heRight);
 
@@ -168,5 +177,10 @@ export const TraditionalTabGenerator = (options: TraditionalTabGeneratorOptions 
       he2.segments = he2Segments;
     },
   };
+  return TraditionalTabGenerator;
 };
-export default TraditionalTabGenerator;
+export default TraditionalTabGeneratorFactory;
+
+
+// register the generator
+TabGeneratorRegistry.register(Name, TraditionalTabGeneratorFactory);

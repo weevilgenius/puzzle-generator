@@ -1,8 +1,6 @@
-import type { UniqueId } from "./UniqueId";
-
 
 /* ========================================================= *\
- *  Primitive aliases                                        *
+ *  Primitive types.                                         *
 \* ========================================================= */
 
 /** Alias for string which indicates this field holds a date/time value */
@@ -28,6 +26,10 @@ export type VertexID = number;
 
 /** Vertex */
 export type Vertex = Vec2;
+
+/** A function that returns a pseudo-random number between 0 and 1. */
+export type RandomFn = () => number;
+
 
 /* ========================================================= *\
  * Edge Segment Geometry                                     *
@@ -165,74 +167,5 @@ export interface PuzzleGeometry extends PuzzleTopology {
 
   /** RNG seed that produced this puzzle.  Good for re-runs. */
   seed: number;
-}
-
-/* ========================================================= *\
- * Generators                                                *
-\* ========================================================= */
-
-/** Base options for any generation strategy. */
-export interface GenerationOptions {
-  /** Width of the puzzle generation area */
-  width: UniqueId;
-  /** Height of the puzzle generation area */
-  height: UniqueId;
-}
-
-/** A function that returns a pseudo-random number between 0 and 1. */
-export type RandomFn = () => number;
-
-/* ========================================================= *\
- * Point Generation                                          *
-\* ========================================================= */
-
-/** Options for point generators. */
-export interface PointGenerationOptions extends GenerationOptions {
-  /** A rough guide for the desired size of puzzle pieces. */
-  pieceSize: number;
-  /** A function for generating random numbers. */
-  random: RandomFn;
-}
-
-/**
- * Interface for a point generation strategy.
- * Implement this to create new ways of distributing puzzle piece centers.
- */
-export interface PointGenerator {
-  generatePoints(options: PointGenerationOptions): Vec2[];
-}
-
-/* ========================================================= *\
- * Topology Generation                                       *
-\* ========================================================= */
-
-/** Options for topology generators. */
-export interface TopologyGenerationOptions extends GenerationOptions {
-  /** A function for generating random numbers (e.g., for Lloyd's Relaxation). */
-  random: RandomFn;
-}
-
-/**
- * Interface for a topology generator. Implement this to converts a set of points
- * into a graph of pieces, edges, and half-edges.
- */
-export interface TopologyGenerator {
-  generateTopology(points: Vec2[], options: TopologyGenerationOptions): PuzzleTopology;
-}
-
-/* ========================================================= *\
- * Tab Generation.                                           *
-\* ========================================================= */
-
-/**
- * Strategy pattern for decorating an edge with a tab curve.
- */
-export interface TabGenerator {
-  /**
-   * Analyzes an edge and, if appropriate, decorates its half-edges with
-   * corresponding tab curves. This method will modify the half-edge objects
-   * in the topology directly.
-   */
-  addTab(edge: Edge, topology: PuzzleTopology, random: RandomFn): void;
 }
 

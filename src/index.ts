@@ -1,11 +1,20 @@
 import m from 'mithril';
 import Puzzle from './ui/Puzzle';
 import PuzzleSVG from './ui/PuzzleSVG';
-import type { PuzzleGeometry } from './generator/types';
-import PoissonPointGenerator from './generator/PoissonPointGenerator';
-import VoronoiTopologyGenerator from './generator/VoronoiTopologyGenerator';
-import TraditionalTabGenerator from './generator/TraditionalTabGenerator';
-import { generatePuzzle } from './generator/PuzzleGenerator';
+import type { PuzzleGeometry } from './geometry/types';
+import type { GeneratorConfig } from './geometry/generators/Generator';
+import { type PoissonPointGeneratorConfig, Name as PoissonGeneratorName } from './geometry/generators/point/PoissonPointGenerator';
+import { type VoronoiPieceGeneratorConfig, Name as VoronoiGeneratorName } from './geometry/generators/piece/VoronoiPieceGenerator';
+import { type TraditionalTabGeneratorConfig, Name as TraditionalTabGeneratorName } from './geometry/generators/tab/TraditionalTabGenerator';
+import { buildPuzzle } from './geometry/PuzzleMaker';
+
+// register generators
+import "./geometry/generators/point/GridJitterPointGenerator";
+import "./geometry/generators/point/PoissonPointGenerator";
+import "./geometry/generators/piece/VoronoiPieceGenerator";
+import "./geometry/generators/tab/NullTabGenerator";
+import "./geometry/generators/tab/TriangleTabGenerator";
+import "./geometry/generators/tab/TraditionalTabGenerator";
 
 
 
@@ -15,26 +24,47 @@ import './index.css';
 // page component
 const Page: m.ClosureComponent<unknown> = () => {
 
+  const defaultWidth = 800;
+  const defaultHeight = 600;
+
+  const defaultPointConfig: PoissonPointGeneratorConfig = {
+    name: PoissonGeneratorName,
+    width: defaultWidth,
+    height: defaultHeight,
+  };
+
+  const defaultPieceConfig: VoronoiPieceGeneratorConfig = {
+    name: VoronoiGeneratorName,
+    width: defaultWidth,
+    height: defaultHeight,
+  };
+
+  const defaultTabConfig: TraditionalTabGeneratorConfig = {
+    name: TraditionalTabGeneratorName,
+    width: defaultWidth,
+    height: defaultHeight,
+  };
+
   // component state
   const state = {
     /** Random seed */
     seed: new Date().getTime() % 10240,
     /** Width of canvas in pixels */
-    canvasWidth: 800,
+    canvasWidth: defaultWidth,
     /** Height of canvas in pixels */
-    canvasHeight: 600,
+    canvasHeight: defaultHeight,
     /** Minimum distance between control points (pixels) */
     distance: 40,
     /** Color of pieces */
     color: "#333333",
     /** Dirty flag that keeps us from hitting the puzzle generation function too hard */
     dirty: true,
-    /** Strategy for creating points (which drive piece generation) */
-    pointGenerator: PoissonPointGenerator,
+    /** Strategy for creating points (which influences piece generation) */
+    pointConfig: defaultPointConfig as GeneratorConfig,
     /** Strategory for turning points into puzzle pieces */
-    topologyGenerator: VoronoiTopologyGenerator,
+    pieceConfig: defaultPieceConfig as GeneratorConfig,
     /** Style of tabs to generate */
-    tabGenerator: TraditionalTabGenerator({ size: 20, jitter: 8, minTabSize: 15, maxTabSize: 20}),
+    tabConfig: defaultTabConfig as GeneratorConfig,
     /** Generated puzzle geometry */
     puzzle: undefined as PuzzleGeometry | undefined,
     /** User uploaded image */
@@ -45,13 +75,13 @@ const Page: m.ClosureComponent<unknown> = () => {
   return {
 
     oncreate: () => {
-      generatePuzzle({
+      buildPuzzle({
         width: state.canvasWidth,
         height: state.canvasHeight,
         pieceSize: state.distance,
-        pointGenerator: state.pointGenerator,
-        topologyGenerator: state.topologyGenerator,
-        tabGenerator: state.tabGenerator,
+        pointConfig: state.pointConfig,
+        pieceConfig: state.pieceConfig,
+        tabConfig: state.tabConfig,
         seed: state.seed,
       }).then((puzzle) => {
         state.puzzle = puzzle;
@@ -65,13 +95,13 @@ const Page: m.ClosureComponent<unknown> = () => {
       if (state.dirty) {
         state.dirty = false;
         // rebuild the puzzle geometry
-        generatePuzzle({
+        buildPuzzle({
           width: state.canvasWidth,
           height: state.canvasHeight,
           pieceSize: state.distance,
-          pointGenerator: state.pointGenerator,
-          topologyGenerator: state.topologyGenerator,
-          tabGenerator: state.tabGenerator,
+          pointConfig: state.pointConfig,
+          pieceConfig: state.pieceConfig,
+          tabConfig: state.tabConfig,
           seed: state.seed,
         }).then((puzzle) => {
           state.puzzle = puzzle;

@@ -1,6 +1,6 @@
 import m from 'mithril';
-import { drawPuzzle } from "../generator/PuzzleGenerator";
-import type { PuzzleGeometry } from '../generator/types';
+import { drawPuzzle } from "../geometry/PuzzleMaker";
+import type { PuzzleGeometry } from '../geometry/types';
 
 // include our CSS
 import './Puzzle.css';
@@ -36,7 +36,7 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
         console.log('couldn\'t get canvas element');
         return;
       }
-      drawPuzzle(attrs.puzzle, state.canvas, attrs.color, false);
+      drawPuzzle(attrs.puzzle, state.canvas, attrs.color);
     },
 
     onupdate: ({ attrs }) => {
@@ -44,7 +44,7 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
         console.log('couldn\'t get canvas element');
         return;
       }
-      drawPuzzle(attrs.puzzle, state.canvas, attrs.color, false);
+      drawPuzzle(attrs.puzzle, state.canvas, attrs.color);
     },
 
     // component lifecycle: render our output

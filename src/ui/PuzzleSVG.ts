@@ -1,6 +1,6 @@
 import m from 'mithril';
-import type { PuzzleGeometry } from '../generator/types';
-import { drawSVG } from '../generator/PuzzleGenerator';
+import type { PuzzleGeometry } from '../geometry/types';
+import { drawSVG } from '../geometry/PuzzleMaker';
 
 
 export interface PuzzleSVGAttrs extends m.Attributes {

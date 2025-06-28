@@ -1,5 +1,6 @@
-import type { PuzzleGeometry, PuzzleTopology, PointGenerator, TabGenerator, TopologyGenerator, Vec2 } from "./types";
-import mulberry32 from "./mulberry";
+import type { PuzzleGeometry, PuzzleTopology, Vec2 } from "./types";
+import { PointGeneratorRegistry, PieceGeneratorRegistry, TabGeneratorRegistry, type GeneratorConfig } from "./generators/Generator";
+import mulberry32 from "../utils/mulberry";
 
 /**
  * Configuration options for the entire puzzle generation process.
@@ -13,21 +14,27 @@ export interface PuzzleGenerationOptions {
   pieceSize: number;
   /** Random seed to produce repeatable puzzles */
   seed?: number;
-  /** How the points that control the pieces get generated */
-  pointGenerator: PointGenerator;
-  /** How the pieces get built */
-  topologyGenerator: TopologyGenerator;
-  /** How tabs get constructed */
-  tabGenerator: TabGenerator;
+  /** How shoule the points that control the pieces get generated? */
+  pointConfig: GeneratorConfig;
+  /** How should the pieces get built? */
+  pieceConfig: GeneratorConfig;
+  /** How should tabs get constructed? */
+  tabConfig: GeneratorConfig;
 }
 
 /**
  * Orchestrates the procedural generation of a jigsaw puzzle
  * by coordinating various pluggable generators.
  */
-export async function generatePuzzle(options: PuzzleGenerationOptions): Promise<PuzzleGeometry> {
+export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<PuzzleGeometry> {
   const { width, height, pieceSize } = options;
-  const { pointGenerator, topologyGenerator, tabGenerator } = options;
+  const { pointConfig, pieceConfig, tabConfig } = options;
+
+
+  // get and configure the necessary generators
+  const pointGenerator = PointGeneratorRegistry.create(pointConfig);
+  const pieceGenerator = PieceGeneratorRegistry.create(pieceConfig);
+  const tabGenerator = TabGeneratorRegistry.create(tabConfig);
 
   // seeded PRNG used to generate repeatable random numbers
   const seed = options.seed ?? new Date().getTime();
@@ -38,7 +45,7 @@ export async function generatePuzzle(options: PuzzleGenerationOptions): Promise<
   console.log(`Generated ${points.length} points`);
 
   // 2. Convert points to a puzzle topology (pieces and edges)
-  const topology = topologyGenerator.generateTopology(points, { width, height, random });
+  const topology = pieceGenerator.generatePieces(points, { random });
   console.log(`Generated ${topology.pieces.size} pieces`);
 
   // 3. Decorate internal edges with tabs
@@ -46,7 +53,7 @@ export async function generatePuzzle(options: PuzzleGenerationOptions): Promise<
     // Only add tabs to internal edges (those with a left and right piece)
     const isInternal = edge.heRight !== -1;
     if (isInternal) {
-      tabGenerator.addTab(edge, topology, random);
+      tabGenerator.addTab(edge, { topology, random });
     }
   }
 
@@ -65,7 +72,7 @@ export async function generatePuzzle(options: PuzzleGenerationOptions): Promise<
 }
 
 /** Draws puzzle geometry onto a canvas */
-export function drawPuzzle(topology: PuzzleTopology, canvas: HTMLCanvasElement, pieceColor: string, showPoints: boolean) {
+export function drawPuzzle(topology: PuzzleTopology, canvas: HTMLCanvasElement, pieceColor: string, showPoints = false) {
   const ctx = canvas.getContext('2d');
   if (!ctx) {
     console.error("Could not get 2D context from canvas");
