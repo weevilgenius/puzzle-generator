@@ -29,6 +29,18 @@ export default defineConfig(({ mode }) => {
       emptyOutDir: true,
       rollupOptions: {
         output: {
+
+          // configure Rollup to break some libraries out into separate files
+          manualChunks: (id: string) => {
+            if (id.includes('node_modules')) {
+              if (/node_modules[/\\]mithril/.test(id)) {
+                return 'mithril';
+              }
+            }
+
+            // default: let Rollup decide
+          },
+
           // Optional, remove hashes from output filenames
           // entryFileNames: `assets/[name].js`,
           // chunkFileNames: `assets/[name].js`,
