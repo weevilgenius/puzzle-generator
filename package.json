@@ -2,7 +2,10 @@
   "name": "puzzle-generator",
   "version": "0.1.0",
   "description": "Browser application for generating jigsaw puzzles",
-  "main": "index.js",
+  "author": "Barry Stump <weevilgenius@users.noreply.github.com>",
+  "homepage": "https://github.com/weevilgenius/puzzle-generator#readme",
+  "repository": "github:weevilgenius/puzzle-generator",
+  "license": "MIT",
   "scripts": {
     "lint": "eslint src",
     "dev": "vite",
@@ -12,7 +15,6 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "packageManager": "pnpm@10.12.4+sha512.5ea8b0deed94ed68691c9bad4c955492705c5eeb8a87ef86bc62c74a26b037b08ff9570f108b2e4dbd1dd1a9186fea925e527f141c648e85af45631074680184",
-  "license": "MIT",
   "devDependencies": {
     "@eslint/js": "^9.30.0",
     "@stylistic/eslint-plugin": "^5.0.0",
