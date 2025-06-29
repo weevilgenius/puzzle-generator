@@ -1,4 +1,5 @@
 import m from 'mithril';
+import GitHubCorner from './ui/GitHubCorner';
 import Puzzle from './ui/Puzzle';
 import PuzzleSVG from './ui/PuzzleSVG';
 import type { PuzzleGeometry } from './geometry/types';
@@ -116,6 +117,9 @@ const Page: m.ClosureComponent<unknown> = () => {
     view: () => {
 
       return m(".page", [
+        m(GitHubCorner, {
+          link: "https://github.com/weevilgenius/puzzle-generator",
+        }),
         m("h1", "Puzzle Generator"),
         m(".container", [
 
