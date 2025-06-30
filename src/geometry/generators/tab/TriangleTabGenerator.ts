@@ -19,7 +19,7 @@ export interface TriangleTabGeneratorConfig extends GeneratorConfig {
 export const TriangleTabUIMetadata: GeneratorUIMetadata = {
   name: Name,
   displayName: "Triangle",
-  description: "Generate simple triangular tabs.",
+  description: "Creates a simple triangle between each (internal) piece edge.",
   sortHint: 2,
   // these have to match the config above
   controls: [

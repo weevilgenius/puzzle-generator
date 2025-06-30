@@ -20,7 +20,9 @@ export const PoissonPointUIMetadata: GeneratorUIMetadata = {
   name: Name,
   displayName: "Poisson",
   description: "Generate seed points using Poisson disk sampling. " +
-    "Has an organic look.",
+    "The algorithm produces points that are tightly-packed, but no closer to " +
+    "each other than a specified minimum distance (the piece size), resulting " +
+    "in a more natural, organic look.",
   sortHint: 1,
   // these have to match the GeneratorConfig above
   controls: [],

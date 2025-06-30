@@ -19,8 +19,8 @@ export interface GridJitterPointGeneratorConfig extends GeneratorConfig {
 export const GridJitterPointUIMetadata: GeneratorUIMetadata = {
   name: Name,
   displayName: "Grid",
-  description: "Generate seed points on a grid with optional random jitter. " +
-    "Has a regular, uniform look.",
+  description: "Generate seed points using a grid with optional random jitter. " +
+    "Has a more uniform, regular look, especially with low randomness values.",
   sortHint: 2,
   // these have to match the GeneratorConfig above
   controls: [

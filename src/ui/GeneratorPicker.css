@@ -1,6 +1,7 @@
 .generator-picker {
   border: 1px solid #ccc;
   border-radius: 5px;
+  max-width: 500px;
 }
 
 .generator-picker .controls {

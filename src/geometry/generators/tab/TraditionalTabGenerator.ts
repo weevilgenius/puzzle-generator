@@ -25,7 +25,7 @@ export interface TraditionalTabGeneratorConfig extends GeneratorConfig {
 export const TraditionalTabUIMetadata: GeneratorUIMetadata = {
   name: Name,
   displayName: "Traditional",
-  description: "Generate a traditional rounded tab for each edge.",
+  description: "Creates a traditional rounded tab for each (internal) piece edge.",
   sortHint: 1,
   // these have to match the GeneratorConfig above
   controls: [

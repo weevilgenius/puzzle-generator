@@ -17,7 +17,7 @@ export interface NullTabGeneratorConfig extends GeneratorConfig {
 export const NullTabUIMetadata: GeneratorUIMetadata = {
   name: Name,
   displayName: "None",
-  description: "Do not generate tabs. Piece boundaries will be straight edges.",
+  description: "Do not generate tabs. All pieces have straight edges.",
   sortHint: 3,
   // these have to match the GeneratorConfig above
   controls: [],

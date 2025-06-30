@@ -31,7 +31,9 @@ export interface VoronoiPieceGeneratorConfig extends GeneratorConfig {
 export const VoronoiPieceGeneratorUIMetadata: GeneratorUIMetadata = {
   name: Name,
   displayName: "Voronoi",
-  description: "Construct pieces by building a Voronoi diagram from the seed points",
+  description: "Construct pieces by building a Voronoi diagram from the seed points. " +
+    "Each piece consists of all points of the plane closer to that seed point than " +
+    "any other seed point. In practice, this creates polygons with 3-8 sides.",
   sortHint: 1,
   // these have to match the GeneratorConfig above
   controls: [],
