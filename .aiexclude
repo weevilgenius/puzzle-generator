@@ -1,0 +1,5 @@
+# Files to ignore for AI context, will exclude from AI completions and chat interactions
+
+# Environment files and secrets
+.env*
+.secret*

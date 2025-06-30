@@ -1,0 +1,8 @@
+{
+  // avoid validation from tslint in case that's installed
+  "tslint.enable": false,
+
+  // use eslint for javascript and typescript linting
+  "eslint.enable": true,
+  "eslint.useFlatConfig": true,
+}
