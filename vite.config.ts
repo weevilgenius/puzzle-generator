@@ -19,6 +19,7 @@ export default defineConfig(({ mode }) => {
   }
 
   const config: UserConfig = {
+    base: '/puzzle-generator/', // necessary path when deployed to GH Pages
     plugins,
     build: {
       // browser target

@@ -6,6 +6,8 @@ several configurable strategies that control the generation process allowing for
 a variety of puzzle styles. It can produce an SVG file suitable for use with a
 laser cutter or CNC machine for making physical puzzles.
 
+Use the tool [here](https://weevilgenius.github.io/puzzle-generator/).
+
 <!-- add screen shots here -->
 
 Project Goals
@@ -20,16 +22,12 @@ Project Goals
 Contributing
 ------------
 
-Contributions are welcome. To add a new point, piece or tab shape, see the
-[generator documentation](./src/geometry/README.md). The project is built with
-[Typescript] and [Vite].
-
-### Architecture
-
-The puzzle generation process is broken into stages (generating seed points, pieces,
-tabs), each with configurable strategies that can be swapped as desired. Generators
-define both the geometry algorithms as well as drive the UI that lets you configure
-them. [Mithril] and [Shoelace] are used to create a responsive single page application.
+Contributions are welcome! The project is built with [Typescript] and [Vite] and
+uses [Mithril] and [Shoelace] to create a responsive user interface. The puzzle
+generation process is broken into three stages (seed points, piece generation,
+tab generation), each of which can be extended with custom algorithms. To add a
+new point, piece or tab shape, see the
+[generator documentation](./src/geometry/README.md).
 
 ### Getting Started
 

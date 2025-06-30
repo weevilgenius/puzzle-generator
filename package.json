@@ -12,6 +12,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "analyze": "vite build --mode analyze",
+    "predeploy": "pnpm run build",
+    "deploy": "gh-pages -d dist",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "packageManager": "pnpm@10.12.4+sha512.5ea8b0deed94ed68691c9bad4c955492705c5eeb8a87ef86bc62c74a26b037b08ff9570f108b2e4dbd1dd1a9186fea925e527f141c648e85af45631074680184",
@@ -24,6 +26,7 @@
     "@types/poisson-disk-sampling": "^2.2.4",
     "eslint": "^9.30.0",
     "eslint-plugin-unused-imports": "^4.1.4",
+    "gh-pages": "^6.3.0",
     "globals": "^16.2.0",
     "rollup-plugin-visualizer": "^6.0.3",
     "typescript": "^5.8.3",
