@@ -36,6 +36,15 @@ export default defineConfig(({ mode }) => {
               if (/node_modules[/\\]mithril/.test(id)) {
                 return 'mithril';
               }
+              if (/node_modules[/\\]@shoelace-style[/\\]/.test(id)) {
+                return 'shoelace';
+              }
+              if (/node_modules[/\\](lit|@lit|lit-html|lit-element)[/\\]/.test(id)) {
+                return 'shoelace';
+              }
+              if (/node_modules[/\\]@floating-ui[/\\]/.test(id)) {
+                return 'shoelace';
+              }
             }
 
             // default: let Rollup decide

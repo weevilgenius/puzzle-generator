@@ -1,6 +1,6 @@
 import type { Vec2 } from "../../types";
 import type { PointGenerator, PointGenerationRuntimeOptions } from "./PointGenerator";
-import type { GeneratorConfig, GeneratorFactory } from "../Generator";
+import type { GeneratorConfig, GeneratorFactory, GeneratorUIMetadata } from "../Generator";
 import { PointGeneratorRegistry } from "../Generator";
 
 // Name of this generator, uniquely identifies it from all other PointGenerators
@@ -10,9 +10,30 @@ export const Name: GridJitterPointGeneratorName = "GridJitterPointGenerator";
 /** Required config for this generator */
 export interface GridJitterPointGeneratorConfig extends GeneratorConfig {
   name: GridJitterPointGeneratorName;
-  /** Amount of random jitter (0 to 1), default 0.5 */
-  jitter?: number;
+  /** Amount of random jitter (0 to 100) */
+  jitter: number;
 }
+
+/** UI metadata needed for this generator */
+export const GridJitterPointUIMetadata: GeneratorUIMetadata = {
+  name: Name,
+  displayName: "Grid",
+  description: "Generate seed points on a grid with optional random jitter. " +
+    "Has a regular, uniform look.",
+  sortHint: 2,
+  // these have to match the GeneratorConfig above
+  controls: [
+    {
+      type: 'number',
+      name: 'jitter',
+      label: 'Randomness',
+      min: 0,
+      max: 100,
+      defaultValue: 50,
+      helpText: 'Amount of randomness to apply to each grid point (0 to 100), default 50',
+    },
+  ],
+};
 
 /**
  * A point generator that uses grid + random jitter. `jitter` represents the
@@ -20,7 +41,7 @@ export interface GridJitterPointGeneratorConfig extends GeneratorConfig {
  * (completely random).
  */
 export const GridJitterPointGeneratorFactory: GeneratorFactory<PointGenerator> = (config: GridJitterPointGeneratorConfig) => {
-  const { jitter = 0.5 } = config;
+  const { jitter = 50 } = config;
 
   const GridJitterPointGenerator: PointGenerator = {
     generatePoints(runtimeOpts: PointGenerationRuntimeOptions): Vec2[] {
@@ -34,8 +55,8 @@ export const GridJitterPointGeneratorFactory: GeneratorFactory<PointGenerator> =
           const point: Vec2 = [x + pieceSize / 2, y + pieceSize / 2];
           // add random jitter
           if (jitter > 0) {
-            point[0] += (random() - 0.5) * jitter * pieceSize;
-            point[1] += (random() - 0.5) * jitter * pieceSize;
+            point[0] += (random() - 0.5) * (jitter / 100) * pieceSize;
+            point[1] += (random() - 0.5) * (jitter / 100)  * pieceSize;
           }
           points.push(point);
         }
@@ -48,4 +69,4 @@ export const GridJitterPointGeneratorFactory: GeneratorFactory<PointGenerator> =
 export default GridJitterPointGeneratorFactory;
 
 // register the generator
-PointGeneratorRegistry.register(Name, GridJitterPointGeneratorFactory);
+PointGeneratorRegistry.register(Name, GridJitterPointGeneratorFactory, GridJitterPointUIMetadata);

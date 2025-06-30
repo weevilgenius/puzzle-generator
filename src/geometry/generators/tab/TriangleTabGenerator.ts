@@ -1,6 +1,6 @@
 import type { TabGeneratorRuntimeOptions, TabGenerator } from "./TabGenerator";
 import type { CurveTo, Edge, Vec2 } from "../../types";
-import type { GeneratorConfig, GeneratorFactory } from "../Generator";
+import type { GeneratorConfig, GeneratorFactory, GeneratorUIMetadata } from "../Generator";
 import { TabGeneratorRegistry } from "../Generator";
 
 // Name of this generator, uniquely identifies it from all the other TabGenerators
@@ -10,10 +10,30 @@ export const Name: TriangleTabGeneratorName = "TriangleTabGenerator";
 /** Custom config for this generator */
 export interface TriangleTabGeneratorConfig extends GeneratorConfig {
   name: TriangleTabGeneratorName;
-  /** Determines how "tall" the tab is relative to the length of the edge, default 0.2 */
+  /** Determines how "tall" the tab is relative to the length of the edge as a percent, default 20% */
   tabHeightRatio?: number;
 }
 
+/** UI metadata needed for this generator */
+export const TriangleTabUIMetadata: GeneratorUIMetadata = {
+  name: Name,
+  displayName: "Triangle",
+  description: "Generate simple triangular tabs.",
+  sortHint: 2,
+  // these have to match the config above
+  controls: [
+    {
+      type: 'range',
+      name: 'tabHeightRatio',
+      label: 'Tab Height',
+      optional: true,
+      min: 0,
+      max: 100,
+      step: 1,
+      helpText: 'Determines how "tall" the tab is relative to the length of the edge as a percent, default 20%',
+    },
+  ],
+};
 
 /**
  * A simple TabGenerator that adds a triangular "nub" to an edge.
@@ -25,7 +45,7 @@ export interface TriangleTabGeneratorConfig extends GeneratorConfig {
  * tab, ensuring the pieces will fit together.
  */
 export const TriangleTabGeneratorFactory: GeneratorFactory<TabGenerator> = (config: TriangleTabGeneratorConfig) => {
-  const { tabHeightRatio = 0.2 } = config;
+  const { tabHeightRatio = 20 } = config;
 
   const TriangleTabGenerator: TabGenerator = {
     addTab(edge: Edge, runtimeOpts: TabGeneratorRuntimeOptions) {
@@ -64,7 +84,7 @@ export const TriangleTabGeneratorFactory: GeneratorFactory<TabGenerator> = (conf
 
       // Randomly decide if the tab goes "out" or "in" for he1.
       const direction = random() > 0.5 ? 1 : -1;
-      const tabHeight = edgeLength * tabHeightRatio * direction;
+      const tabHeight = edgeLength * (tabHeightRatio / 100) * direction;
 
       // Calculate the nub point by moving from the midpoint along the normal.
       const nubPoint: Vec2 = [
@@ -108,4 +128,4 @@ export default TriangleTabGeneratorFactory;
 
 
 // register the generator
-TabGeneratorRegistry.register(Name, TriangleTabGeneratorFactory);
+TabGeneratorRegistry.register(Name, TriangleTabGeneratorFactory, TriangleTabUIMetadata);

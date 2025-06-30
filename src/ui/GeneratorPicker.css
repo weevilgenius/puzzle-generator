@@ -1,0 +1,10 @@
+.generator-picker {
+  border: 1px solid #ccc;
+  border-radius: 5px;;
+}
+
+.generator-picker .controls {
+  display: flex;
+  flex-direction: column;
+  padding: 0.125rem 1rem;
+}

@@ -1,6 +1,6 @@
 import type { TabGenerator, TabGeneratorRuntimeOptions } from "./TabGenerator";
 import type { CurveTo, Edge, EdgeSegment, RandomFn, Vec2 } from "../../types";
-import type { GeneratorConfig, GeneratorFactory } from "../Generator";
+import type { GeneratorConfig, GeneratorFactory, GeneratorUIMetadata } from "../Generator";
 import { TabGeneratorRegistry } from "../Generator";
 
 // Name of this generator, uniquely identifies it from all the other TabGenerators
@@ -10,7 +10,7 @@ export const Name: TraditionalTabGeneratorName = "TraditionalTabGenerator";
 /** Custom config for this generator */
 export interface TraditionalTabGeneratorConfig extends GeneratorConfig {
   name: TraditionalTabGeneratorName;
-  /** Size of the tab relative to its edge as a percent (0-100) */
+  /** Size of the tab relative to its edge as a percent (1-100) */
   size?: number;
   /** Amount of randomness to apply to each tab (0-100) */
   jitter?: number;
@@ -19,6 +19,51 @@ export interface TraditionalTabGeneratorConfig extends GeneratorConfig {
   /** If provided, the width of a tab's features will be clamped to this value */
   maxTabSize?: number;
 }
+
+/** UI metadata needed for this generator */
+export const TraditionalTabUIMetadata: GeneratorUIMetadata = {
+  name: Name,
+  displayName: "Traditional",
+  description: "Generate traditional tabs. Each is sized proportional to the length of the edge.",
+  sortHint: 1,
+  // these have to match the GeneratorConfig above
+  controls: [
+    {
+      type: 'range',
+      name: 'size',
+      label: 'Tab Size',
+      defaultValue: 20,
+      min: 1,
+      max: 100,
+      step: 1,
+      helpText: 'Size of each tab as a percent relative to its edge length',
+    },
+    {
+      type: 'range',
+      name: 'jitter',
+      label: 'Randomness',
+      defaultValue: 8,
+      min: 0,
+      max: 100,
+      step: 1,
+      helpText: 'Adds randomness to the tab shape. 0 means completely uniform tabs',
+    },
+    {
+      type: 'number',
+      name: 'minTabSize',
+      label: 'Minimum Tab Size',
+      optional: true,
+      helpText: 'If provided, tabs will not generate on edges shorter than this value',
+    },
+    {
+      type: 'number',
+      name: 'maxTabSize',
+      label: 'Maximum Tab Width',
+      optional: true,
+      helpText: 'If provided, the width of a tab\'s features will be clamped to this value',
+    },
+  ],
+};
 
 
 /**
@@ -183,4 +228,4 @@ export default TraditionalTabGeneratorFactory;
 
 
 // register the generator
-TabGeneratorRegistry.register(Name, TraditionalTabGeneratorFactory);
+TabGeneratorRegistry.register(Name, TraditionalTabGeneratorFactory, TraditionalTabUIMetadata);

@@ -1,9 +1,12 @@
+// component that renders single page application for generating puzzles
 import m from 'mithril';
 import GitHubCorner from './ui/GitHubCorner';
 import Puzzle from './ui/Puzzle';
 import PuzzleSVG from './ui/PuzzleSVG';
+import GeneratorPicker from './ui/GeneratorPicker';
 import type { PuzzleGeometry } from './geometry/types';
-import type { GeneratorConfig } from './geometry/generators/Generator';
+import type { GeneratorConfig, GeneratorName, GeneratorRegistry } from './geometry/generators/Generator';
+import { PointGeneratorRegistry, PieceGeneratorRegistry, TabGeneratorRegistry } from './geometry/generators/Generator';
 import { type PoissonPointGeneratorConfig, Name as PoissonGeneratorName } from './geometry/generators/point/PoissonPointGenerator';
 import { type VoronoiPieceGeneratorConfig, Name as VoronoiGeneratorName } from './geometry/generators/piece/VoronoiPieceGenerator';
 import { type TraditionalTabGeneratorConfig, Name as TraditionalTabGeneratorName } from './geometry/generators/tab/TraditionalTabGenerator';
@@ -17,6 +20,9 @@ import "./geometry/generators/tab/NullTabGenerator";
 import "./geometry/generators/tab/TriangleTabGenerator";
 import "./geometry/generators/tab/TraditionalTabGenerator";
 
+// Shoelace CSS
+import '@shoelace-style/shoelace/dist/themes/light.css';
+import '@shoelace-style/shoelace/dist/themes/dark.css';
 
 
 // include our CSS
@@ -28,48 +34,89 @@ const Page: m.ClosureComponent<unknown> = () => {
   const defaultWidth = 800;
   const defaultHeight = 600;
 
+  const defaultPointGenerator = PoissonGeneratorName;
   const defaultPointConfig: PoissonPointGeneratorConfig = {
     name: PoissonGeneratorName,
     width: defaultWidth,
     height: defaultHeight,
   };
 
+  const defaultPieceGenerator = VoronoiGeneratorName;
   const defaultPieceConfig: VoronoiPieceGeneratorConfig = {
     name: VoronoiGeneratorName,
     width: defaultWidth,
     height: defaultHeight,
   };
 
+  const defaultTabGenerator = TraditionalTabGeneratorName;
   const defaultTabConfig: TraditionalTabGeneratorConfig = {
     name: TraditionalTabGeneratorName,
     width: defaultWidth,
     height: defaultHeight,
   };
 
-  // component state
-  const state = {
+  /** State tracked for each type of generator */
+  interface GeneratorState<C extends GeneratorConfig = GeneratorConfig> {
+    label: string;
+    registry: GeneratorRegistry<unknown>;
+    name : GeneratorName;
+    config: C;
+  }
+
+  interface PageState {
     /** Random seed */
-    seed: new Date().getTime() % 10240,
+    seed: number;
     /** Width of canvas in pixels */
-    canvasWidth: defaultWidth,
+    canvasWidth: number;
     /** Height of canvas in pixels */
-    canvasHeight: defaultHeight,
+    canvasHeight: number;
     /** Minimum distance between control points (pixels) */
-    distance: 40,
+    distance: number;
     /** Color of pieces */
-    color: "#333333",
+    color: string;
     /** Dirty flag that keeps us from hitting the puzzle generation function too hard */
-    dirty: true,
-    /** Strategy for creating points (which influences piece generation) */
-    pointConfig: defaultPointConfig as GeneratorConfig,
-    /** Strategory for turning points into puzzle pieces */
-    pieceConfig: defaultPieceConfig as GeneratorConfig,
-    /** Style of tabs to generate */
-    tabConfig: defaultTabConfig as GeneratorConfig,
+    dirty: boolean;
+    /** Currently selected and configured generators for each part of puzzle generation */
+    generators: Record<string, GeneratorState>;
     /** Generated puzzle geometry */
-    puzzle: undefined as PuzzleGeometry | undefined,
+    puzzle?: PuzzleGeometry;
     /** User uploaded image */
-    imageUrl: undefined as string | undefined,
+    imageUrl?: string;
+  };
+
+  // component state
+  const state: PageState = {
+    seed: new Date().getTime() % 10240,
+    canvasWidth: defaultWidth,
+    canvasHeight: defaultHeight,
+    distance: 40,
+    color: "#333333",
+    dirty: true,
+    generators: {
+      /** Strategy for creating points (which influences piece generation) */
+      point: {
+        label: "Seed Point Generator",
+        registry: PointGeneratorRegistry,
+        name: defaultPointGenerator,
+        config: defaultPointConfig,
+      },
+      /** Strategy for turning points into puzzle pieces */
+      piece: {
+        label: "Piece Generator",
+        registry: PieceGeneratorRegistry,
+        name: defaultPieceGenerator,
+        config: defaultPieceConfig,
+      },
+      /** Style of tabs to generate */
+      tab: {
+        label: "Tab Generator",
+        registry: TabGeneratorRegistry,
+        name: defaultTabGenerator,
+        config: defaultTabConfig,
+      },
+    },
+    puzzle: undefined,
+    imageUrl: undefined,
   };
 
   // Mithril component
@@ -80,9 +127,9 @@ const Page: m.ClosureComponent<unknown> = () => {
         width: state.canvasWidth,
         height: state.canvasHeight,
         pieceSize: state.distance,
-        pointConfig: state.pointConfig,
-        pieceConfig: state.pieceConfig,
-        tabConfig: state.tabConfig,
+        pointConfig: state.generators.point.config,
+        pieceConfig: state.generators.piece.config,
+        tabConfig: state.generators.tab.config,
         seed: state.seed,
       }).then((puzzle) => {
         state.puzzle = puzzle;
@@ -100,9 +147,9 @@ const Page: m.ClosureComponent<unknown> = () => {
           width: state.canvasWidth,
           height: state.canvasHeight,
           pieceSize: state.distance,
-          pointConfig: state.pointConfig,
-          pieceConfig: state.pieceConfig,
-          tabConfig: state.tabConfig,
+          pointConfig: state.generators.point.config,
+          pieceConfig: state.generators.piece.config,
+          tabConfig: state.generators.tab.config,
           seed: state.seed,
         }).then((puzzle) => {
           state.puzzle = puzzle;
@@ -110,6 +157,14 @@ const Page: m.ClosureComponent<unknown> = () => {
         }).catch((err) => {
           console.error(err);
         });
+      }
+    },
+
+    onremove: () => {
+      if (state.imageUrl) {
+        // clean up memory
+        URL.revokeObjectURL(state.imageUrl);
+        state.imageUrl = undefined;
       }
     },
 
@@ -134,6 +189,7 @@ const Page: m.ClosureComponent<unknown> = () => {
 
           // puzzle generation controls
           m(".controls", [
+            // background image
             m("label.button", [
               "Choose Image",
               m("input[type=file]#image-upload", {
@@ -151,6 +207,7 @@ const Page: m.ClosureComponent<unknown> = () => {
                 },
               }),
             ]),
+            // Seed value
             m("label", [
               "Seed: ",
               m("input[type=number]", {
@@ -161,6 +218,7 @@ const Page: m.ClosureComponent<unknown> = () => {
                 },
               }),
             ]),
+            // Piece size config value
             m("label", [
               "Piece size: ",
               m("input[type=number]", {
@@ -171,6 +229,7 @@ const Page: m.ClosureComponent<unknown> = () => {
                 },
               }),
             ]),
+            // Piece color config value
             m("label", [
               "Color: ",
               m("input[type=color]", {
@@ -181,6 +240,35 @@ const Page: m.ClosureComponent<unknown> = () => {
                 },
               }),
             ]),
+
+            // render a generator picker for each type of generator
+            ...Object.entries(state.generators).map(([type, generator]) => {
+              return m("label", [
+                generator.label + ':',
+                m(GeneratorPicker, {
+                  generator: generator.name,
+                  registry: generator.registry,
+                  config: generator.config,
+                  onGeneratorChange: (generatorName) => {
+                    if (generatorName != generator.name) {
+                      console.log(`${type} generator changed to ${generatorName}`);
+                      generator.name = generatorName;
+                      // generator changed, we need a new blank config
+                      state.generators[type].config = generator.registry.getDefaultConfig(generatorName, state.canvasWidth, state.canvasHeight);
+                      state.dirty = true;
+                      m.redraw();
+                    }
+                  },
+                  onConfigChange: (key, value) => {
+                    console.log(`${type} generator config "${key}" changed to ${String(value)}`);
+                    generator.config[key] = value;
+                    state.dirty = true;
+                    m.redraw();
+                  },
+                }),
+              ]);
+            }),
+
           ]), // .controls
 
         ]), // .container

@@ -1,7 +1,7 @@
 import PoissonDiskSampling from 'poisson-disk-sampling';
 import type { Vec2 } from "../../types";
 import type { PointGenerator, PointGenerationRuntimeOptions } from "./PointGenerator";
-import type { GeneratorConfig, GeneratorFactory } from "../Generator";
+import type { GeneratorConfig, GeneratorFactory, GeneratorUIMetadata } from "../Generator";
 import { PointGeneratorRegistry } from "../Generator";
 
 // Name of this generator, uniquely identifies it from all other PointGenerators
@@ -11,7 +11,19 @@ export const Name: PoissonPointGeneratorName = "PoissonPointGenerator";
 /** Required config for this generator */
 export interface PoissonPointGeneratorConfig extends GeneratorConfig {
   name: PoissonPointGeneratorName;
+  // no custom config values
 }
+
+/** UI metadata needed for this generator */
+export const PoissonPointUIMetadata: GeneratorUIMetadata = {
+  name: Name,
+  displayName: "Poisson",
+  description: "Generate seed points using Poisson disk sampling. " +
+    "Has an organic look.",
+  sortHint: 1,
+  // these have to match the GeneratorConfig above
+  controls: [],
+};
 
 /**
  * A point generator that uses Poisson disk sampling to create a more organic
@@ -43,4 +55,4 @@ export const PoissonPointGeneratorFactory: GeneratorFactory<PointGenerator> = (_
 export default PoissonPointGeneratorFactory;
 
 // register the generator
-PointGeneratorRegistry.register(Name, PoissonPointGeneratorFactory);
+PointGeneratorRegistry.register(Name, PoissonPointGeneratorFactory, PoissonPointUIMetadata);

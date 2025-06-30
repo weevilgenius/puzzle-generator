@@ -31,6 +31,7 @@
     "vite": "^7.0.0"
   },
   "dependencies": {
+    "@shoelace-style/shoelace": "^2.20.1",
     "d3-delaunay": "^6.0.4",
     "mithril": "^2.3.3",
     "poisson-disk-sampling": "^2.3.1"

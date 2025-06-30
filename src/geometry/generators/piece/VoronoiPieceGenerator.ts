@@ -12,7 +12,7 @@ import type {
   Vec2,
 } from '../../types';
 import { getUniqueId } from '../../../utils/UniqueId';
-import type { GeneratorConfig, GeneratorFactory } from "../Generator";
+import type { GeneratorConfig, GeneratorFactory, GeneratorUIMetadata } from "../Generator";
 import { PieceGeneratorRegistry } from "../Generator";
 
 
@@ -23,9 +23,18 @@ export const Name: VoronoiPieceGeneratorName = "VoronoiPieceGenerator";
 /** Required config for this generator */
 export interface VoronoiPieceGeneratorConfig extends GeneratorConfig {
   name: VoronoiPieceGeneratorName;
+  // no special config
 }
 
-
+/** UI metadata needed for this generator */
+export const VoronoiPieceGeneratorUIMetadata: GeneratorUIMetadata = {
+  name: Name,
+  displayName: "Voronoi",
+  description: "Construct pieces by building a Voronoi diagram from the seed points",
+  sortHint: 1,
+  // these have to match the GeneratorConfig above
+  controls: [],
+};
 
 /**
  * Calculates the Axis-Aligned Bounding Box (AABB) for a given polygon.
@@ -235,4 +244,4 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (c
 export default VoronoiPieceGeneratorFactory;
 
 // register the generator
-PieceGeneratorRegistry.register(Name, VoronoiPieceGeneratorFactory);
+PieceGeneratorRegistry.register(Name, VoronoiPieceGeneratorFactory, VoronoiPieceGeneratorUIMetadata);
