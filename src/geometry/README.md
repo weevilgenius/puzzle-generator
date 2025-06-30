@@ -7,7 +7,7 @@ dependencies on the UI layer.
 
 The entire engine is built on a pluggable architecture. The process of generating
 a puzzle is broken down into distinct stages, and for each stage, different
-generators can be swapped in and out.
+generators can be swapped in to change the look of the puzzle.
 
 Core Concepts
 -------------
@@ -26,11 +26,11 @@ define the center of each puzzle piece.
 2. **Piece Generators**: Responsible for taking the seed points and creating the
 puzzle's topology (the shapes of the pieces and how they connect).
 3. **Tab Generators**: Responsible for decorating the edges between pieces with
-tabs (a.k.a. "nubs" and "holes").
+tabs (a.k.a. "nubs" or "connectors").
 
 **The Registry** (`GeneratorRegistry`): Each generator type has a corresponding
 registry (`TabGeneratorRegistry`, etc.). When the application starts, each
-generator implementation file "self-registers" with its registry. This is what
+generator implementation file self-registers with its registry. This is what
 makes the system pluggable; the orchestrator doesn't need to know about the
 generators beforehand, it simply asks the registry for a generator by name at
 runtime.
@@ -50,6 +50,7 @@ import "./geometry/generators/point/PoissonPointGenerator";
 import "./geometry/generators/piece/VoronoiPieceGenerator";
 import "./geometry/generators/tab/TraditionalTabGenerator";
 import "./geometry/generators/tab/NullTabGenerator";
+// etc
 
 
 // --- 2. Configuration ---
@@ -58,6 +59,7 @@ import { buildPuzzle, drawPuzzle } from './geometry/PuzzleMaker';
 import type { GeneratorConfig } from './geometry/generators/Generator';
 import { type TraditionalTabGeneratorConfig, Name as TraditionalTabName } from './geometry/generators/tab/TraditionalTabGenerator';
 import { type VoronoiPieceGeneratorConfig, Name as VoronoiPieceName } from './geometry/generators/piece/VoronoiPieceGenerator';
+// etc
 
 // Build the configuration "recipe" for the puzzle.
 const myTabConfig: TraditionalTabGeneratorConfig = {
@@ -65,7 +67,6 @@ const myTabConfig: TraditionalTabGeneratorConfig = {
     width: 800,
     height: 600,
     size: 30, // Custom parameter for this generator
-    jitter: 15,
 };
 
 const myPieceConfig: VoronoiPieceGeneratorConfig = {
@@ -97,14 +98,14 @@ buildPuzzle({
 Creating a New Generator
 ------------------------
 
-Adding a new generator is designed to be straightforward and self-contained
+Adding a new generator is designed to be straightforward and entirely contained
 within a single file. The following steps use
-[`NullTabGenerator.ts`](./generators/tab/NullTabGenerator.ts) as an example.
+[`TriangleTabGenerator.ts`](./generators/tab/TriangleTabGenerator.ts) as an example.
 
 ### Step 1: _Create the Generator File_ ###
 
 Create a new file in the appropriate directory (e.g.,
-src/geometry/generators/tab/MyNewTabGenerator.ts).
+`src/geometry/generators/tab/MyNewTabGenerator.ts`).
 
 ### Step 2: _Define and Export a Unique Name_ ###
 
@@ -112,72 +113,109 @@ Every generator needs a unique string literal type and a corresponding exported
 `Name` constant. This is used as the key in the registry.
 
 ```ts
-// Name of this generator, uniquely identifies it from all other TabGenerators
-type NullTabGeneratorName = "NullTabGenerator";
-export const Name: NullTabGeneratorName = "NullTabGenerator";
+// Name of this generator, uniquely identifies it from all the other TabGenerators
+type TriangleTabGeneratorName = "TriangleTabGenerator";
+export const Name: TriangleTabGeneratorName = "TriangleTabGenerator";
 ```
 
-### Step 3: _Define the Configuration Interface_ ###
+### Step 3: _Define the Configuration_ ###
 
 Create an interface for your generator's "recipe" that extends the base
-`GeneratorConfig`. Add any configurable, creation-time parameters here. If your
-generator has no options, you still need to create the interface.
+`GeneratorConfig`. Add any configurable, creation-time parameters here. Even if your
+generator has no options, the interface is still required.
 
 ```ts
-/** This generator doesn't take any special config */
-export interface NullTabGeneratorConfig extends GeneratorConfig {
-  name: NullTabGeneratorName;
+/** Custom config for this generator */
+export interface TriangleTabGeneratorConfig extends GeneratorConfig {
+  name: TriangleTabGeneratorName; // required
+  // add additional config values here
+  // example:
+  /** Determines how "tall" the tab is relative to the length of the edge as a percent */
+  tabHeightRatio: number;
 }
 ```
 
-### Step 4: _Implement the Generator Factory_ ###
+### Step 4: _Define the UI Metadata_ ###
+
+Create a `UIMetadata` object that describes your generator to the UI. The
+`controls` need to match your configuration from Step 3. This allows the UI to
+present your generator and collect its necessary config values from the user.
+
+```ts
+/** UI metadata needed for this generator */
+export const TriangleTabUIMetadata: GeneratorUIMetadata = {
+  // required, matches the Name of your generator
+  name: Name,
+  // What will the generator be called in the UI?
+  displayName: "Triangle",
+  // Optional, describe what the generator does to the user.
+  description: "Generate simple triangular tabs.",
+  // Hint to the UI about where this generator should be placed in relation to
+  // other generators of the same type
+  sortHint: 2,
+  // these have to match the GeneratorConfig you defined in Step 3
+  controls: [
+    {
+      type: 'range', // defines the UI control type
+      name: 'tabHeightRatio', // must match your config value name exactly
+      label: 'Tab Height',
+      optional: true,
+      min: 0,
+      max: 100,
+      step: 1,
+      defaultValue: 20,
+      helpText: 'Determines how "tall" the tab is relative to the length of the edge as a percent',
+    },
+  ],
+};
+```
+
+### Step 5: _Implement the Generator Factory_ ###
 
 This is the core of your module. The factory is a function that takes the
 configuration object from Step 3 and returns a fully-formed generator instance
 (e.g., an object that satisfies the `TabGenerator`, `PieceGenerator`, or
 `PointGenerator` interface).
 
-Values from the config object should be used here to "bake" behavior into the
-returned generator instance.
-
 ```ts
-import type { TabGenerator, TabGeneratorRuntimeOptions } from "./TabGenerator";
-import type { Edge } from "../../types";
-import type { GeneratorFactory } from "../Generator";
+/** A simple TabGenerator that adds a triangular "nub" to an edge. */
+export const TriangleTabGeneratorFactory: GeneratorFactory<TabGenerator> = (config: TriangleTabGeneratorConfig) => {
+  // extract config values for use below
+  const { tabHeightRatio = 20 } = config;
 
-/** Tab generator that does nothing, piece edges remain straight lines */
-export const NullTabGeneratorFactory: GeneratorFactory<TabGenerator> = (_config: NullTabGeneratorConfig) => {
-  const NullTabGenerator: TabGenerator = {
-    addTab(_edge: Edge, _runtimeOpts: TabGeneratorRuntimeOptions) {
-      // noop
-    },
+  const TriangleTabGenerator: TabGenerator = {
+    addTab(edge: Edge, runtimeOpts: TabGeneratorRuntimeOptions) {
+      const { topology, random } = runtimeOpts;
+      // your algorithm here
+    }
   };
-  return NullTabGenerator;
+  return TriangleTabGenerator;
 };
+export default TriangleTabGeneratorFactory;
+
 ```
 
-### Step 5: _Register the Generator_ ###
+### Step 6: _Register the Generator_ ###
 
-At the bottom of the file, add the line that registers your factory with the
-appropriate registry. This makes the generator available to the rest of the
-application.
+At the bottom of the file, add the line that registers your factory and UI
+metadata with the appropriate registry. This makes the generator available to
+the engine and the UI.
 
 ```ts
 import { TabGeneratorRegistry } from "../Generator";
 
 // register the generator
-TabGeneratorRegistry.register(Name, NullTabGeneratorFactory);
+TabGeneratorRegistry.register(Name, TriangleTabGeneratorFactory, TriangleTabUIMetadata);
 ```
 
-### Step 6: _Activate the Generator_ ###
+### Step 7: _Activate the Generator_ ###
 
-Finally, in the main application entry point (e.g., src/index.ts), add an import
-to your new generator file to ensure the registration code from Step 5 is executed
+Finally, in the [main application entry point](./src/index.ts), add an import
+for your new generator to ensure the registration code from Step 6 is executed
 when the app loads.
 
 ```ts
 import "./geometry/generators/tab/MyNewTabGenerator";
 ```
 
-Your new generator is now fully integrated and can be used by specifying its
-`Name` in a configuration object.
+Your new generator is now fully integrated and will be picked up by the UI.
