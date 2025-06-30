@@ -1,7 +1,8 @@
 import PoissonDiskSampling from 'poisson-disk-sampling';
 import type { Vec2 } from "../../types";
 import type { PointGenerator, PointGenerationRuntimeOptions } from "./PointGenerator";
-import type { GeneratorConfig, GeneratorFactory, GeneratorUIMetadata } from "../Generator";
+import type { GeneratorUIMetadata } from '../../ui_types';
+import type { GeneratorConfig, GeneratorFactory } from "../Generator";
 import { PointGeneratorRegistry } from "../Generator";
 
 // Name of this generator, uniquely identifies it from all other PointGenerators

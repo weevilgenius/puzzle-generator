@@ -1,6 +1,7 @@
 import type { TabGenerator, TabGeneratorRuntimeOptions } from "./TabGenerator";
 import type { CurveTo, Edge, EdgeSegment, RandomFn, Vec2 } from "../../types";
-import type { GeneratorConfig, GeneratorFactory, GeneratorUIMetadata } from "../Generator";
+import type { GeneratorUIMetadata } from '../../ui_types';
+import type { GeneratorConfig, GeneratorFactory } from "../Generator";
 import { TabGeneratorRegistry } from "../Generator";
 
 // Name of this generator, uniquely identifies it from all the other TabGenerators
@@ -24,7 +25,7 @@ export interface TraditionalTabGeneratorConfig extends GeneratorConfig {
 export const TraditionalTabUIMetadata: GeneratorUIMetadata = {
   name: Name,
   displayName: "Traditional",
-  description: "Generate traditional tabs. Each is sized proportional to the length of the edge.",
+  description: "Generate a traditional rounded tab for each edge.",
   sortHint: 1,
   // these have to match the GeneratorConfig above
   controls: [

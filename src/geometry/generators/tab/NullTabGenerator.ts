@@ -1,6 +1,7 @@
 import type { TabGenerator, TabGeneratorRuntimeOptions } from "./TabGenerator";
 import type { Edge } from "../../types";
-import type { GeneratorConfig, GeneratorFactory, GeneratorUIMetadata } from "../Generator";
+import type { GeneratorUIMetadata } from '../../ui_types';
+import type { GeneratorConfig, GeneratorFactory } from "../Generator";
 import { TabGeneratorRegistry } from "../Generator";
 
 // Name of this generator, uniquely identifies it from all other TabGenerators

@@ -1,6 +1,10 @@
 // UI component that lets the user pick and configure a generator
 import m from 'mithril';
 import type { GeneratorRegistry, GeneratorConfig, GeneratorName } from '../geometry/generators/Generator';
+import BooleanInputControl from './inputs/BooleanInputControl';
+import NumberInputControl from './inputs/NumberInputControl';
+import RangeInputControl from './inputs/RangeInputControl';
+import StringInputControl from './inputs/StringInputControl';
 
 // Shoelace components
 import '@shoelace-style/shoelace/dist/components/tab/tab.js';
@@ -82,38 +86,37 @@ export const GeneratorPicker: m.ClosureComponent<GeneratorPickerAttrs> = () => {
                 ...uiMetadata?.controls.map((control) => {
                   switch(control.type) {
                   case "range":
-                    return m("label", [
-                      `${control.label}: `,
-                      m("input[type=range]", {
-                        min: control.min,
-                        max: control.max,
-                        value: attrs.config?.[control.name] ?? control.defaultValue,
-                        step: control.step,
-                      }),
-                    ]);
+                    return m(RangeInputControl, {
+                      config: control,
+                      value: (attrs.config?.[control.name] ?? control.defaultValue) as number | undefined,
+                      onChange: (value) => {
+                        attrs.onConfigChange(control.name, value);
+                      },
+                    });
                   case "boolean":
-                    return m("label", [
-                      `${control.label}: `,
-                      m("input[type=checkbox]", {
-                        checked: (attrs.config?.[control.name] ?? control.defaultValue) === true,
-                      }),
-                    ]);
+                    return m(BooleanInputControl, {
+                      config: control,
+                      value: (attrs.config?.[control.name] ?? control.defaultValue) === true,
+                      onChange: (value) => {
+                        attrs.onConfigChange(control.name, value);
+                      },
+                    });
                   case "number":
-                    return m("label", [
-                      `${control.label}: `,
-                      m("input[type=number]", {
-                        min: control.min ?? null,
-                        max: control.max ?? null,
-                        value: attrs.config?.[control.name] ?? control.defaultValue,
-                      }),
-                    ]);
+                    return m(NumberInputControl, {
+                      config: control,
+                      value: (attrs.config?.[control.name] ?? control.defaultValue) as number | undefined,
+                      onChange: (value) => {
+                        attrs.onConfigChange(control.name, value);
+                      },
+                    });
                   case "string":
-                    return m("label", [
-                      `${control.label}: `,
-                      m("input[type=text]", {
-                        value: attrs.config?.[control.name] ?? control.defaultValue,
-                      }),
-                    ]);
+                    return m(StringInputControl, {
+                      config: control,
+                      value: (attrs.config?.[control.name] ?? control.defaultValue) as string | undefined,
+                      onChange: (value) => {
+                        attrs.onConfigChange(control.name, value);
+                      },
+                    });
                   }
                 }) ?? [],
 

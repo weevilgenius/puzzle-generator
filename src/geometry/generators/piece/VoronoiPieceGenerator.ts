@@ -12,7 +12,8 @@ import type {
   Vec2,
 } from '../../types';
 import { getUniqueId } from '../../../utils/UniqueId';
-import type { GeneratorConfig, GeneratorFactory, GeneratorUIMetadata } from "../Generator";
+import type { GeneratorUIMetadata } from '../../ui_types';
+import type { GeneratorConfig, GeneratorFactory } from "../Generator";
 import { PieceGeneratorRegistry } from "../Generator";
 
 

@@ -1,6 +1,7 @@
 import type { TabGeneratorRuntimeOptions, TabGenerator } from "./TabGenerator";
 import type { CurveTo, Edge, Vec2 } from "../../types";
-import type { GeneratorConfig, GeneratorFactory, GeneratorUIMetadata } from "../Generator";
+import type { GeneratorUIMetadata } from '../../ui_types';
+import type { GeneratorConfig, GeneratorFactory } from "../Generator";
 import { TabGeneratorRegistry } from "../Generator";
 
 // Name of this generator, uniquely identifies it from all the other TabGenerators
@@ -30,7 +31,8 @@ export const TriangleTabUIMetadata: GeneratorUIMetadata = {
       min: 0,
       max: 100,
       step: 1,
-      helpText: 'Determines how "tall" the tab is relative to the length of the edge as a percent, default 20%',
+      defaultValue: 20,
+      helpText: 'Determines how "tall" the tab is relative to the length of the edge as a percent',
     },
   ],
 };

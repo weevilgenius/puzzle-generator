@@ -1,6 +1,7 @@
 import type { Vec2 } from "../../types";
 import type { PointGenerator, PointGenerationRuntimeOptions } from "./PointGenerator";
-import type { GeneratorConfig, GeneratorFactory, GeneratorUIMetadata } from "../Generator";
+import type { GeneratorUIMetadata } from '../../ui_types';
+import type { GeneratorConfig, GeneratorFactory } from "../Generator";
 import { PointGeneratorRegistry } from "../Generator";
 
 // Name of this generator, uniquely identifies it from all other PointGenerators
@@ -24,13 +25,14 @@ export const GridJitterPointUIMetadata: GeneratorUIMetadata = {
   // these have to match the GeneratorConfig above
   controls: [
     {
-      type: 'number',
+      type: 'range',
       name: 'jitter',
       label: 'Randomness',
       min: 0,
       max: 100,
+      step: 5,
       defaultValue: 50,
-      helpText: 'Amount of randomness to apply to each grid point (0 to 100), default 50',
+      helpText: 'Amount of jitter to apply to each grid point (0 to 100%)',
     },
   ],
 };
