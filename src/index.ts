@@ -1,9 +1,14 @@
 // component that renders single page application for generating puzzles
 import m from 'mithril';
+
+// UI parts
 import GitHubCorner from './ui/GitHubCorner';
 import Puzzle from './ui/Puzzle';
 import PuzzleSVG from './ui/PuzzleSVG';
 import GeneratorPicker from './ui/GeneratorPicker';
+import NumberInputControl from './ui/inputs/NumberInputControl';
+
+// geometry parts
 import type { PuzzleGeometry } from './geometry/types';
 import type { GeneratorConfig, GeneratorName, GeneratorRegistry } from './geometry/generators/Generator';
 import { PointGeneratorRegistry, PieceGeneratorRegistry, TabGeneratorRegistry } from './geometry/generators/Generator';
@@ -24,11 +29,10 @@ import "./geometry/generators/tab/TraditionalTabGenerator";
 import '@shoelace-style/shoelace/dist/themes/light.css';
 import '@shoelace-style/shoelace/dist/themes/dark.css';
 
-
-// include our CSS
+// CSS for this component
 import './index.css';
 
-// page component
+// component that draws the page
 const Page: m.ClosureComponent<unknown> = () => {
 
   const defaultWidth = 800;
@@ -208,27 +212,33 @@ const Page: m.ClosureComponent<unknown> = () => {
               }),
             ]),
             // Seed value
-            m("label", [
-              "Seed: ",
-              m("input[type=number]", {
-                value: state.seed,
-                onchange: (e: Event) => {
-                  state.seed = parseInt((e.target as HTMLInputElement).value);
-                  state.dirty = true;
-                },
-              }),
-            ]),
+            m(NumberInputControl, {
+              config: {
+                name: 'seed',
+                label: 'Seed',
+                type: 'number',
+              },
+              value: state.seed,
+              onChange: (value) => {
+                state.seed = value ?? 0;
+                state.dirty = true;
+                m.redraw();
+              },
+            }),
             // Piece size config value
-            m("label", [
-              "Piece size: ",
-              m("input[type=number]", {
-                value: state.distance,
-                onchange: (e: Event) => {
-                  state.distance = parseInt((e.target as HTMLInputElement).value);
-                  state.dirty = true;
-                },
-              }),
-            ]),
+            m(NumberInputControl, {
+              config: {
+                name: 'pieceSize',
+                label: 'Piece size',
+                type: 'number',
+              },
+              value: state.distance,
+              onChange: (value) => {
+                state.distance = value ?? 0;
+                state.dirty = true;
+                m.redraw();
+              },
+            }),
             // Piece color config value
             m("label", [
               "Color: ",
