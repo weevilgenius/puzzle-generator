@@ -29,6 +29,8 @@ tab generation), each of which can be extended with custom algorithms. To add a
 new point, piece or tab shape, see the
 [generator documentation](./src/geometry/README.md).
 
+Building the project requires Node 20 or later and [pnpm].
+
 ### Getting Started
 
 ```bash
@@ -50,6 +52,7 @@ This project was inspired by discussions in various puzzle forums as well as
 online puzzle generators including those from [proceduraljigsaw] on GitHub.
 
 <!-- links -->
+[pnpm]: https://pnpm.io/
 [Mithril]: https://mithril.js.org/
 [Shoelace]: https://shoelace.style/
 [Typescript]: https://www.typescriptlang.org/
