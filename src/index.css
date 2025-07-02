@@ -28,18 +28,15 @@ body {
   gap: 4px;
 }
 
-.container .controls label.button {
-  display: inline-block;
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  border: 1px solid #ccc;
-}
-
-.container .controls input[type=number] {
-  width: 5em;
+.container .controls .background-image-label {
+  padding: 2px 0.5em;
+  color: var(--sl-color-gray-700);
 }
 
 .container button {
   margin: 0.5em 1em;
+}
+
+.container .download-svg {
+  margin-top: 1em;
 }

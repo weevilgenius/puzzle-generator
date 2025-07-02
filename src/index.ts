@@ -5,6 +5,7 @@ import m from 'mithril';
 import GitHubCorner from './ui/GitHubCorner';
 import Puzzle from './ui/Puzzle';
 import DownloadPuzzleButton from './ui/DownloadPuzzleButton';
+import UploadImageButton from './ui/UploadImageButton';
 import GeneratorPicker from './ui/GeneratorPicker';
 import NumberInputControl from './ui/inputs/NumberInputControl';
 
@@ -85,7 +86,9 @@ const Page: m.ClosureComponent<unknown> = () => {
     /** Generated puzzle geometry */
     puzzle?: PuzzleGeometry;
     /** User uploaded image */
-    imageUrl?: string;
+    backgroundImageUrl?: string;
+    /** Name of uploaded image */
+    backgroundImageName: string;
   };
 
   // component state
@@ -120,7 +123,8 @@ const Page: m.ClosureComponent<unknown> = () => {
       },
     },
     puzzle: undefined,
-    imageUrl: undefined,
+    backgroundImageUrl: undefined,
+    backgroundImageName: '',
   };
 
   // Mithril component
@@ -165,10 +169,10 @@ const Page: m.ClosureComponent<unknown> = () => {
     },
 
     onremove: () => {
-      if (state.imageUrl) {
+      if (state.backgroundImageUrl) {
         // clean up memory
-        URL.revokeObjectURL(state.imageUrl);
-        state.imageUrl = undefined;
+        URL.revokeObjectURL(state.backgroundImageUrl);
+        state.backgroundImageUrl = undefined;
       }
     },
 
@@ -189,7 +193,7 @@ const Page: m.ClosureComponent<unknown> = () => {
               width: state.canvasWidth,
               height: state.canvasHeight,
               color: state.color,
-              imageUrl: state.imageUrl,
+              imageUrl: state.backgroundImageUrl,
               puzzle: state.puzzle,
             }),
 
@@ -206,22 +210,20 @@ const Page: m.ClosureComponent<unknown> = () => {
           // puzzle generation controls
           m(".controls", [
             // background image
-            m("label.button", [
-              "Choose Image",
-              m("input[type=file]#image-upload", {
-                accept: "image/*",
-                style: { display: "none" },
-                onchange: (e: Event) => {
-                  const file = (e.target as HTMLInputElement).files?.[0];
-                  if (file?.type.startsWith("image/")) {
-                    // clear any previous image
-                    if (state.imageUrl) {
-                      URL.revokeObjectURL(state.imageUrl);
-                    }
-                    state.imageUrl = URL.createObjectURL(file);
+            m('.background-image', [
+              m(UploadImageButton, {
+                label: "Background Image",
+                onUpload: (imageUrl, filename) => {
+                  // clear any previous image
+                  if (state.backgroundImageUrl) {
+                    URL.revokeObjectURL(state.backgroundImageUrl);
                   }
+                  state.backgroundImageUrl = imageUrl;
+                  state.backgroundImageName = filename;
+                  m.redraw();
                 },
               }),
+              m('span.background-image-label', state.backgroundImageName),
             ]),
             // Seed value
             m(NumberInputControl, {
