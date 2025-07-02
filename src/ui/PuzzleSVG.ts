@@ -1,6 +1,6 @@
 import m from 'mithril';
 import type { PuzzleGeometry } from '../geometry/types';
-import { drawSVG } from '../geometry/PuzzleMaker';
+import { createSVG } from '../utils/svg';
 
 
 export interface PuzzleSVGAttrs extends m.Attributes {
@@ -36,7 +36,7 @@ export const PuzzleSVG: m.ClosureComponent<PuzzleSVGAttrs> = () => {
         state.previousWidth = attrs.width;
         state.previousHeight = attrs.height;
         state.previousColor = attrs.color;
-        state.svg = drawSVG(attrs.puzzle, attrs.width, attrs.height, attrs.color);
+        state.svg = createSVG(attrs.puzzle, attrs.width, attrs.height, attrs.color);
       }
 
       return m('.svg-container', {

@@ -4,7 +4,7 @@ import m from 'mithril';
 // UI parts
 import GitHubCorner from './ui/GitHubCorner';
 import Puzzle from './ui/Puzzle';
-import PuzzleSVG from './ui/PuzzleSVG';
+import DownloadPuzzleButton from './ui/DownloadPuzzleButton';
 import GeneratorPicker from './ui/GeneratorPicker';
 import NumberInputControl from './ui/inputs/NumberInputControl';
 
@@ -182,14 +182,26 @@ const Page: m.ClosureComponent<unknown> = () => {
         m("h1", "Puzzle Generator"),
         m(".container", [
 
-          // render the puzzle
-          state.puzzle && m(Puzzle, {
-            width: state.canvasWidth,
-            height: state.canvasHeight,
-            color: state.color,
-            imageUrl: state.imageUrl,
-            puzzle: state.puzzle,
-          }),
+          state.puzzle && m('.puzzle-stack', [
+
+            // main puzzle display
+            m(Puzzle, {
+              width: state.canvasWidth,
+              height: state.canvasHeight,
+              color: state.color,
+              imageUrl: state.imageUrl,
+              puzzle: state.puzzle,
+            }),
+
+            // SVG download button
+            m(DownloadPuzzleButton, {
+              puzzle: state.puzzle,
+              width: state.canvasWidth,
+              height: state.canvasHeight,
+              color: state.color,
+            }),
+
+          ]),
 
           // puzzle generation controls
           m(".controls", [
@@ -283,14 +295,6 @@ const Page: m.ClosureComponent<unknown> = () => {
 
         ]), // .container
 
-        // SVG
-        state.puzzle && m(PuzzleSVG, {
-          className: 'hidden',
-          width: state.canvasWidth,
-          height: state.canvasHeight,
-          puzzle: state.puzzle,
-          color: state.color,
-        }),
       ]);
     }, // view()
   };
