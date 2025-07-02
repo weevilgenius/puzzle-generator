@@ -2,6 +2,8 @@ import { RandomFn, PuzzleTopology, Vec2 } from "../../types";
 
 /** Options options passed to all piece generators at runtime. */
 export interface PieceGeneratorRuntimeOptions {
+  /** A rough guide for the desired size of puzzle pieces. */
+  pieceSize: number;
   /** A function for generating random numbers. */
   random: RandomFn;
 }

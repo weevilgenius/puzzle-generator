@@ -23,6 +23,7 @@ import { buildPuzzle } from './geometry/PuzzleMaker';
 import "./geometry/generators/point/GridJitterPointGenerator";
 import "./geometry/generators/point/PoissonPointGenerator";
 import "./geometry/generators/piece/VoronoiPieceGenerator";
+import "./geometry/generators/piece/RectangularPieceGenerator";
 import "./geometry/generators/tab/NullTabGenerator";
 import "./geometry/generators/tab/TriangleTabGenerator";
 import "./geometry/generators/tab/TraditionalTabGenerator";

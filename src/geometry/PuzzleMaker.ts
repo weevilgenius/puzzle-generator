@@ -45,7 +45,7 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
   console.log(`Generated ${points.length} points`);
 
   // 2. Convert points to a puzzle topology (pieces and edges)
-  const topology = pieceGenerator.generatePieces(points, { random });
+  const topology = pieceGenerator.generatePieces(points, { random, pieceSize });
   console.log(`Generated ${topology.pieces.size} pieces`);
 
   // 3. Decorate internal edges with tabs
