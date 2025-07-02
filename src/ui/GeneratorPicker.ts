@@ -9,11 +9,8 @@ import StringInputControl from './inputs/StringInputControl';
 // Shoelace components
 import '@shoelace-style/shoelace/dist/components/tab/tab.js';
 import '@shoelace-style/shoelace/dist/components/tab-group/tab-group.js';
-import SlTabGroup from'@shoelace-style/shoelace/dist/components/tab-group/tab-group.js';
 import '@shoelace-style/shoelace/dist/components/tab-panel/tab-panel.js';
-
-// unfortunately, Shoelace doesn't export this type
-type SlTabShowEvent = CustomEvent<{ name: string }>;
+import type { SlTabShowEvent, SlTabGroup } from '@shoelace-style/shoelace';
 
 
 // include our CSS

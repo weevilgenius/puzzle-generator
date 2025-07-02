@@ -4,7 +4,7 @@ import type { StringUIControl } from '../../geometry/ui_types';
 
 // Shoelace components
 import '@shoelace-style/shoelace/dist/components/input/input.js';
-import SlInput from '@shoelace-style/shoelace/dist/components/input/input.js';
+import type { SlInput } from '@shoelace-style/shoelace';
 
 // component attributes
 export interface StringInputControlAttr extends m.Attributes {

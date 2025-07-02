@@ -4,7 +4,7 @@ import type { BooleanUIControl } from '../../geometry/ui_types';
 
 // Shoelace components
 import '@shoelace-style/shoelace/dist/components/checkbox/checkbox.js';
-import SlCheckbox from '@shoelace-style/shoelace/dist/components/checkbox/checkbox.js';
+import type { SlCheckbox } from '@shoelace-style/shoelace';
 
 // component attributes
 export interface BooleanInputControlAttr extends m.Attributes {

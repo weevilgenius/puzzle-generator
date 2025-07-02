@@ -4,7 +4,7 @@ import type { RangeUIControl } from '../../geometry/ui_types';
 
 // Shoelace components
 import '@shoelace-style/shoelace/dist/components/range/range.js';
-import SlRange from '@shoelace-style/shoelace/dist/components/range/range.js';
+import type { SlRange } from '@shoelace-style/shoelace';
 
 // component attributes
 export interface RangeInputControlAttr extends m.Attributes {
