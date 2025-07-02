@@ -53,6 +53,7 @@ export const TraditionalTabUIMetadata: GeneratorUIMetadata = {
       type: 'number',
       name: 'minTabSize',
       label: 'Minimum Tab Size',
+      defaultValue: 20,
       optional: true,
       helpText: 'If provided, tabs will not generate on edges shorter than this value',
     },

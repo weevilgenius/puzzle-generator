@@ -86,21 +86,21 @@ const Page: m.ClosureComponent<unknown> = () => {
     generators: {
       /** Strategy for creating points (which influences piece generation) */
       point: {
-        label: "Seed Point Generator",
+        label: "Seed Points",
         registry: PointGeneratorRegistry,
         name: defaultPointGenerator,
         config: PointGeneratorRegistry.getDefaultConfig(defaultPointGenerator, defaultWidth, defaultHeight),
       },
       /** Strategy for turning points into puzzle pieces */
       piece: {
-        label: "Piece Generator",
+        label: "Piece Generation",
         registry: PieceGeneratorRegistry,
         name: defaultPieceGenerator,
         config: PieceGeneratorRegistry.getDefaultConfig(defaultPieceGenerator, defaultWidth, defaultHeight),
       },
       /** Style of tabs to generate */
       tab: {
-        label: "Tab Generator",
+        label: "Tabs",
         registry: TabGeneratorRegistry,
         name: defaultTabGenerator,
         config: TabGeneratorRegistry.getDefaultConfig(defaultTabGenerator, defaultWidth, defaultHeight),

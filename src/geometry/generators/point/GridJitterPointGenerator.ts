@@ -20,7 +20,7 @@ export const GridJitterPointUIMetadata: GeneratorUIMetadata = {
   name: Name,
   displayName: "Grid",
   description: "Generate seed points using a grid with optional random jitter. " +
-    "Has a more uniform, regular look, especially with low randomness values.",
+    "Has a uniform, regular look, especially with low randomness values.",
   sortHint: 2,
   // these have to match the GeneratorConfig above
   controls: [
