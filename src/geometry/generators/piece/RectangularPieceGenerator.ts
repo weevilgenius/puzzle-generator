@@ -30,8 +30,8 @@ export interface RectangularPieceGeneratorConfig extends GeneratorConfig {
 export const RectangularPieceGeneratorUIMetadata: GeneratorUIMetadata = {
   name: Name,
   displayName: "Rectangular",
-  description: "Construct pieces by building a rectangular grid of pieces. " +
-    "This generator ignores seed points.",
+  description: "Construct pieces from a regular grid. All pieces have 4 sides " +
+    "and are the same size. This generator ignores seed points.",
   sortHint: 2,
   // these have to match the GeneratorConfig above
   controls: [],
