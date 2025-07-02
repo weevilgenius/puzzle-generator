@@ -8,6 +8,7 @@ import DownloadPuzzleButton from './ui/DownloadPuzzleButton';
 import UploadImageButton from './ui/UploadImageButton';
 import GeneratorPicker from './ui/GeneratorPicker';
 import NumberInputControl from './ui/inputs/NumberInputControl';
+import ColorPicker from './ui/ColorPicker';
 
 // geometry parts
 import type { PuzzleGeometry } from './geometry/types';
@@ -254,16 +255,15 @@ const Page: m.ClosureComponent<unknown> = () => {
               },
             }),
             // Piece color config value
-            m("label", [
-              "Color: ",
-              m("input[type=color]", {
-                value: state.color,
-                onchange: (e: Event) => {
-                  const elt = e.target as HTMLInputElement;
-                  state.color = elt.value;
-                },
-              }),
-            ]),
+            m(ColorPicker, {
+              label: 'Piece color',
+              color: state.color,
+              size: "small",
+              onUpdate: (newColor) => {
+                state.color = newColor;
+                m.redraw();
+              },
+            }),
 
             // render a generator picker for each type of generator
             ...Object.entries(state.generators).map(([type, generator]) => {

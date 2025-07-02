@@ -1,0 +1,4 @@
+.color-picker .label {
+  font-size: var(--sl-input-label-font-size-small);
+  color: var(--sl-input-label-color);
+}
