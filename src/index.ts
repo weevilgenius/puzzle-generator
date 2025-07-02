@@ -14,9 +14,9 @@ import ColorPicker from './ui/ColorPicker';
 import type { PuzzleGeometry } from './geometry/types';
 import type { GeneratorConfig, GeneratorName, GeneratorRegistry } from './geometry/generators/Generator';
 import { PointGeneratorRegistry, PieceGeneratorRegistry, TabGeneratorRegistry } from './geometry/generators/Generator';
-import { type PoissonPointGeneratorConfig, Name as PoissonGeneratorName } from './geometry/generators/point/PoissonPointGenerator';
-import { type VoronoiPieceGeneratorConfig, Name as VoronoiGeneratorName } from './geometry/generators/piece/VoronoiPieceGenerator';
-import { type TraditionalTabGeneratorConfig, Name as TraditionalTabGeneratorName } from './geometry/generators/tab/TraditionalTabGenerator';
+import { Name as PoissonGeneratorName } from './geometry/generators/point/PoissonPointGenerator';
+import { Name as VoronoiGeneratorName } from './geometry/generators/piece/VoronoiPieceGenerator';
+import { Name as TraditionalTabGeneratorName } from './geometry/generators/tab/TraditionalTabGenerator';
 import { buildPuzzle } from './geometry/PuzzleMaker';
 
 // register generators
@@ -41,25 +41,8 @@ const Page: m.ClosureComponent<unknown> = () => {
   const defaultHeight = 600;
 
   const defaultPointGenerator = PoissonGeneratorName;
-  const defaultPointConfig: PoissonPointGeneratorConfig = {
-    name: PoissonGeneratorName,
-    width: defaultWidth,
-    height: defaultHeight,
-  };
-
   const defaultPieceGenerator = VoronoiGeneratorName;
-  const defaultPieceConfig: VoronoiPieceGeneratorConfig = {
-    name: VoronoiGeneratorName,
-    width: defaultWidth,
-    height: defaultHeight,
-  };
-
   const defaultTabGenerator = TraditionalTabGeneratorName;
-  const defaultTabConfig: TraditionalTabGeneratorConfig = {
-    name: TraditionalTabGeneratorName,
-    width: defaultWidth,
-    height: defaultHeight,
-  };
 
   /** State tracked for each type of generator */
   interface GeneratorState<C extends GeneratorConfig = GeneratorConfig> {
@@ -106,21 +89,21 @@ const Page: m.ClosureComponent<unknown> = () => {
         label: "Seed Point Generator",
         registry: PointGeneratorRegistry,
         name: defaultPointGenerator,
-        config: defaultPointConfig,
+        config: PointGeneratorRegistry.getDefaultConfig(defaultPointGenerator, defaultWidth, defaultHeight),
       },
       /** Strategy for turning points into puzzle pieces */
       piece: {
         label: "Piece Generator",
         registry: PieceGeneratorRegistry,
         name: defaultPieceGenerator,
-        config: defaultPieceConfig,
+        config: PieceGeneratorRegistry.getDefaultConfig(defaultPieceGenerator, defaultWidth, defaultHeight),
       },
       /** Style of tabs to generate */
       tab: {
         label: "Tab Generator",
         registry: TabGeneratorRegistry,
         name: defaultTabGenerator,
-        config: defaultTabConfig,
+        config: TabGeneratorRegistry.getDefaultConfig(defaultTabGenerator, defaultWidth, defaultHeight),
       },
     },
     puzzle: undefined,

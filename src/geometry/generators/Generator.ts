@@ -109,7 +109,6 @@ export class GeneratorRegistry<T> {
     }
 
     return newConfig;
-
   }
 }
 
