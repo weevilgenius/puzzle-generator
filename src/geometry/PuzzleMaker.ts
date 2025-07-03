@@ -81,61 +81,122 @@ export function drawPuzzle(topology: PuzzleTopology, canvas: HTMLCanvasElement, 
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Style for piece boundaries
-  ctx.strokeStyle = pieceColor;
-  ctx.lineWidth = 1;
+  // In debug mode, we draw each piece's full boundary in a different color.
+  // This helps visualize the ownership of each edge.
+  const debugMode = false;
 
-  // it's more efficient to batch all paths together
-  ctx.beginPath();
+  if (debugMode) {
+    const debugColors = [
+      '#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4',
+      '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', '#008080', '#e6beff',
+      '#9A6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1',
+    ];
+    ctx.lineWidth = 2; // Use a thicker line for better visibility
 
-  // By iterating through all unique edges and drawing the curve for one of
-  // its half-edges, we ensure every cut is defined exactly once.
-  for (const edge of topology.edges.values()) {
-    // We consistently choose heLeft. The tab generator puts the "outie"
-    // or "innie" on this half-edge, and the twin gets the inverse.
-    const he = topology.halfEdges.get(edge.heLeft);
-    if (!he) continue; // should not happen
+    let pieceIndex = 0;
+    for (const piece of topology.pieces.values()) {
+      const pieceColor = debugColors[pieceIndex % debugColors.length];
+      ctx.strokeStyle = pieceColor;
+      ctx.beginPath();
+      ctx.setLineDash([5, 5]); // use dashed lines
 
-    // move to the start of this edge segment
-    ctx.moveTo(he.origin[0], he.origin[1]);
+      // Get the starting half-edge for this piece's boundary
+      let currentHe = topology.halfEdges.get(piece.halfEdge);
+      if (!currentHe) continue;
 
-    if (he.segments) {
-      // if a custom tab is defined, draw each segment in order
-      for (const segment of he.segments) {
-        switch (segment.type) {
-        case 'bezier':
-          ctx.bezierCurveTo(
-            segment.p1[0], segment.p1[1],
-            segment.p2[0], segment.p2[1],
-            segment.p3[0], segment.p3[1]
-          );
-          break;
-        case 'line':
-          ctx.lineTo(segment.p[0], segment.p[1]);
-          break;
+      const startHeId = currentHe.id;
+      ctx.moveTo(currentHe.origin[0], currentHe.origin[1]);
+
+      // Traverse the boundary of the piece by following the 'next' pointers
+      // until we get back to the starting half-edge.
+      do {
+        if (currentHe.segments) {
+          // If the edge has a custom tab, draw its segments
+          for (const segment of currentHe.segments) {
+            switch (segment.type) {
+            case 'bezier':
+              ctx.bezierCurveTo(segment.p1[0], segment.p1[1], segment.p2[0], segment.p2[1], segment.p3[0], segment.p3[1]);
+              break;
+            case 'line':
+              ctx.lineTo(segment.p[0], segment.p[1]);
+              break;
+            }
+          }
+        } else {
+          // Otherwise, draw a straight line to the start of the next half-edge
+          const nextHe = topology.halfEdges.get(currentHe.next)!;
+          ctx.lineTo(nextHe.origin[0], nextHe.origin[1]);
         }
-      }
-    } else {
-      // no tab, draw a straight line to the edge's endpoint.
-      // The end point of a half-edge is the origin of its twin.
-      // For boundary edges, the twin is -1, so we find the end point
-      // by looking at the start of the next half-edge around the piece.
-      let destination: Vec2;
-      // For an internal edge, the destination is the origin of the twin half-edge.
-      if (he.twin !== -1) {
-        const twinHe = topology.halfEdges.get(he.twin)!;
-        destination = twinHe.origin;
-      } else {
-        // For a boundary edge, the destination is the origin of the next half-edge in the loop.
-        const nextHe = topology.halfEdges.get(he.next)!;
-        destination = nextHe.origin;
-      }
-      ctx.lineTo(destination[0], destination[1]);
-    }
-  }
+        // Move to the next half-edge in the loop
+        currentHe = topology.halfEdges.get(currentHe.next)!;
+      } while (currentHe.id !== startHeId);
 
-  // stroke the entire path containing all the unique puzzle edges
-  ctx.stroke();
+      ctx.stroke();
+      pieceIndex++;
+    }
+
+    // Reset line dash for subsequent drawing operations.
+    ctx.setLineDash([]);
+
+  } else {
+    // normal mode drawing, optimized for efficiency
+
+    // Style for piece boundaries
+    ctx.strokeStyle = pieceColor;
+    ctx.lineWidth = 1;
+
+    // it's more efficient to batch all paths together
+    ctx.beginPath();
+
+    // By iterating through all unique edges and drawing the curve for one of
+    // its half-edges, we ensure every cut is defined exactly once.
+    for (const edge of topology.edges.values()) {
+      // We consistently choose heLeft. The tab generator puts the "outie"
+      // or "innie" on this half-edge, and the twin gets the inverse.
+      const he = topology.halfEdges.get(edge.heLeft);
+      if (!he) continue; // should not happen
+
+      // move to the start of this edge segment
+      ctx.moveTo(he.origin[0], he.origin[1]);
+
+      if (he.segments) {
+        // if a custom tab is defined, draw each segment in order
+        for (const segment of he.segments) {
+          switch (segment.type) {
+          case 'bezier':
+            ctx.bezierCurveTo(
+              segment.p1[0], segment.p1[1],
+              segment.p2[0], segment.p2[1],
+              segment.p3[0], segment.p3[1]
+            );
+            break;
+          case 'line':
+            ctx.lineTo(segment.p[0], segment.p[1]);
+            break;
+          }
+        }
+      } else {
+        // no tab, draw a straight line to the edge's endpoint.
+        // The end point of a half-edge is the origin of its twin.
+        // For boundary edges, the twin is -1, so we find the end point
+        // by looking at the start of the next half-edge around the piece.
+        let destination: Vec2;
+        // For an internal edge, the destination is the origin of the twin half-edge.
+        if (he.twin !== -1) {
+          const twinHe = topology.halfEdges.get(he.twin)!;
+          destination = twinHe.origin;
+        } else {
+          // For a boundary edge, the destination is the origin of the next half-edge in the loop.
+          const nextHe = topology.halfEdges.get(he.next)!;
+          destination = nextHe.origin;
+        }
+        ctx.lineTo(destination[0], destination[1]);
+      }
+    }
+
+    // stroke the entire path containing all the unique puzzle edges
+    ctx.stroke();
+  }
 
   // draw the piece sites (original Voronoi points) for reference
   if (showPoints) {
