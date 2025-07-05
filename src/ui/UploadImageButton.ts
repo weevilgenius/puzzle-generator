@@ -26,14 +26,14 @@ function calculateDisplayDimensions(originalWidth: number, originalHeight: numbe
   if (originalWidth <= maxWidth) {
     return {
       width: originalWidth,
-      height: originalHeight
+      height: originalHeight,
     };
   }
 
   const aspectRatio = originalHeight / originalWidth;
   return {
     width: maxWidth,
-    height: Math.round(maxWidth * aspectRatio)
+    height: Math.round(maxWidth * aspectRatio),
   };
 }
 
