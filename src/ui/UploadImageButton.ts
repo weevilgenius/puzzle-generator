@@ -15,8 +15,27 @@ export interface UploadImageAttrs extends m.Attributes {
    * Called when the user uploads an image. The caller is responsible for
    * cleaning up the returned image URL.
    */
-  onUpload: (imageUrl: string, filename: string) => void;
+  onUpload: (imageUrl: string, filename: string, width: number, height: number) => void;
 };
+
+// utility to determine display dimensions that are the same aspect ratio
+function calculateDisplayDimensions(originalWidth: number, originalHeight: number, maxWidth = 800): {
+  width: number;
+  height: number;
+} {
+  if (originalWidth <= maxWidth) {
+    return {
+      width: originalWidth,
+      height: originalHeight
+    };
+  }
+
+  const aspectRatio = originalHeight / originalWidth;
+  return {
+    width: maxWidth,
+    height: Math.round(maxWidth * aspectRatio)
+  };
+}
 
 // component
 export const UploadImageButton: m.ClosureComponent<UploadImageAttrs> = () => {
@@ -53,8 +72,17 @@ export const UploadImageButton: m.ClosureComponent<UploadImageAttrs> = () => {
             if (state.inputElement) {
               const file = state.inputElement.files?.[0];
               if (file?.type.startsWith('image/')) {
-                const uploadUrl = URL.createObjectURL(file);
-                attrs.onUpload(uploadUrl, file.name);
+                createImageBitmap(file)
+                  .then((bitmap) => {
+                    // get the image dimensions, scaled to fit in the display area
+                    const { width, height } = calculateDisplayDimensions(bitmap.width, bitmap.height);
+                    const uploadUrl = URL.createObjectURL(file);
+                    bitmap.close();
+                    attrs.onUpload(uploadUrl, file.name, width, height);
+                  })
+                  .catch((err) => {
+                    console.error('could not create a bitmap image: ', err);
+                  });
               }
             }
           },

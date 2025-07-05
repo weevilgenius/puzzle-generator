@@ -8,6 +8,7 @@ import DownloadPuzzleButton from './ui/DownloadPuzzleButton';
 import UploadImageButton from './ui/UploadImageButton';
 import GeneratorPicker from './ui/GeneratorPicker';
 import NumberInputControl from './ui/inputs/NumberInputControl';
+import AspectRatioPicker from './ui/AspectRatioPicker';
 import ColorPicker from './ui/ColorPicker';
 
 // geometry parts
@@ -60,6 +61,8 @@ const Page: m.ClosureComponent<unknown> = () => {
     canvasWidth: number;
     /** Height of canvas in pixels */
     canvasHeight: number;
+    /** Aspect ratio of canvas, width/height */
+    aspectRatio: number;
     /** Minimum distance between control points (pixels) */
     distance: number;
     /** Color of pieces */
@@ -81,6 +84,7 @@ const Page: m.ClosureComponent<unknown> = () => {
     seed: new Date().getTime() % 10240,
     canvasWidth: defaultWidth,
     canvasHeight: defaultHeight,
+    aspectRatio: defaultWidth / defaultHeight,
     distance: 40,
     color: "#333333",
     dirty: true,
@@ -195,23 +199,41 @@ const Page: m.ClosureComponent<unknown> = () => {
 
           // puzzle generation controls
           m(".controls", [
+
             // background image
             m('.background-image', [
               m(UploadImageButton, {
                 label: "Background Image",
-                onUpload: (imageUrl, filename) => {
+                onUpload: (imageUrl, filename, width, height) => {
                   // clear any previous image
                   if (state.backgroundImageUrl) {
                     URL.revokeObjectURL(state.backgroundImageUrl);
                   }
+                  state.canvasWidth = width;
+                  state.canvasHeight = height;
+                  state.aspectRatio = width / height;
                   state.backgroundImageUrl = imageUrl;
                   state.backgroundImageName = filename;
+                  state.dirty = true;
                   m.redraw();
                 },
               }),
               m('span.background-image-label', state.backgroundImageName),
             ]),
-            // Seed value
+
+            // Puzzle aspect ratio
+            m(AspectRatioPicker, {
+              ratio: state.aspectRatio,
+              disabled: state.backgroundImageUrl !== undefined,
+              onChange: (ratio) => {
+                state.aspectRatio = ratio;
+                state.canvasWidth = state.canvasHeight * ratio;
+                state.dirty = true;
+                m.redraw();
+              },
+            }),
+
+            // Random number seed
             m(NumberInputControl, {
               config: {
                 name: 'seed',
@@ -225,7 +247,8 @@ const Page: m.ClosureComponent<unknown> = () => {
                 m.redraw();
               },
             }),
-            // Piece size config value
+
+            // Piece size
             m(NumberInputControl, {
               config: {
                 name: 'pieceSize',
@@ -239,7 +262,8 @@ const Page: m.ClosureComponent<unknown> = () => {
                 m.redraw();
               },
             }),
-            // Piece color config value
+
+            // Piece color
             m(ColorPicker, {
               label: 'Piece color',
               color: state.color,

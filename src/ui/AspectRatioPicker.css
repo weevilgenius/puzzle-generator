@@ -1,0 +1,10 @@
+.aspect-ratio-picker {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.aspect-ratio-picker sl-range {
+  margin-top: 10px;
+}
