@@ -46,7 +46,7 @@ export const TriangleTabUIMetadata: GeneratorUIMetadata = {
  * "outie" (convex) tab, and its twin gets a corresponding "innie" (concave)
  * tab, ensuring the pieces will fit together.
  */
-export const TriangleTabGeneratorFactory: GeneratorFactory<TabGenerator> = (config: TriangleTabGeneratorConfig) => {
+export const TriangleTabGeneratorFactory: GeneratorFactory<TabGenerator> = (_width: number, _height: number,config: TriangleTabGeneratorConfig) => {
   const { tabHeightRatio = 20 } = config;
 
   const TriangleTabGenerator: TabGenerator = {

@@ -7,11 +7,6 @@ export type GeneratorName = string;
 export interface GeneratorConfig {
   /** The name of the generator to which this config belongs */
   name: GeneratorName;
-  /** The width of the puzzle in pixels */
-  width: number;
-  /** The height of the puzzle in pixels */
-  height: number;
-
   // additional fields specific to this generator
   [key: string]: unknown;
 }
@@ -20,7 +15,7 @@ export interface GeneratorConfig {
  * A generic interface for a function that creates a configured generator instance.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type GeneratorFactory<T> = (options: any) => T;
+export type GeneratorFactory<T> = (width: number, height: number, options: any) => T;
 
 
 interface RegisteredGenerator<T> {
@@ -57,12 +52,12 @@ export class GeneratorRegistry<T> {
    * @param config A configuration object for the generator
    * @returns A configured instance of the requested generator
    */
-  public create(config: GeneratorConfig): T {
+  public create(width: number, height: number, config: GeneratorConfig): T {
     const generator = this.generators.get(config.name);
     if (!generator) {
       throw new Error(`Unknown generator "${config.name}". Is it registered?`);
     }
-    return generator.factory(config);
+    return generator.factory(width, height, config);
   }
 
   /**

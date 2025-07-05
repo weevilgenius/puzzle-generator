@@ -15,6 +15,8 @@ export interface PuzzleAttrs extends m.Attributes {
   color: string;
   /** Generated puzzle geometry */
   puzzle: PuzzleGeometry,
+  /** If true, geometry is being regenerated */
+  isDirty: boolean;
   /** User uploaded image */
   imageUrl?: string;
 }
@@ -36,7 +38,9 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
         console.log('couldn\'t get canvas element');
         return;
       }
-      drawPuzzle(attrs.puzzle, state.canvas, attrs.color);
+      if (!attrs.isDirty) {
+        drawPuzzle(attrs.puzzle, state.canvas, attrs.color);
+      }
     },
 
     onupdate: ({ attrs }) => {
@@ -44,7 +48,9 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
         console.log('couldn\'t get canvas element');
         return;
       }
-      drawPuzzle(attrs.puzzle, state.canvas, attrs.color);
+      if (!attrs.isDirty) {
+        drawPuzzle(attrs.puzzle, state.canvas, attrs.color);
+      }
     },
 
     // component lifecycle: render our output
@@ -61,6 +67,10 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
         m('canvas.puzzle', {
           width: attrs.width,
           height: attrs.height,
+          style: {
+            width: `${attrs.width}px`,
+            height: `${attrs.height}px`,
+          },
         }),
       ]);
     },

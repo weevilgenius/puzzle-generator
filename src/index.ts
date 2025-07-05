@@ -180,6 +180,7 @@ const Page: m.ClosureComponent<unknown> = () => {
               color: state.color,
               imageUrl: state.backgroundImageUrl,
               puzzle: state.puzzle,
+              isDirty: state.dirty,
             }),
 
             // SVG download button

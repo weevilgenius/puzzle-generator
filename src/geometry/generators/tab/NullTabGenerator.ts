@@ -24,7 +24,7 @@ export const NullTabUIMetadata: GeneratorUIMetadata = {
 };
 
 /** Tab generator that does nothing, piece edges remain straight lines */
-export const NullTabGeneratorFactory: GeneratorFactory<TabGenerator> = (_config: NullTabGeneratorConfig) => {
+export const NullTabGeneratorFactory: GeneratorFactory<TabGenerator> = (_width: number, _height: number,_config: NullTabGeneratorConfig) => {
   const NullTabGenerator: TabGenerator = {
     addTab(_edge: Edge, _runtimeOpts: TabGeneratorRuntimeOptions) {
       // noop

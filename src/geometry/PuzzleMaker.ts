@@ -1,4 +1,4 @@
-import type { PuzzleGeometry, PuzzleTopology, Vec2 } from "./types";
+import type { PuzzleGeometry, Vec2 } from "./types";
 import { PointGeneratorRegistry, PieceGeneratorRegistry, TabGeneratorRegistry, type GeneratorConfig } from "./generators/Generator";
 import mulberry32 from "../utils/mulberry";
 
@@ -30,11 +30,12 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
   const { width, height, pieceSize } = options;
   const { pointConfig, pieceConfig, tabConfig } = options;
 
+  console.log(`rebuilding puzzle with dimensions ${width}x${height}, piece size ${pieceSize}`);
 
   // get and configure the necessary generators
-  const pointGenerator = PointGeneratorRegistry.create(pointConfig);
-  const pieceGenerator = PieceGeneratorRegistry.create(pieceConfig);
-  const tabGenerator = TabGeneratorRegistry.create(tabConfig);
+  const pointGenerator = PointGeneratorRegistry.create(width, height, pointConfig);
+  const pieceGenerator = PieceGeneratorRegistry.create(width, height, pieceConfig);
+  const tabGenerator = TabGeneratorRegistry.create(width, height, tabConfig);
 
   // seeded PRNG used to generate repeatable random numbers
   const seed = options.seed ?? new Date().getTime();
@@ -60,7 +61,9 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
   // 4. Assemble and return the final puzzle data structure
   const puzzle: PuzzleGeometry = {
     created: new Date().toISOString(),
-    seed: seed,
+    seed,
+    width,
+    height,
     vertices: topology.vertices,
     boundary: topology.boundary,
     pieces: topology.pieces,
@@ -72,7 +75,7 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
 }
 
 /** Draws puzzle geometry onto a canvas */
-export function drawPuzzle(topology: PuzzleTopology, canvas: HTMLCanvasElement, pieceColor: string, showPoints = false) {
+export function drawPuzzle(puzzle: PuzzleGeometry, canvas: HTMLCanvasElement, pieceColor: string, showPoints = false) {
   const ctx = canvas.getContext('2d');
   if (!ctx) {
     console.error("Could not get 2D context from canvas");
@@ -94,14 +97,14 @@ export function drawPuzzle(topology: PuzzleTopology, canvas: HTMLCanvasElement, 
     ctx.lineWidth = 2; // Use a thicker line for better visibility
 
     let pieceIndex = 0;
-    for (const piece of topology.pieces.values()) {
+    for (const piece of puzzle.pieces.values()) {
       const pieceColor = debugColors[pieceIndex % debugColors.length];
       ctx.strokeStyle = pieceColor;
       ctx.beginPath();
       ctx.setLineDash([5, 5]); // use dashed lines
 
       // Get the starting half-edge for this piece's boundary
-      let currentHe = topology.halfEdges.get(piece.halfEdge);
+      let currentHe = puzzle.halfEdges.get(piece.halfEdge);
       if (!currentHe) continue;
 
       const startHeId = currentHe.id;
@@ -124,11 +127,11 @@ export function drawPuzzle(topology: PuzzleTopology, canvas: HTMLCanvasElement, 
           }
         } else {
           // Otherwise, draw a straight line to the start of the next half-edge
-          const nextHe = topology.halfEdges.get(currentHe.next)!;
+          const nextHe = puzzle.halfEdges.get(currentHe.next)!;
           ctx.lineTo(nextHe.origin[0], nextHe.origin[1]);
         }
         // Move to the next half-edge in the loop
-        currentHe = topology.halfEdges.get(currentHe.next)!;
+        currentHe = puzzle.halfEdges.get(currentHe.next)!;
       } while (currentHe.id !== startHeId);
 
       ctx.stroke();
@@ -150,10 +153,10 @@ export function drawPuzzle(topology: PuzzleTopology, canvas: HTMLCanvasElement, 
 
     // By iterating through all unique edges and drawing the curve for one of
     // its half-edges, we ensure every cut is defined exactly once.
-    for (const edge of topology.edges.values()) {
+    for (const edge of puzzle.edges.values()) {
       // We consistently choose heLeft. The tab generator puts the "outie"
       // or "innie" on this half-edge, and the twin gets the inverse.
-      const he = topology.halfEdges.get(edge.heLeft);
+      const he = puzzle.halfEdges.get(edge.heLeft);
       if (!he) continue; // should not happen
 
       // move to the start of this edge segment
@@ -183,11 +186,11 @@ export function drawPuzzle(topology: PuzzleTopology, canvas: HTMLCanvasElement, 
         let destination: Vec2;
         // For an internal edge, the destination is the origin of the twin half-edge.
         if (he.twin !== -1) {
-          const twinHe = topology.halfEdges.get(he.twin)!;
+          const twinHe = puzzle.halfEdges.get(he.twin)!;
           destination = twinHe.origin;
         } else {
           // For a boundary edge, the destination is the origin of the next half-edge in the loop.
-          const nextHe = topology.halfEdges.get(he.next)!;
+          const nextHe = puzzle.halfEdges.get(he.next)!;
           destination = nextHe.origin;
         }
         ctx.lineTo(destination[0], destination[1]);
@@ -201,7 +204,7 @@ export function drawPuzzle(topology: PuzzleTopology, canvas: HTMLCanvasElement, 
   // draw the piece sites (original Voronoi points) for reference
   if (showPoints) {
     ctx.fillStyle = 'red';
-    for (const piece of topology.pieces.values()) {
+    for (const piece of puzzle.pieces.values()) {
       const [x, y] = piece.site;
       ctx.beginPath();
       ctx.arc(x, y, 3, 0, 2 * Math.PI);

@@ -42,7 +42,7 @@ export const GridJitterPointUIMetadata: GeneratorUIMetadata = {
  * strength of jitter applied to each point, from 0 (straight grid) to 1
  * (completely random).
  */
-export const GridJitterPointGeneratorFactory: GeneratorFactory<PointGenerator> = (config: GridJitterPointGeneratorConfig) => {
+export const GridJitterPointGeneratorFactory: GeneratorFactory<PointGenerator> = (width: number, height: number, config: GridJitterPointGeneratorConfig) => {
   const { jitter = 50 } = config;
 
   const GridJitterPointGenerator: PointGenerator = {

@@ -42,8 +42,7 @@ export const RectangularPieceGeneratorUIMetadata: GeneratorUIMetadata = {
  * It builds a full half-edge data structure representing the pieces and their
  * connectivity.
  */
-export const RectangularPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (config: RectangularPieceGeneratorConfig) => {
-  const { width, height } = config;
+export const RectangularPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (width: number, height: number, _config: RectangularPieceGeneratorConfig) => {
 
   const RectangularPieceGenerator: PieceGenerator = {
     /**

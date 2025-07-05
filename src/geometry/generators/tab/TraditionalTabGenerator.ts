@@ -183,7 +183,7 @@ function invertCurve(segment: CurveTo, newEndPoint: Vec2): CurveTo {
  * gentle S-curve up to the nub edge, Curve 2 is the arch across the top of the
  * nub, Curve 3 is the mirror of curve 1 back to the baseline.
  */
-export const TraditionalTabGeneratorFactory: GeneratorFactory<TabGenerator> = (config: TraditionalTabGeneratorConfig): TabGenerator => {
+export const TraditionalTabGeneratorFactory: GeneratorFactory<TabGenerator> = (_width: number, _height: number, config: TraditionalTabGeneratorConfig): TabGenerator => {
   const { size = 20, jitter = 8, minTabSize, maxTabSize } = config;
 
   const TraditionalTabGenerator: TabGenerator = {

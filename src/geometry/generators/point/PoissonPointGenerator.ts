@@ -33,7 +33,7 @@ export const PoissonPointUIMetadata: GeneratorUIMetadata = {
  * distribution of random points. `pieceSize` is interpreted as the minimum
  * distance between generated points.
  */
-export const PoissonPointGeneratorFactory: GeneratorFactory<PointGenerator> = (_config: PoissonPointGeneratorConfig) => {
+export const PoissonPointGeneratorFactory: GeneratorFactory<PointGenerator> = (_width: number, _height: number, _config: PoissonPointGeneratorConfig) => {
   const PoissonPointGenerator: PointGenerator = {
     generatePoints(runtimeOpts: PointGenerationRuntimeOptions): Vec2[] {
       const { width, height, pieceSize, random } = runtimeOpts;

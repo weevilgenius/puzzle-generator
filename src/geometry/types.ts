@@ -164,8 +164,11 @@ export interface PuzzleTopology {
 export interface PuzzleGeometry extends PuzzleTopology {
   /** Creation timestamp (ISO-8601). */
   created: DateString;
-
   /** RNG seed that produced this puzzle.  Good for re-runs. */
   seed: number;
+  /** Width of puzzle in pixels */
+  width: number;
+  /** Height of puzzle in pixels */
+  height: number;
 }
 

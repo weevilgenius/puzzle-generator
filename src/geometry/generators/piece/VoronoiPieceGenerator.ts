@@ -105,8 +105,7 @@ function arePointsEqual(p1: Vec2, p2: Vec2): boolean {
  * It builds a full half-edge data structure representing the pieces and their
  * connectivity.
  */
-export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (config: VoronoiPieceGeneratorConfig) => {
-  const { width, height } = config;
+export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (width: number, height: number, _config: VoronoiPieceGeneratorConfig) => {
   const VoronoiPieceGenerator: PieceGenerator = {
     /**
      * Converts a set of seed points into a puzzle topology using a Voronoi diagram.
@@ -121,6 +120,7 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (c
       // the centroid of each cell, moving the input point to that centroid, and
       // repeating for a number of iterations before proceeding.
 
+      console.log(`VoronoiPieceGenerator using dimensions ${width}x${height}`);
       // 1. Generate Voronoi diagram from points, clipped to the puzzle bounds.
       const delaunay = Delaunay.from(points);
       const voronoi = delaunay.voronoi([0, 0, width, height]);
