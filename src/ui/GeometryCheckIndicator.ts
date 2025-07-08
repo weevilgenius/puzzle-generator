@@ -34,8 +34,6 @@ export const GeometryCheckIndicator: m.Component<GeometryCheckIndicatorAttrs> = 
     const showOKBadge = !showProgress && attrs.problems !== undefined && attrs.problems == 0;
     const showProblemBadge = !showProgress && attrs.problems !== undefined && attrs.problems > 0;
 
-    console.log(`showProgress is ${showProgress}, showOKBadge is ${showOKBadge}, showProblemBadge is ${showProblemBadge}`);
-
     return m('.geometry-check-indicator', [
 
       // label
