@@ -26,6 +26,7 @@ export interface PuzzleGenerationOptions {
  * Orchestrates the procedural generation of a jigsaw puzzle
  * by coordinating various pluggable generators.
  */
+// eslint-disable-next-line @typescript-eslint/require-await
 export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<PuzzleGeometry> {
   const { width, height, pieceSize } = options;
   const { pointConfig, pieceConfig, tabConfig } = options;
@@ -58,7 +59,7 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
     }
   }
 
-  // 4. Assemble and return the final puzzle data structure
+  // 4. Assemble the final puzzle data structure
   const puzzle: PuzzleGeometry = {
     created: new Date().toISOString(),
     seed,
@@ -71,7 +72,7 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
     halfEdges: topology.halfEdges,
   };
 
-  return Promise.resolve(puzzle);
+  return puzzle;
 }
 
 /** Draws puzzle geometry onto a canvas */
@@ -201,9 +202,21 @@ export function drawPuzzle(puzzle: PuzzleGeometry, canvas: HTMLCanvasElement, pi
     ctx.stroke();
   }
 
+  // if the puzzle has problems like intersecting/overlapping pieces, highlight them
+  if (puzzle.problems && puzzle.problems.length > 0) {
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'red';
+    for (const problemPoint of puzzle.problems) {
+      const [x, y] = problemPoint;
+      ctx.beginPath();
+      ctx.arc(x, y, 8, 0, 2 * Math.PI);
+      ctx.stroke();
+    }
+  }
+
   // draw the piece sites (original Voronoi points) for reference
   if (showPoints) {
-    ctx.fillStyle = 'red';
+    ctx.fillStyle = 'blue';
     for (const piece of puzzle.pieces.values()) {
       const [x, y] = piece.site;
       ctx.beginPath();

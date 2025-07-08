@@ -5,6 +5,7 @@ import m from 'mithril';
 import GitHubCorner from './ui/GitHubCorner';
 import Puzzle from './ui/Puzzle';
 import DownloadPuzzleButton from './ui/DownloadPuzzleButton';
+import GeometryCheckIndicator from './ui/GeometryCheckIndicator';
 import UploadImageButton from './ui/UploadImageButton';
 import GeneratorPicker from './ui/GeneratorPicker';
 import NumberInputControl from './ui/inputs/NumberInputControl';
@@ -19,6 +20,7 @@ import { Name as PoissonGeneratorName } from './geometry/generators/point/Poisso
 import { Name as VoronoiGeneratorName } from './geometry/generators/piece/VoronoiPieceGenerator';
 import { Name as TraditionalTabGeneratorName } from './geometry/generators/tab/TraditionalTabGenerator';
 import { buildPuzzle } from './geometry/PuzzleMaker';
+import { checkGeometry } from './geometry/GeometryChecker';
 
 // register generators
 import "./geometry/generators/point/GridJitterPointGenerator";
@@ -68,6 +70,15 @@ const Page: m.ClosureComponent<unknown> = () => {
     distance: number;
     /** Color of pieces */
     color: string;
+    /** Problems found by the geometry check algorithms */
+    geometryProblems: {
+      /** If true, the geometry will be re-checked whenever a new puzzle is generated */
+      autoCheck: boolean;
+      /** Count of problems found in the last check */
+      problems?: number;
+      /** Percent complete of in-progress geometry check */
+      progress?: number;
+    },
     /** Dirty flag that keeps us from hitting the puzzle generation function too hard */
     dirty: boolean;
     /** Currently selected and configured generators for each part of puzzle generation */
@@ -88,6 +99,11 @@ const Page: m.ClosureComponent<unknown> = () => {
     aspectRatio: defaultWidth / defaultHeight,
     distance: 40,
     color: "#333333",
+    geometryProblems: {
+      autoCheck: false,
+      problems: undefined,
+      progress: undefined,
+    },
     dirty: true,
     generators: {
       /** Strategy for creating points (which influences piece generation) */
@@ -117,6 +133,34 @@ const Page: m.ClosureComponent<unknown> = () => {
     backgroundImageName: '',
   };
 
+  // utility to invoke the geometry checks
+  function handleCheckGeometry() {
+    if (!state.puzzle) return;
+
+    state.geometryProblems.progress = 0;
+    m.redraw();
+
+    setTimeout(() => {
+      if (!state.puzzle) return;
+      checkGeometry(state.puzzle, (processed, total) => {
+        state.geometryProblems.progress = (processed / total) * 100;
+        m.redraw();
+      }).then((problems) => {
+        state.geometryProblems.problems = problems.length;
+        state.geometryProblems.progress = undefined;
+        if (state.puzzle) {
+          state.puzzle.problems = problems;
+        }
+        m.redraw();
+      }).catch((err) => {
+        state.geometryProblems.progress = undefined;
+        console.error(err);
+        m.redraw();
+      });
+
+    }, 100);
+  }
+
   // Mithril component
   return {
 
@@ -132,6 +176,9 @@ const Page: m.ClosureComponent<unknown> = () => {
       }).then((puzzle) => {
         state.puzzle = puzzle;
         m.redraw();
+        if (state.geometryProblems.autoCheck) {
+          handleCheckGeometry();
+        }
       }).catch((err) => {
         console.error(err);
       });
@@ -150,8 +197,13 @@ const Page: m.ClosureComponent<unknown> = () => {
           tabConfig: state.generators.tab.config,
           seed: state.seed,
         }).then((puzzle) => {
+          state.geometryProblems.problems = undefined;
+          state.geometryProblems.progress = undefined;
           state.puzzle = puzzle;
           m.redraw();
+          if (state.geometryProblems.autoCheck) {
+            handleCheckGeometry();
+          }
         }).catch((err) => {
           console.error(err);
         });
@@ -188,14 +240,36 @@ const Page: m.ClosureComponent<unknown> = () => {
               isDirty: state.dirty,
             }),
 
-            // SVG download button
-            m(DownloadPuzzleButton, {
-              puzzle: state.puzzle,
-              width: state.canvasWidth,
-              height: state.canvasHeight,
-              color: state.color,
-            }),
+            m('.actions', [
 
+              // SVG download button
+              m(DownloadPuzzleButton, {
+                puzzle: state.puzzle,
+                width: state.canvasWidth,
+                height: state.canvasHeight,
+                color: state.color,
+              }),
+
+              // Geometry check display
+              m(GeometryCheckIndicator, {
+                autoCheck: state.geometryProblems.autoCheck,
+                problems: state.geometryProblems.problems,
+                progressPercent: state.geometryProblems.progress,
+                onCheckRequested: () => {
+                  if (!state.dirty) {
+                    handleCheckGeometry();
+                  }
+                  m.redraw();
+                },
+                onAutocheckChanged: (autocheck) => {
+                  if (autocheck !== state.geometryProblems.autoCheck) {
+                    state.geometryProblems.autoCheck = autocheck;
+                    m.redraw();
+                  }
+                },
+              }),
+
+            ]),
           ]),
 
           // puzzle generation controls

@@ -145,7 +145,7 @@ export interface Piece {
 
 /**
  * The data structure representing the puzzle's topological layout.
- * This is the output of a topology generator.
+ * This is the final output of the generator sequence.
  */
 export interface PuzzleTopology {
   /** Vertexes of puzzle pieces */
@@ -170,5 +170,7 @@ export interface PuzzleGeometry extends PuzzleTopology {
   width: number;
   /** Height of puzzle in pixels */
   height: number;
+  /** Coordinates where the puzzle has problems, such as pieces intersecting */
+  problems?: Vec2[];
 }
 

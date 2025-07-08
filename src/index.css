@@ -37,6 +37,9 @@ body {
   margin: 0.5em 1em;
 }
 
-.container .download-svg {
+.container .actions {
   margin-top: 1em;
+  display: flex;
+  flex-direction: row;
+  gap: 1em;
 }
