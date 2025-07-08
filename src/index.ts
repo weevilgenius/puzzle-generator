@@ -20,7 +20,7 @@ import { Name as PoissonGeneratorName } from './geometry/generators/point/Poisso
 import { Name as VoronoiGeneratorName } from './geometry/generators/piece/VoronoiPieceGenerator';
 import { Name as TraditionalTabGeneratorName } from './geometry/generators/tab/TraditionalTabGenerator';
 import { buildPuzzle } from './geometry/PuzzleMaker';
-import { checkGeometry } from './geometry/GeometryChecker';
+import { checkGeometryInWorker } from './geometry/GeometryChecker';
 
 // register generators
 import "./geometry/generators/point/GridJitterPointGenerator";
@@ -140,25 +140,22 @@ const Page: m.ClosureComponent<unknown> = () => {
     state.geometryProblems.progress = 0;
     m.redraw();
 
-    setTimeout(() => {
-      if (!state.puzzle) return;
-      checkGeometry(state.puzzle, (processed, total) => {
-        state.geometryProblems.progress = (processed / total) * 100;
-        m.redraw();
-      }).then((problems) => {
-        state.geometryProblems.problems = problems.length;
-        state.geometryProblems.progress = undefined;
-        if (state.puzzle) {
-          state.puzzle.problems = problems;
-        }
-        m.redraw();
-      }).catch((err) => {
-        state.geometryProblems.progress = undefined;
-        console.error(err);
-        m.redraw();
-      });
-
-    }, 100);
+    // this uses a web worker to not block the main thread
+    checkGeometryInWorker(state.puzzle, (processed, total) => {
+      state.geometryProblems.progress = (processed / total) * 100;
+      m.redraw();
+    }).then((problems) => {
+      state.geometryProblems.problems = problems.length;
+      state.geometryProblems.progress = undefined;
+      if (state.puzzle) {
+        state.puzzle.problems = problems;
+      }
+      m.redraw();
+    }).catch((err) => {
+      state.geometryProblems.progress = undefined;
+      console.error(err);
+      m.redraw();
+    });
   }
 
   // Mithril component

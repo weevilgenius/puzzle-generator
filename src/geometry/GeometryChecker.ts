@@ -6,7 +6,12 @@ import {
   PuzzleTopology,
   Vec2,
 } from "./types";
+import { serializeTopology } from "./serialization";
+import type { CheckGeometryWorkerInput, CheckGeometryWorkerOutput } from '../workers/CheckGeometryWorker';
 import { Bezier } from 'bezier-js';
+
+// import the worker script
+import CheckGeometryWorker from '../workers/CheckGeometryWorker?worker';
 
 /** An internal structure to hold a segment and its pre-calculated properties. */
 interface BoundarySegment {
@@ -350,4 +355,51 @@ export async function checkGeometry(
 
   return filtered;
 }
-export default checkGeometry;
+
+/**
+ * Wraps the `checkGeometry` function in a web worker to run it off the main thread,
+ * preventing the UI from freezing during intensive calculations.
+ *
+ * @param puzzle - The puzzle topology to check.
+ * @param onProgress - An optional callback to receive progress updates.
+ * @returns A promise that resolves with an array of intersection points or rejects on error.
+ */
+export function checkGeometryInWorker(
+  puzzle: PuzzleTopology,
+  onProgress?: (processed: number, total: number) => void
+): Promise<Vec2[]> {
+  return new Promise((resolve, reject) => {
+    const worker = new CheckGeometryWorker();
+
+    // Handle messages received from the worker
+    worker.onmessage = (event: MessageEvent<CheckGeometryWorkerOutput>) => {
+      const data = event.data;
+
+      switch (data.type) {
+      case 'progress':
+        onProgress?.(data.processed, data.total);
+        break;
+      case 'done':
+        resolve(data.results);
+        worker.terminate();
+        break;
+      case 'error':
+        reject(new Error(data.message));
+        worker.terminate();
+        break;
+      }
+    };
+
+    // Handle any critical errors with the worker itself
+    worker.onerror = (error: ErrorEvent) => {
+      reject(new Error(error.message));
+      worker.terminate();
+    };
+
+    // serialize the puzzle topology and send it to the worker to kick off the process
+    const message: CheckGeometryWorkerInput = {
+      topology: serializeTopology(puzzle),
+    };
+    worker.postMessage(message);
+  });
+}
