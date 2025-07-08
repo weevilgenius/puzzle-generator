@@ -40,12 +40,22 @@ import '@shoelace-style/shoelace/dist/themes/dark.css';
 import './index.css';
 
 // detect light/dark mode
-const colorScheme = localStorage.colorScheme as 'dark' | 'light' | 'auto' | undefined;
-let isDarkMode = localStorage.colorScheme === "dark";
-if (!colorScheme || colorScheme === "auto") {
-  isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+let isDarkMode = false;
+function configureDarkLightTheme() {
+  const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  function manageDarkLightTheme() {
+    if (darkModeQuery.matches) {
+      document.documentElement.classList.add('sl-theme-dark');
+      isDarkMode = true;
+    } else {
+      document.documentElement.classList.remove('sl-theme-dark');
+      isDarkMode = false;
+    }
+  }
+  manageDarkLightTheme();
+  darkModeQuery.addEventListener('change', manageDarkLightTheme);
 }
-document.documentElement.classList.toggle('sl-theme-dark', isDarkMode);
+configureDarkLightTheme();
 
 // component that draws the page
 const Page: m.ClosureComponent<unknown> = () => {
