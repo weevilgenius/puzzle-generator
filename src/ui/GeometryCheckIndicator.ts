@@ -45,7 +45,7 @@ export const GeometryCheckIndicator: m.Component<GeometryCheckIndicatorAttrs> = 
       m('sl-tooltip', { content: 'Check geometry now' },
         m('sl-icon-button.check-now', {
           library: 'material',
-          name: 'refresh',
+          name: 'editor_choice',
           label: 'Check geometry now',
           disabled: showProgress,
           onclick: (e: Event & MithrilViewEvent) => {

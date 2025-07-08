@@ -4,6 +4,10 @@
   align-items: center;
 }
 
+.geometry-check-indicator .check-now {
+  font-size: 24px;
+}
+
 .geometry-check-indicator sl-checkbox {
   margin-right: 0.5em;
 }
