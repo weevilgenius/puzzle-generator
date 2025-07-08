@@ -39,6 +39,14 @@ import '@shoelace-style/shoelace/dist/themes/dark.css';
 // CSS for this component
 import './index.css';
 
+// detect light/dark mode
+const colorScheme = localStorage.colorScheme as 'dark' | 'light' | 'auto' | undefined;
+let isDarkMode = localStorage.colorScheme === "dark";
+if (!colorScheme || colorScheme === "auto") {
+  isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+document.documentElement.classList.toggle('sl-theme-dark', isDarkMode);
+
 // component that draws the page
 const Page: m.ClosureComponent<unknown> = () => {
 
@@ -98,7 +106,7 @@ const Page: m.ClosureComponent<unknown> = () => {
     canvasHeight: defaultHeight,
     aspectRatio: defaultWidth / defaultHeight,
     distance: 40,
-    color: "#333333",
+    color: isDarkMode ? "#DDDDDD" : "#333333",
     geometryProblems: {
       autoCheck: false,
       problems: undefined,
@@ -392,6 +400,7 @@ registerIconLibrary('material', {
     }
     return '';
   },
+  mutator: (svg) => svg.setAttribute('fill', 'currentColor'),
 });
 
 // Ask Mithril to render the page, our componet gets placed into the root element.

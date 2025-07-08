@@ -7,8 +7,14 @@
 
 .github-corner svg {
   clip-path: polygon(0 0, 100% 0, 100% 100%);
-  fill:#151513;
-  color:#fff;
+  fill: #151513;
+  color: #fff;
+}
+
+/* Dark mode */
+.sl-theme-dark .github-corner svg {
+  fill: #fff;
+  color: #151513;
 }
 
 .github-corner:hover .octo-arm {

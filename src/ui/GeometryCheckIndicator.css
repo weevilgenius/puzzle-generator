@@ -6,6 +6,7 @@
 
 .geometry-check-indicator .check-now {
   font-size: 24px;
+  color: var(--sl-color-neutral-800);
 }
 
 .geometry-check-indicator sl-checkbox {
