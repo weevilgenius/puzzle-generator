@@ -29,7 +29,8 @@ import "./geometry/generators/tab/NullTabGenerator";
 import "./geometry/generators/tab/TriangleTabGenerator";
 import "./geometry/generators/tab/TraditionalTabGenerator";
 
-// Shoelace CSS
+// Shoelace components
+import { registerIconLibrary } from '@shoelace-style/shoelace/dist/utilities/icon-library.js';
 import '@shoelace-style/shoelace/dist/themes/light.css';
 import '@shoelace-style/shoelace/dist/themes/dark.css';
 
@@ -311,6 +312,16 @@ const Page: m.ClosureComponent<unknown> = () => {
   };
 };
 
+// configure Shoelace icons to use Material Symbols
+registerIconLibrary('material', {
+  resolver: (name) => {
+    const match = name.match(/^(.*?)(_(rounded|sharp))?$/);
+    if (match) {
+      return `https://cdn.jsdelivr.net/npm/@material-symbols/svg-400@0.32.0/${match[3] ?? 'outlined'}/${match[1]}.svg`;
+    }
+    return '';
+  },
+});
 
 // Ask Mithril to render the page, our componet gets placed into the root element.
 // Mithril will rerender automatically after DOM event handlers defined in component
