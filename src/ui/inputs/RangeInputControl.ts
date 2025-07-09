@@ -2,9 +2,9 @@
 import m from 'mithril';
 import type { RangeUIControl } from '../../geometry/ui_types';
 
-// Shoelace components
-import '@shoelace-style/shoelace/dist/components/range/range.js';
-import type { SlRange } from '@shoelace-style/shoelace';
+// Webawesome components
+import '@awesome.me/webawesome/dist/components/slider/slider.js';
+import WaSlider from '@awesome.me/webawesome/dist/components/slider/slider.js';
 
 // component attributes
 export interface RangeInputControlAttr extends m.Attributes {
@@ -25,8 +25,8 @@ export const RangeInputControl: m.ClosureComponent<RangeInputControlAttr> = () =
 
   return {
     view: ({ attrs }) => {
-      // use Shoelace for the heavy lifting
-      return m('sl-range.range-input', {
+      // use Webawesome for the heavy lifting
+      return m('wa-slider.range-input', {
         label: attrs.config.label,
         "help-text": attrs.config.helpText,
         disabled: attrs.disabled,
@@ -34,8 +34,8 @@ export const RangeInputControl: m.ClosureComponent<RangeInputControlAttr> = () =
         min: attrs.config.min,
         max: attrs.config.max,
         step: attrs.config.step,
-        'onsl-change': (e: Event) => {
-          const input = e.target as SlRange;
+        onchange: (e: Event) => {
+          const input = e.target as WaSlider;
           const newValue = input.value;
           attrs.onChange(isNaN(newValue) ? undefined : newValue);
         },

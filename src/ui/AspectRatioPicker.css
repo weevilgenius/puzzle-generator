@@ -5,6 +5,7 @@
   gap: 0.5em;
 }
 
-.aspect-ratio-picker sl-range {
-  margin-top: 10px;
+.aspect-ratio-picker wa-slider {
+  margin-top: 20px;
+  min-width: 200px;
 }

@@ -2,13 +2,14 @@
 import m from 'mithril';
 import MithrilViewEvent from '../utils/MithrilViewEvent';
 
-// Shoelace components
-import '@shoelace-style/shoelace/dist/components/badge/badge.js';
-import '@shoelace-style/shoelace/dist/components/checkbox/checkbox.js';
-import type { SlCheckbox } from '@shoelace-style/shoelace';
-import '@shoelace-style/shoelace/dist/components/icon-button/icon-button.js';
-import '@shoelace-style/shoelace/dist/components/progress-bar/progress-bar.js';
-import '@shoelace-style/shoelace/dist/components/tooltip/tooltip.js';
+// Webawesome components
+import '@awesome.me/webawesome/dist/components/badge/badge.js';
+import '@awesome.me/webawesome/dist/components/button/button.js';
+import '@awesome.me/webawesome/dist/components/checkbox/checkbox.js';
+import WaCheckbox from '@awesome.me/webawesome/dist/components/checkbox/checkbox.js';
+import '@awesome.me/webawesome/dist/components/icon/icon.js';
+import '@awesome.me/webawesome/dist/components/progress-bar/progress-bar.js';
+import '@awesome.me/webawesome/dist/components/tooltip/tooltip.js';
 
 // component CSS
 import './GeometryCheckIndicator.css';
@@ -40,50 +41,52 @@ export const GeometryCheckIndicator: m.Component<GeometryCheckIndicatorAttrs> = 
       m('.label', "Geometry Check:"),
 
       // run now button
-      m('sl-tooltip', { content: 'Check geometry now' },
-        m('sl-icon-button.check-now', {
-          library: 'material',
-          name: 'editor_choice',
-          label: 'Check geometry now',
-          disabled: showProgress,
-          onclick: (e: Event & MithrilViewEvent) => {
-            e.redraw = false;
-            attrs.onCheckRequested?.();
-          },
-        })
-      ),
+      m('wa-tooltip', { for: 'check-geometry-now'}, 'Check geometry now'),
+      m('wa-button#check-geometry-now', {
+        variant: 'neutral',
+        appearance: 'plain',
+        size: 'small',
+        disabled: showProgress,
+        onclick: (e: Event & MithrilViewEvent) => {
+          e.redraw = false;
+          attrs.onCheckRequested?.();
+        },
+      }, m('wa-icon', {
+        library: 'material',
+        name: 'editor_choice',
+        label: 'Check geometry now',
+      })),
 
-      // auto checkbox
-      m('sl-tooltip', { content: 'Check geometry after every change' },
-        m('sl-checkbox', {
-          checked: attrs.autoCheck,
-          disabled: showProgress,
-          size: 'small',
-          'onsl-change': (e: Event & MithrilViewEvent) => {
-            e.redraw = false;
-            const checkbox = e.target as SlCheckbox;
-            attrs.onAutocheckChanged?.(checkbox.checked);
-          },
-        }, 'auto check'),
-      ),
+      // auto check checkbox
+      m('wa-tooltip', { for: 'auto-check-geometry' }, 'Check geometry after every change'),
+      m('wa-checkbox#auto-check-geometry', {
+        checked: attrs.autoCheck,
+        disabled: showProgress,
+        size: 'small',
+        onchange: (e: Event & MithrilViewEvent) => {
+          e.redraw = false;
+          const checkbox = e.target as WaCheckbox;
+          attrs.onAutocheckChanged?.(checkbox.checked);
+        },
+      }, 'auto check'),
 
       // progress indicator
-      showProgress && m('sl-progress-bar', {
+      showProgress && m('wa-progress-bar', {
         label: 'Geometry check progress',
         value: attrs.progressPercent ?? 0,
       }),
 
       // OK badge
-      showOKBadge && m('sl-badge', {
+      showOKBadge && m('wa-badge', {
         variant: 'success',
         pill: true,
       }, 'OK'),
 
       // Problems badge
-      showProblemBadge && m('sl-badge', {
+      showProblemBadge && m('wa-badge', {
         variant: 'danger',
         pill: true,
-      }, `${attrs.problems} issues`),
+      }, `${attrs.problems} issue${attrs.problems === 1 ? '' : 's'}`),
 
     ]);
   },

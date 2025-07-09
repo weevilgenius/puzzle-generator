@@ -2,9 +2,9 @@
 import m from 'mithril';
 import type { NumberUIControl } from '../../geometry/ui_types';
 
-// Shoelace components
-import '@shoelace-style/shoelace/dist/components/input/input.js';
-import type { SlInput } from '@shoelace-style/shoelace';
+// Webawesome components
+import '@awesome.me/webawesome/dist/components/input/input.js';
+import WaInput from '@awesome.me/webawesome/dist/components/input/input.js';
 
 // component attributes
 export interface NumberInputControlAttr extends m.Attributes {
@@ -25,8 +25,8 @@ export const NumberInputControl: m.ClosureComponent<NumberInputControlAttr> = ()
 
   return {
     view: ({ attrs }) => {
-      // use Shoelace for the heavy lifting
-      return m('sl-input.number-input', {
+      // use Webawesome for the heavy lifting
+      return m('wa-input.number-input', {
         label: attrs.config.label,
         "help-text": attrs.config.helpText,
         type: "number",
@@ -36,9 +36,9 @@ export const NumberInputControl: m.ClosureComponent<NumberInputControlAttr> = ()
         value: attrs.value,
         min: attrs.config.min,
         max: attrs.config.max,
-        'onsl-change': (e: Event) => {
-          const input = e.target as SlInput;
-          const newValue = input.valueAsNumber;
+        onchange: (e: Event) => {
+          const input = e.target as WaInput;
+          const newValue = parseFloat(input.value ?? '');
           attrs.onChange(isNaN(newValue) ? undefined : newValue);
         },
       });

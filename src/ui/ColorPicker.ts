@@ -2,9 +2,9 @@
 import m from 'mithril';
 import MithrilViewEvent from '../utils/MithrilViewEvent';
 
-// Shoelace components
-import '@shoelace-style/shoelace/dist/components/color-picker/color-picker.js';
-import type { SlColorPicker } from '@shoelace-style/shoelace';
+// Webawesome components
+import '@awesome.me/webawesome/dist/components/color-picker/color-picker.js';
+import WaColorPicker from '@awesome.me/webawesome/dist/components/color-picker/color-picker.js';
 
 // this component's CSS
 import './ColorPicker.css';
@@ -26,15 +26,15 @@ export const ColorPicker: m.Component<ColorPickerAttrs> = {
   view: ({ attrs }) => {
     return m('.color-picker', [
       m('.label', attrs.label),
-      m('sl-color-picker', {
+      m('wa-color-picker', {
         label: 'Select a color', // used by assistive devices
         value: attrs.color,
         size: attrs.size ?? "medium",
         format: 'rgb',
-        'onsl-change': (e: Event & MithrilViewEvent) => {
+        onchange: (e: Event & MithrilViewEvent) => {
           e.redraw = false;
-          const input = e.target as SlColorPicker;
-          attrs.onUpdate(input.value);
+          const input = e.target as WaColorPicker;
+          attrs.onUpdate(input.value ?? '');
         },
       }),
     ]);

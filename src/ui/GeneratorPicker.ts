@@ -6,11 +6,11 @@ import NumberInputControl from './inputs/NumberInputControl';
 import RangeInputControl from './inputs/RangeInputControl';
 import StringInputControl from './inputs/StringInputControl';
 
-// Shoelace components
-import '@shoelace-style/shoelace/dist/components/tab/tab.js';
-import '@shoelace-style/shoelace/dist/components/tab-group/tab-group.js';
-import '@shoelace-style/shoelace/dist/components/tab-panel/tab-panel.js';
-import type { SlTabShowEvent, SlTabGroup } from '@shoelace-style/shoelace';
+// Webawesome components
+import '@awesome.me/webawesome/dist/components/tab/tab.js';
+import '@awesome.me/webawesome/dist/components/tab-group/tab-group.js';
+import '@awesome.me/webawesome/dist/components/tab-panel/tab-panel.js';
+import type { WaTabShowEvent } from '@awesome.me/webawesome';
 
 
 // include our CSS
@@ -37,24 +37,16 @@ export const GeneratorPicker: m.ClosureComponent<GeneratorPickerAttrs> = () => {
 
   // component
   return {
-    oncreate: ({ dom, attrs }) => {
-      const tabGroup = dom.querySelector('sl-tab-group') as SlTabGroup;
-      tabGroup.show(attrs.generator);
-    },
-
-    onupdate: ({ dom, attrs }) => {
-      const tabGroup = dom.querySelector('sl-tab-group') as SlTabGroup;
-      tabGroup.show(attrs.generator);
-    },
 
     view: ({ attrs }) => {
 
       const generators = attrs.registry.getAvailableGenerators();
 
       return m(".generator-picker",
-        m('sl-tab-group', {
-          // custom Shoelace event triggered when a new tab panel is shown
-          'onsl-tab-show': (e: SlTabShowEvent) => {
+        m('wa-tab-group', {
+          active: attrs.generator,
+          // custom Webawesome event triggered when a new tab panel is shown
+          'onwa-tab-show': (e: WaTabShowEvent) => {
             const newSelected = e.detail.name;
             if (attrs.generator !== newSelected) {
               attrs.onGeneratorChange(newSelected);
@@ -66,15 +58,10 @@ export const GeneratorPicker: m.ClosureComponent<GeneratorPickerAttrs> = () => {
             const uiMetadata = attrs.registry.getUIMetadata(generator.name);
 
             // tab contains name of generator
-            const tab = m('sl-tab', {
-              slot: "nav",
-              panel: generator.name,
-            }, generator.displayName);
+            const tab = m('wa-tab', { panel: generator.name }, generator.displayName);
 
             // matching panel contains controls specific to that generator
-            const panel = m('sl-tab-panel', {
-              name: generator.name,
-            }, m('.controls',
+            const panel = m('wa-tab-panel', { name: generator.name }, m('.controls',
               [
                 // detailed description of the generator if available
                 uiMetadata?.description ? m('p', uiMetadata.description) : null,

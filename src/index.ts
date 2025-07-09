@@ -31,10 +31,9 @@ import "./geometry/generators/tab/NullTabGenerator";
 import "./geometry/generators/tab/TriangleTabGenerator";
 import "./geometry/generators/tab/TraditionalTabGenerator";
 
-// Shoelace components
-import { registerIconLibrary } from '@shoelace-style/shoelace/dist/utilities/icon-library.js';
-import '@shoelace-style/shoelace/dist/themes/light.css';
-import '@shoelace-style/shoelace/dist/themes/dark.css';
+// Webawesome components
+import { registerIconLibrary } from '@awesome.me/webawesome/dist/webawesome.js';
+import "@awesome.me/webawesome/dist/styles/themes/default.css";
 
 // CSS for this component
 import './index.css';
@@ -45,10 +44,10 @@ function configureDarkLightTheme() {
   const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
   function manageDarkLightTheme() {
     if (darkModeQuery.matches) {
-      document.documentElement.classList.add('sl-theme-dark');
+      document.documentElement.classList.add('wa-dark');
       isDarkMode = true;
     } else {
-      document.documentElement.classList.remove('sl-theme-dark');
+      document.documentElement.classList.remove('wa-dark');
       isDarkMode = false;
     }
   }
@@ -401,7 +400,7 @@ const Page: m.ClosureComponent<unknown> = () => {
   };
 };
 
-// configure Shoelace icons to use Material Symbols
+// configure Webawesome icons to use Material Symbols
 registerIconLibrary('material', {
   resolver: (name) => {
     const match = name.match(/^(.*?)(_(rounded|sharp))?$/);

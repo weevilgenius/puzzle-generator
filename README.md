@@ -23,7 +23,7 @@ Contributing
 ------------
 
 Contributions are welcome! The project is built with [Typescript] and [Vite] and
-uses [Mithril] and [Shoelace] to create a responsive user interface. The puzzle
+uses [Mithril] and [Web Awesome] to create a responsive user interface. The puzzle
 generation process is broken into three stages (seed points, piece generation,
 tab generation), each of which can be extended with custom algorithms. To add a
 new point, piece or tab shape, see the
@@ -54,7 +54,7 @@ online puzzle generators including those from [proceduraljigsaw] on GitHub.
 <!-- links -->
 [pnpm]: https://pnpm.io/
 [Mithril]: https://mithril.js.org/
-[Shoelace]: https://shoelace.style/
+[Web Awesome]: https://webawesome.com/
 [Typescript]: https://www.typescriptlang.org/
 [Vite]: https://vitejs.dev/
 [proceduraljigsaw]: https://github.com/proceduraljigsaw

@@ -8,9 +8,9 @@ importers:
 
   .:
     dependencies:
-      '@shoelace-style/shoelace':
-        specifier: ^2.20.1
-        version: 2.20.1(@floating-ui/utils@0.2.10)(@types/react@19.1.8)
+      '@awesome.me/webawesome':
+        specifier: 3.0.0-beta.2
+        version: 3.0.0-beta.2(@floating-ui/utils@0.2.10)
       bezier-js:
         specifier: ^6.1.4
         version: 6.1.4
@@ -71,6 +71,10 @@ importers:
         version: 7.0.2
 
 packages:
+
+  '@awesome.me/webawesome@3.0.0-beta.2':
+    resolution: {integrity: sha512-NPQzydbl78iJU3YPeJez06W+V/1NNTUKoG8qw6plqrbOt/L4tqbAd9+WcAQIY1lMomrqkCCaYKVTzkhAf7mBzg==}
+    engines: {node: '>=14.17.0'}
 
   '@ctrl/tinycolor@4.1.0':
     resolution: {integrity: sha512-WyOx8cJQ+FQus4Mm4uPIZA64gbk3Wxh0so5Lcii0aJifqwoVOlfFtorjLE0Hen4OYyHZMXDWqMmaQemBhgxFRQ==}
@@ -300,11 +304,6 @@ packages:
   '@lit-labs/ssr-dom-shim@1.3.0':
     resolution: {integrity: sha512-nQIWonJ6eFAvUUrSlwyHDm/aE8PBDu5kRpL0vHMg6K8fK3Diq1xdPjTnsJSwxABhaZ+5eBi1btQB5ShUTKo4nQ==}
 
-  '@lit/react@1.0.7':
-    resolution: {integrity: sha512-cencnwwLXQKiKxjfFzSgZRngcWJzUDZi/04E0fSaF86wZgchMdvTyu+lE36DrUfvuus3bH8+xLPrhM1cTjwpzw==}
-    peerDependencies:
-      '@types/react': 17 || 18 || 19
-
   '@lit/reactive-element@2.1.0':
     resolution: {integrity: sha512-L2qyoZSQClcBmq0qajBVbhYEcG6iK0XfLn66ifLe/RfC0/ihpc+pl0Wdn8bJ8o+hj38cG0fGXRgSS20MuXn7qA==}
 
@@ -426,10 +425,6 @@ packages:
   '@shoelace-style/localize@3.2.1':
     resolution: {integrity: sha512-r4C9C/5kSfMBIr0D9imvpRdCNXtUNgyYThc4YlS6K5Hchv1UyxNQ9mxwj+BTRH2i1Neits260sR3OjKMnplsFA==}
 
-  '@shoelace-style/shoelace@2.20.1':
-    resolution: {integrity: sha512-FSghU95jZPGbwr/mybVvk66qRZYpx5FkXL+vLNpy1Vp8UsdwSxXjIHE3fsvMbKWTKi9UFfewHTkc5e7jAqRYoQ==}
-    engines: {node: '>=14.17.0'}
-
   '@stylistic/eslint-plugin@5.1.0':
     resolution: {integrity: sha512-TJRJul4u/lmry5N/kyCU+7RWWOk0wyXN+BncRlDYBqpLFnzXkd7QGVfN7KewarFIXv0IX0jSF/Ksu7aHWEDeuw==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
@@ -456,9 +451,6 @@ packages:
 
   '@types/poisson-disk-sampling@2.2.4':
     resolution: {integrity: sha512-S91hu3CW2P9Aib0uN0VO3VnL6BqlDFcmduHbcxW+I6/DwZjPkzgQM7zQaIscqxNg7aIm+QhXIFe4RSN2xFjL6g==}
-
-  '@types/react@19.1.8':
-    resolution: {integrity: sha512-AwAfQ2Wa5bCx9WP8nZL2uMZWod7J7/JSplxbTmBQ5ms6QpqNYm672H0Vu9ZVKVngQ+ii4R/byguVEUZQyeg44g==}
 
   '@types/trusted-types@2.0.7':
     resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
@@ -500,10 +492,6 @@ packages:
     peerDependencies:
       eslint: ^8.57.0 || ^9.0.0
       typescript: '>=4.8.4 <5.9.0'
-
-  '@typescript-eslint/types@8.35.1':
-    resolution: {integrity: sha512-q/O04vVnKHfrrhNAscndAn1tuQhIkwqnaW+eu5waD5IPts2eX1dgJxgqcPx5BX109/qAz7IG6VrEPTOYKCNfRQ==}
-    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
   '@typescript-eslint/types@8.36.0':
     resolution: {integrity: sha512-xGms6l5cTJKQPZOKM75Dl9yBfNdGeLRsIyufewnxT4vZTrjC0ImQT4fj8QmtJK84F58uSh5HVBSANwcfiXxABQ==}
@@ -610,9 +598,6 @@ packages:
   cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
     engines: {node: '>= 8'}
-
-  csstype@3.1.3:
-    resolution: {integrity: sha512-M1uQkMl8rQK/szD0LNhtqxIPLpimGm8sOBwU7lLnCpSbTyY3yeU1Vc7l4KT5zT4s/yOxHH5O7tIuuLOCnLADRw==}
 
   d3-delaunay@6.0.4:
     resolution: {integrity: sha512-mdjtIZ1XLAM8bm/hx3WwjfHt6Sggek7qH043O8KEjDXN40xi3vx/6pYSVTwLjEgiXQTbvaouWKynLBiUZ6SK6A==}
@@ -1106,6 +1091,9 @@ packages:
     resolution: {integrity: sha512-k55yxKHwaXnpYGsOzg4Vl8+tDrWylxDEpknGjhTiZB8dFRU5rTo9CAzeycivxV3s+zlTKwrs6WxMxR95n26kwg==}
     engines: {node: '>=0.10.0'}
 
+  style-observer@0.0.7:
+    resolution: {integrity: sha512-t75H3CRy+vd5q3yqyrf/De4tkz33hPQTiCcfh0NTesI5G7kJnZ227LEYTwqjKTtaFOCJvqZcYFHpJlF8bsk3bQ==}
+
   supports-color@7.2.0:
     resolution: {integrity: sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw==}
     engines: {node: '>=8'}
@@ -1221,6 +1209,19 @@ packages:
     engines: {node: '>=10'}
 
 snapshots:
+
+  '@awesome.me/webawesome@3.0.0-beta.2(@floating-ui/utils@0.2.10)':
+    dependencies:
+      '@ctrl/tinycolor': 4.1.0
+      '@floating-ui/dom': 1.7.2
+      '@shoelace-style/animations': 1.2.0
+      '@shoelace-style/localize': 3.2.1
+      composed-offset-position: 0.0.6(@floating-ui/utils@0.2.10)
+      lit: 3.3.0
+      qr-creator: 1.0.0
+      style-observer: 0.0.7
+    transitivePeerDependencies:
+      - '@floating-ui/utils'
 
   '@ctrl/tinycolor@4.1.0': {}
 
@@ -1373,10 +1374,6 @@ snapshots:
 
   '@lit-labs/ssr-dom-shim@1.3.0': {}
 
-  '@lit/react@1.0.7(@types/react@19.1.8)':
-    dependencies:
-      '@types/react': 19.1.8
-
   '@lit/reactive-element@2.1.0':
     dependencies:
       '@lit-labs/ssr-dom-shim': 1.3.0
@@ -1457,24 +1454,10 @@ snapshots:
 
   '@shoelace-style/localize@3.2.1': {}
 
-  '@shoelace-style/shoelace@2.20.1(@floating-ui/utils@0.2.10)(@types/react@19.1.8)':
-    dependencies:
-      '@ctrl/tinycolor': 4.1.0
-      '@floating-ui/dom': 1.7.2
-      '@lit/react': 1.0.7(@types/react@19.1.8)
-      '@shoelace-style/animations': 1.2.0
-      '@shoelace-style/localize': 3.2.1
-      composed-offset-position: 0.0.6(@floating-ui/utils@0.2.10)
-      lit: 3.3.0
-      qr-creator: 1.0.0
-    transitivePeerDependencies:
-      - '@floating-ui/utils'
-      - '@types/react'
-
   '@stylistic/eslint-plugin@5.1.0(eslint@9.30.1)':
     dependencies:
       '@eslint-community/eslint-utils': 4.7.0(eslint@9.30.1)
-      '@typescript-eslint/types': 8.35.1
+      '@typescript-eslint/types': 8.36.0
       eslint: 9.30.1
       eslint-visitor-keys: 4.2.1
       espree: 10.4.0
@@ -1494,10 +1477,6 @@ snapshots:
   '@types/mithril@2.2.7': {}
 
   '@types/poisson-disk-sampling@2.2.4': {}
-
-  '@types/react@19.1.8':
-    dependencies:
-      csstype: 3.1.3
 
   '@types/trusted-types@2.0.7': {}
 
@@ -1558,8 +1537,6 @@ snapshots:
       typescript: 5.8.3
     transitivePeerDependencies:
       - supports-color
-
-  '@typescript-eslint/types@8.35.1': {}
 
   '@typescript-eslint/types@8.36.0': {}
 
@@ -1671,8 +1648,6 @@ snapshots:
       path-key: 3.1.1
       shebang-command: 2.0.0
       which: 2.0.2
-
-  csstype@3.1.3: {}
 
   d3-delaunay@6.0.4:
     dependencies:
@@ -2172,6 +2147,8 @@ snapshots:
   strip-outer@1.0.1:
     dependencies:
       escape-string-regexp: 1.0.5
+
+  style-observer@0.0.7: {}
 
   supports-color@7.2.0:
     dependencies:

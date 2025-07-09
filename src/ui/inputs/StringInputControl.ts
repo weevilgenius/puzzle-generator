@@ -2,9 +2,9 @@
 import m from 'mithril';
 import type { StringUIControl } from '../../geometry/ui_types';
 
-// Shoelace components
-import '@shoelace-style/shoelace/dist/components/input/input.js';
-import type { SlInput } from '@shoelace-style/shoelace';
+// Webawesome components
+import '@awesome.me/webawesome/dist/components/input/input.js';
+import WaInput from '@awesome.me/webawesome/dist/components/input/input.js';
 
 // component attributes
 export interface StringInputControlAttr extends m.Attributes {
@@ -25,8 +25,8 @@ export const StringInputControl: m.ClosureComponent<StringInputControlAttr> = ()
 
   return {
     view: ({ attrs }) => {
-      // use Shoelace for the heavy lifting
-      return m('sl-input.string-input', {
+      // use Webawesome for the heavy lifting
+      return m('wa-input.string-input', {
         label: attrs.config.label,
         "help-text": attrs.config.helpText,
         type: "text",
@@ -34,9 +34,9 @@ export const StringInputControl: m.ClosureComponent<StringInputControlAttr> = ()
         size: "small",
         disabled: attrs.disabled,
         value: attrs.value,
-        'onsl-change': (e: Event) => {
-          const input = e.target as SlInput;
-          const newValue = input.value;
+        onchange: (e: Event) => {
+          const input = e.target as WaInput;
+          const newValue = input.value ?? '';
           attrs.onChange(newValue.length > 0 ? newValue : undefined);
         },
       });

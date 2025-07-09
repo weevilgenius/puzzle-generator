@@ -2,9 +2,9 @@
 import m from 'mithril';
 import type { BooleanUIControl } from '../../geometry/ui_types';
 
-// Shoelace components
-import '@shoelace-style/shoelace/dist/components/checkbox/checkbox.js';
-import type { SlCheckbox } from '@shoelace-style/shoelace';
+// Webawesome components
+import '@awesome.me/webawesome/dist/components/checkbox/checkbox.js';
+import WaCheckbox from '@awesome.me/webawesome/dist/components/checkbox/checkbox.js';
 
 // component attributes
 export interface BooleanInputControlAttr extends m.Attributes {
@@ -25,13 +25,13 @@ export const BooleanInputControl: m.ClosureComponent<BooleanInputControlAttr> = 
 
   return {
     view: ({ attrs }) => {
-      // use Shoelace for the heavy lifting
-      return m('sl-checkbox.boolean-input', {
+      // use Webawesome for the heavy lifting
+      return m('wa-checkbox.boolean-input', {
         "help-text": attrs.config.helpText,
         disabled: attrs.disabled,
         checked: attrs.value,
-        'onsl-change': (e: Event) => {
-          const input = e.target as SlCheckbox;
+        onchange: (e: Event) => {
+          const input = e.target as WaCheckbox;
           const newValue = input.checked;
           attrs.onChange(newValue);
         },

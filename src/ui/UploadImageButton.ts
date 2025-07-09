@@ -2,8 +2,8 @@
 import m from 'mithril';
 import MithrilViewEvent from '../utils/MithrilViewEvent';
 
-// Shoelace components
-import '@shoelace-style/shoelace/dist/components/button/button.js';
+// Webawesome components
+import '@awesome.me/webawesome/dist/components/button/button.js';
 
 // component attributes
 export interface UploadImageAttrs extends m.Attributes {
@@ -51,7 +51,8 @@ export const UploadImageButton: m.ClosureComponent<UploadImageAttrs> = () => {
       return [
 
         // button for display
-        m('sl-button.upload-button', {
+        m('wa-button.upload-button', {
+          size: 'small',
           disabled: attrs.disabled === true,
           onclick: () => {
             if (state.inputElement) {

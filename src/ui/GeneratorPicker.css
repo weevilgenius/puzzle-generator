@@ -4,8 +4,14 @@
   max-width: 500px;
 }
 
+/* dark mode */
+.wa-dark .generator-picker {
+  border: 1px solid #333;
+}
+
 .generator-picker .controls {
   display: flex;
   flex-direction: column;
+  gap: 0.5em;
   padding: 0.125rem 1rem;
 }

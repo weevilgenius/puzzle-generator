@@ -37,14 +37,17 @@ export default defineConfig(({ mode }) => {
               if (/node_modules[/\\]mithril/.test(id)) {
                 return 'mithril';
               }
+              if (/node_modules[/\\]@awesome.me[/\\]webawesome[/\\]/.test(id)) {
+                return 'webawesome';
+              }
               if (/node_modules[/\\]@shoelace-style[/\\]/.test(id)) {
-                return 'shoelace';
+                return 'webawesome';
               }
               if (/node_modules[/\\](lit|@lit|lit-html|lit-element)[/\\]/.test(id)) {
-                return 'shoelace';
+                return 'webawesome';
               }
               if (/node_modules[/\\]@floating-ui[/\\]/.test(id)) {
-                return 'shoelace';
+                return 'webawesome';
               }
             }
 
