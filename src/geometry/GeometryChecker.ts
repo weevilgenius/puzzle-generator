@@ -1,4 +1,4 @@
-import {
+import type {
   AABB,
   EdgeSegment,
   LineTo,
@@ -6,7 +6,12 @@ import {
   PuzzleTopology,
   Vec2,
 } from "./types";
-import { serializeTopology } from "./serialization";
+import {
+  distanceSq,
+  calculateSegmentAABB,
+  serializeTopology,
+  doAABBsIntersect,
+} from "./utils";
 import type { CheckGeometryWorkerInput, CheckGeometryWorkerOutput } from '../workers/CheckGeometryWorker';
 import { Bezier } from 'bezier-js';
 
@@ -23,42 +28,9 @@ interface BoundarySegment {
   bbox: AABB;
 }
 
-/**
- * Calculates the Axis-Aligned Bounding Box (AABB) for a single edge segment.
- * @param segment - The line or curve segment.
- * @param startPoint - The starting coordinate of the segment.
- * @returns An AABB tuple: [xmin, ymin, xmax, ymax].
- */
-function calculateSegmentAABB(segment: EdgeSegment, startPoint: Vec2): AABB {
-  const points: Vec2[] = [startPoint];
-
-  if (segment.type === 'line') {
-    points.push(segment.p);
-  } else { // 'bezier'
-    points.push(segment.p1, segment.p2, segment.p3);
-  }
-
-  const xCoords = points.map((p) => p[0]);
-  const yCoords = points.map((p) => p[1]);
-
-  return [
-    Math.min(...xCoords),
-    Math.min(...yCoords),
-    Math.max(...xCoords),
-    Math.max(...yCoords),
-  ];
-}
-
-// helper to calculate the squared distance between two points.
-function distanceSq(p1: Vec2, p2: Vec2): number {
-  const dx = p1[0] - p2[0];
-  const dy = p1[1] - p2[1];
-  return dx * dx + dy * dy;
-};
-
 // helper to gets the end point of a segment.
-function getEndPoint(s: BoundarySegment) {
-  return s.segment.type === 'line' ? s.segment.p : s.segment.p3;
+function getEndPoint(s: EdgeSegment): Vec2 {
+  return s.type === 'line' ? s.p : s.p3;
 }
 
 // helper to get a Bezier object for use with bezier-js
@@ -126,24 +98,6 @@ function getPieceBoundary(piece: Piece, puzzle: PuzzleTopology): BoundarySegment
   } while (currentHeId !== startHeId);
 
   return boundary;
-}
-
-/**
- * Checks if two Axis-Aligned Bounding Boxes intersect.
- * @param a - The first AABB.
- * @param b - The second AABB.
- * @returns `true` if they overlap, `false` otherwise.
- */
-function doAABBsIntersect(a: AABB, b: AABB): boolean {
-  // x-axis check
-  if (a[2] < b[0] || a[0] > b[2]) {
-    return false;
-  }
-  // y-axis check
-  if (a[3] < b[1] || a[1] > b[3]) {
-    return false;
-  }
-  return true;
 }
 
 /**
@@ -297,7 +251,7 @@ async function detectIntersections(
         if (areAdjacent) {
           const connectionPoint = (i === 0 && j === numSegments - 1)
             ? seg1.startPoint // we're comparing the final segment with the first segment
-            : getEndPoint(seg1); // we're comparing adjacent segments
+            : getEndPoint(seg1.segment); // we're comparing adjacent segments
 
           for (const point of potentialPoints) {
             // An intersection is only an error if it's NOT at the connection point.

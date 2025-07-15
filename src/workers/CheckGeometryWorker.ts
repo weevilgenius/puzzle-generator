@@ -1,6 +1,6 @@
 // wraps GeometryChecker in a web worker
 import { checkGeometry } from '../geometry/GeometryChecker';
-import { deserializeTopology, type PuzzleTopologySerializable } from '../geometry/serialization';
+import { deserializeTopology, type PuzzleTopologySerializable } from '../geometry/utils';
 import type { Vec2 } from '../geometry/types';
 
 // Define the message format the worker expects to receive
