@@ -252,6 +252,11 @@ const Page: m.ClosureComponent<unknown> = () => {
               imageUrl: state.backgroundImageUrl,
               puzzle: state.puzzle,
               isDirty: state.dirty,
+              onPuzzleChanged: (puzzle) => {
+                // user dragged a vertex to tweak the puzzle
+                state.puzzle = puzzle;
+                m.redraw();
+              },
             }),
 
             m('.actions', [
