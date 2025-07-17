@@ -14,7 +14,7 @@ export interface PuzzleGenerationOptions {
   pieceSize: number;
   /** Random seed to produce repeatable puzzles */
   seed?: number;
-  /** How shoule the points that control the pieces get generated? */
+  /** How should the points that control the pieces get generated? */
   pointConfig: GeneratorConfig;
   /** How should the pieces get built? */
   pieceConfig: GeneratorConfig;
@@ -65,6 +65,10 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
     seed,
     width,
     height,
+    pieceSize,
+    pointConfig,
+    pieceConfig,
+    tabConfig,
     vertices: topology.vertices,
     boundary: topology.boundary,
     pieces: topology.pieces,
@@ -163,7 +167,7 @@ export function drawPuzzle(puzzle: PuzzleGeometry, canvas: HTMLCanvasElement, pi
       // move to the start of this edge segment
       ctx.moveTo(he.origin[0], he.origin[1]);
 
-      if (he.segments) {
+      if (he.segments && he.segments.length > 0) {
         // if a custom tab is defined, draw each segment in order
         for (const segment of he.segments) {
           switch (segment.type) {

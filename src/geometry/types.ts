@@ -1,3 +1,4 @@
+import type { GeneratorConfig } from "./generators/Generator";
 
 /* ========================================================= *\
  *  Primitive types.                                         *
@@ -170,6 +171,14 @@ export interface PuzzleGeometry extends PuzzleTopology {
   width: number;
   /** Height of puzzle in pixels */
   height: number;
+  /** A rough guide for piece size */
+  pieceSize: number;
+  /** How did the points that control the pieces get generated? */
+  pointConfig: GeneratorConfig;
+  /** How did the pieces get built? */
+  pieceConfig: GeneratorConfig;
+  /** How did tabs get constructed? */
+  tabConfig: GeneratorConfig;
   /** Coordinates where the puzzle has problems, such as pieces intersecting */
   problems?: Vec2[];
 }

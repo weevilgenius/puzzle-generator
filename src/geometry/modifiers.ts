@@ -1,12 +1,15 @@
 import type {
-  PuzzleTopology,
-  Vec2,
+  Edge,
+  EdgeID,
   HalfEdge,
   PieceID,
+  PuzzleGeometry,
+  Vec2,
   VertexID,
 } from './types';
+import { TabGeneratorRegistry } from './generators/Generator';
 import { getPieceAABB } from './utils';
-
+import mulberry32 from "../utils/mulberry";
 
 
 /**
@@ -19,7 +22,7 @@ import { getPieceAABB } from './utils';
  * @param newPos The new [x, y] coordinates to move the vertex to.
  */
 export function moveVertex(
-  puzzle: PuzzleTopology,
+  puzzle: PuzzleGeometry,
   vertexIndex: VertexID,
   newPos: Vec2
 ): void {
@@ -73,11 +76,80 @@ export function moveVertex(
     }
   }
 
-  // --- 5. Recalculate the bounding boxes for all affected pieces ---
+  // --- 5. Rebuild any tabs affected by the vertex move ---
+  regenerateAffectedTabs(puzzle, vertexIndex);
+
+  // --- 6. Recalculate the bounding boxes for all affected pieces ---
   for (const pieceId of affectedPieceIDs) {
     const piece = puzzle.pieces.get(pieceId);
     if (piece) {
       piece.bbox = getPieceAABB(piece, puzzle);
+    }
+  }
+}
+
+
+/**
+ * Finds all full (interior) edges connected to a given vertex and regenerates their tabs.
+ *
+ * @param puzzle The puzzle and its topology.
+ * @param vertex The the vertex that was modified.
+ */
+export function regenerateAffectedTabs(
+  puzzle: PuzzleGeometry,
+  vertex: VertexID
+): void {
+
+  const { seed, width, height, tabConfig } = puzzle;
+  const random = mulberry32(seed);
+
+  // recreate the tab generator that was used for this puzzle
+  const tabGenerator = TabGeneratorRegistry.create(width, height, tabConfig);
+
+  const affectedEdges = new Set<Edge>();
+  const movedVertexPos = puzzle.vertices[vertex];
+
+  // To efficiently find the parent Edge of a HalfEdge, we can build a lookup map.
+  // This is much faster than iterating through all edges every time.
+  const halfEdgeToEdgeMap = new Map<EdgeID, Edge>();
+  for (const edge of puzzle.edges.values()) {
+    halfEdgeToEdgeMap.set(edge.heLeft, edge);
+    // heRight can be -1 for boundary edges, so check first.
+    if (edge.heRight !== -1) {
+      halfEdgeToEdgeMap.set(edge.heRight, edge);
+    }
+  }
+
+  // Find all half-edges that either start or end at the moved vertex.
+  for (const he of puzzle.halfEdges.values()) {
+    const destinationVertex = puzzle.halfEdges.get(he.next)?.origin;
+
+    // Is this half-edge starting at the moved vertex?
+    const startsAtVertex = he.origin === movedVertexPos;
+    // Is this half-edge ending at the moved vertex?
+    const endsAtVertex = destinationVertex === movedVertexPos;
+
+    if (startsAtVertex || endsAtVertex) {
+      const parentEdge = halfEdgeToEdgeMap.get(he.id);
+      if (parentEdge) {
+        affectedEdges.add(parentEdge);
+      }
+    }
+  }
+
+  // Now, regenerate the tabs for the unique set of affected edges.
+  for (const edge of affectedEdges) {
+    // Only add tabs to internal edges, as per your original logic.
+    const isInternal = edge.heRight !== -1;
+    if (isInternal) {
+      // remove any existing segments
+      const he1 = puzzle.halfEdges.get(edge.heLeft);
+      if (he1) { he1.segments = undefined; }
+      const he2 = puzzle.halfEdges.get(edge.heRight);
+      if (he2) { he2.segments = undefined; }
+
+      // regenerate segments
+      tabGenerator.addTab(edge, { topology: puzzle, random });
     }
   }
 }
