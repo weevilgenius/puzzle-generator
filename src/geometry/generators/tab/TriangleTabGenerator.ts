@@ -1,5 +1,5 @@
 import type { TabGenerator } from "./TabGenerator";
-import type { CurveTo, EdgeSegment, TabPlacement, RandomFn, Vec2 } from "../../types";
+import type { EdgeSegment, TabPlacement, RandomFn, Vec2 } from "../../types";
 import type { GeneratorUIMetadata } from '../../ui_types';
 import type { GeneratorConfig, GeneratorFactory } from "../Generator";
 import { TabGeneratorRegistry } from "../Generator";
@@ -27,8 +27,8 @@ export const TriangleTabUIMetadata: GeneratorUIMetadata = {
  * A simple TabGenerator that adds a triangular "nub" to an edge.
  *
  * This generator serves as a straightforward example of how to implement the
- * TabGenerator interface. It generates a Bézier curve that forms a triangular
- * tab.
+ * TabGenerator interface. It generates a three line segment that forms a
+ * triangular tab.
  */
 export const TriangleTabGeneratorFactory: GeneratorFactory<TabGenerator> = (_width: number, _height: number, _config: TriangleTabGeneratorConfig) => {
 
@@ -64,17 +64,13 @@ export const TriangleTabGeneratorFactory: GeneratorFactory<TabGenerator> = (_wid
         midPoint[1] + normalDir[1] * tabHeight,
       ];
 
-      // 3. Create the Bézier curve for the tab.
-      // A "sharp" point is made by setting both control points to the peak.
-      const triangleSegment: CurveTo = {
-        type: 'bezier',
-        p1: nubPoint,
-        p2: nubPoint,
-        p3: end,
-      };
+      // 3. Create the segments for the tab.
+      const result: EdgeSegment[] = [];
+      result.push({ type: 'line', p: start });
+      result.push({ type: 'line', p: nubPoint });
+      result.push({ type: 'line', p: end });
 
-      // 4. Return the generated geometry as an array of segments.
-      return [triangleSegment];
+      return result;
     },
   };
   return TriangleTabGenerator;
