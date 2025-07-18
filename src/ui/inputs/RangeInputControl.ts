@@ -34,6 +34,7 @@ export const RangeInputControl: m.ClosureComponent<RangeInputControlAttr> = () =
         min: attrs.config.min,
         max: attrs.config.max,
         step: attrs.config.step,
+        'with-tooltip': true,
         onchange: (e: Event) => {
           const input = e.target as WaSlider;
           const newValue = input.value;
