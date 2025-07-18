@@ -13,6 +13,8 @@ export interface TraditionalTabGeneratorConfig extends GeneratorConfig {
   name: TraditionalTabGeneratorName;
   /** Amount of randomness to apply to each tab (0-100) */
   jitter?: number;
+  /** The height of the tab's nub as a fraction of its width. Default: 50% */
+  heightToWidthRatio?: number;
   /** If provided, the width of a tab's features will be clamped to this value */
   maxTabSize?: number;
 }
@@ -36,11 +38,14 @@ export const TraditionalTabUIMetadata: GeneratorUIMetadata = {
       helpText: 'Adds randomness to the tab shape. 0 means completely uniform tabs',
     },
     {
-      type: 'number',
-      name: 'maxTabSize',
-      label: 'Maximum Tab Width',
-      optional: true,
-      helpText: 'If provided, the width of a tab\'s features will be clamped to this value',
+      type: 'range',
+      name: 'heightToWidthRatio',
+      label: 'Tab Height',
+      defaultValue: 50,
+      min: 5,
+      max: 100,
+      step: 5,
+      helpText: 'The height of the tab as a percent of its width',
     },
   ],
 };
@@ -56,8 +61,8 @@ export const TraditionalTabUIMetadata: GeneratorUIMetadata = {
  *
  * @param a         Edge start point.
  * @param b         Edge end point.
- * @param sizePct   “Tab size” slider value (0–100 %).
  * @param jitterPct “Jitter” slider value (0–100 %).
+ * @param heightToWidthRatio Ratio of tab height to segment length
  * @param random    Seeded RNG so callers can reproduce shapes.
  * @param inward    If true the nub is an **indent**; otherwise a **bump**.
  * @param maxTabSize Optional maximum absolute width for the tab.
@@ -67,18 +72,20 @@ export const TraditionalTabUIMetadata: GeneratorUIMetadata = {
 function createTraditionalTab(
   a: Vec2,
   b: Vec2,
-  sizePct: number,
   jitterPct: number,
+  heightToWidthRatio: number,
   random: RandomFn,
-  inward = false,
-  maxTabSize?: number
+  inward = false
 ): EdgeSegment[] {
   /* --- 1.  Work in a local (u,v) coordinate frame ---------------------- */
 
   const ux = b[0] - a[0];
   const uy = b[1] - a[1];
   const len = Math.hypot(ux, uy);
-  if (len === 0) throw new Error("Edge has zero length");
+  if (len === 0) {
+    console.warn("Edge has zero length");
+    return [];
+  }
 
   // Basis vectors:  u along the edge, v = +90° (right-hand rule).
   const u: Vec2 = [ux / len, uy / len];
@@ -103,30 +110,34 @@ function createTraditionalTab(
 
   /* --- 3.  Fixed shape constants -------------------------------------- */
 
-  let t = sizePct / 200; // tab “radius” in edge-length units
+  // 't' is a fixed constant that defines the tab's internal proportions.
+  // A value of 0.2 means the central arch of the tab will span 80% (4 * 0.2)
+  const t = 0.1625; // 65%
 
-  if (maxTabSize) {
-    const absoluteTabWidth = 4 * t * len;
-    if (absoluteTabWidth > maxTabSize) {
-      // recalculate t so that the tab width equals the max size, clamping it
-      t = maxTabSize / (4 * len);
-    }
-  }
+  // if (maxTabSize) {
+  //   const absoluteTabWidth = 4 * t * len;
+  //   if (absoluteTabWidth > maxTabSize) {
+  //     // recalculate t so that the tab width equals the max size, clamping it
+  //     t = maxTabSize / (4 * len);
+  //   }
+  // }
 
   const dir = inward ? -1 : 1; // bump (+) or hole (-)
+  const nubHeight = heightToWidthRatio;
+  const shoulder_height = nubHeight / 3;
 
   /* --- 4.  Anchor & control points in (s,w) ---------------------------- */
 
   const pointsSW: Vec2[] = [
     [0.0               ,           0],
-    [0.2               ,           A],
-    [0.5 + B + D       , dir * (-t + C)],
-    [0.5 - t + B       , dir * ( t + C)],
-    [0.5 - 2*t + B - D , dir * (3*t + C)],
-    [0.5 + 2*t + B - D , dir * (3*t + C)],
-    [0.5 + t + B       , dir * ( t + C)],
-    [0.5 + B + D       , dir * (-t + C)],
-    [0.8               ,           E],
+    [0.2               ,           A * shoulder_height],
+    [0.5 + B + D       , dir * (-shoulder_height + C * nubHeight)],
+    [0.5 - t + B       , dir * ( shoulder_height + C * nubHeight)],
+    [0.5 - 2*t + B - D , dir * (nubHeight + C * nubHeight)],
+    [0.5 + 2*t + B - D , dir * (nubHeight + C * nubHeight)],
+    [0.5 + t + B       , dir * ( shoulder_height + C * nubHeight)],
+    [0.5 + B + D       , dir * (-shoulder_height + C * nubHeight)],
+    [0.8               ,           E * shoulder_height],
     [1.0               ,           0],
   ];
 
@@ -149,13 +160,12 @@ function createTraditionalTab(
  * nub, Curve 3 is the mirror of curve 1 back to the baseline.
  */
 export const TraditionalTabGeneratorFactory: GeneratorFactory<TabGenerator> = (_width: number, _height: number, config: TraditionalTabGeneratorConfig): TabGenerator => {
-  const { jitter = 8, maxTabSize } = config;
+  const { jitter = 8, heightToWidthRatio = 50 } = config;
 
   const TraditionalTabGenerator: TabGenerator = {
     createTabSegments(start: Vec2, end: Vec2, tab: TabPlacement, random: RandomFn): EdgeSegment[] {
-      const sizePct = tab.size * 100; // convert to percent
       const inward = !tab.convex;
-      return createTraditionalTab(start, end, sizePct, jitter, random, inward, maxTabSize);
+      return createTraditionalTab(start, end, jitter, heightToWidthRatio/100, random, inward);
     },
   };
   return TraditionalTabGenerator;

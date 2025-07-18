@@ -15,6 +15,8 @@ export interface SimpleTabPlacementStrategyConfig extends GeneratorConfig {
   tabSize?: number;
   /** Edges shorter than this value will not have a tab. */
   minEdgeLength?: number;
+  /** The maximum absolute width that a tab can have. Wide tabs will get clamped to this value. */
+  maxTabSize?: number;
 }
 
 /** UI metadata needed for this strategy */
@@ -44,6 +46,12 @@ export const SimpleTabPlacementStrategyUIMetadata: GeneratorUIMetadata = {
       defaultValue: 15,
       helpText: 'Edges shorter than this value will not have a tab',
     },
+    {
+      type: 'number',
+      name: 'maxTabSize',
+      label: 'Maximum Tab Size',
+      helpText: 'Maximum width of a generated tab',
+    },
   ],
 };
 
@@ -51,7 +59,7 @@ export const SimpleTabPlacementStrategyUIMetadata: GeneratorUIMetadata = {
 function placeTabOnEdge(
   edge: Edge,
   topology: PuzzleTopology,
-  config: { tabSize: number, minEdgeLength: number },
+  config: { tabSize: number, minEdgeLength: number, maxTabSize?: number },
   random: RandomFn
 ): void {
   // clear any existing tabs in case we're re-evaluating
@@ -71,9 +79,16 @@ function placeTabOnEdge(
 
   // add a tab, if the edge is long enough
   if (edgeLength >= config.minEdgeLength) {
+    let tabSize = config.tabSize;
+
+    // clamp tab width if requested
+    if (config.maxTabSize && (edgeLength * tabSize) > config.maxTabSize) {
+      tabSize = config.maxTabSize / edgeLength;
+    }
+
     const tab: TabPlacement = {
       position: 0.5, // center of the edge
-      size: config.tabSize,
+      size: tabSize,
       convex: random() > 0.5, // tab is "innie" or "outie"
     };
     edge.tabs = [tab];
@@ -89,8 +104,8 @@ export const SimpleTabPlacementStrategyFactory: GeneratorFactory<TabPlacementStr
   _height: number,
   config: SimpleTabPlacementStrategyConfig,
 ): TabPlacementStrategy => {
-  const { tabSize = 0.5, minEdgeLength = 0 } = config;
-  const placementConfig = { tabSize, minEdgeLength };
+  const { tabSize = 0.5, minEdgeLength = 0, maxTabSize } = config;
+  const placementConfig = { tabSize, minEdgeLength, maxTabSize };
 
   return {
     placeTabs(runtimeOpts: TabPlacementStrategyRuntimeOptions): void {
