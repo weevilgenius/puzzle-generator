@@ -10,6 +10,7 @@ import type {
   PuzzleTopology,
   Vec2,
 } from '../../types';
+import { polygonBounds } from "../../utils";
 import { getUniqueId } from '../../../utils/UniqueId';
 import type { GeneratorUIMetadata } from '../../ui_types';
 import type { GeneratorConfig, GeneratorFactory } from "../Generator";
@@ -137,7 +138,7 @@ export const RectangularPieceGeneratorFactory: GeneratorFactory<PieceGenerator> 
             id: pieceId,
             site: [ (topLeft[0] + bottomRight[0]) / 2, (topLeft[1] + bottomRight[1]) / 2 ], // Site is the center
             halfEdge: he_top.id, // Point to any half-edge on its boundary
-            bbox: [topLeft[0], topLeft[1], bottomRight[0], bottomRight[1]] as AABB,
+            bounds: [topLeft[0], topLeft[1], bottomRight[0], bottomRight[1]] as AABB,
           };
           topology.pieces.set(pieceId, piece);
 
@@ -167,7 +168,12 @@ export const RectangularPieceGeneratorFactory: GeneratorFactory<PieceGenerator> 
               twinHe.twin = edgeInfo.he.id;
 
               // The half-edge from the neighbor is the "left" one, ours is the "right".
-              edge = { id: edgeId, heLeft: twinHe.id, heRight: edgeInfo.he.id };
+              edge = {
+                id: edgeId,
+                heLeft: twinHe.id,
+                heRight: edgeInfo.he.id,
+                bounds: polygonBounds([edgeInfo.p1, edgeInfo.p2]),
+              };
               halfEdgeTwinMap.delete(twinKey); // Clean up map
             } else {
               // No twin found. This could be a boundary edge or its twin hasn't been created yet.
@@ -177,7 +183,12 @@ export const RectangularPieceGeneratorFactory: GeneratorFactory<PieceGenerator> 
 
               // If we know it's on the boundary, create the edge now.
               if (edgeInfo.isBoundary) {
-                edge = { id: edgeId, heLeft: edgeInfo.he.id, heRight: -1 };
+                edge = {
+                  id: edgeId,
+                  heLeft: edgeInfo.he.id,
+                  heRight: -1,
+                  bounds: polygonBounds([edgeInfo.p1, edgeInfo.p2]),
+                };
                 topology.boundary.push(edgeId);
               } else {
                 continue; // It's an internal edge, wait for its twin to create the Edge object.

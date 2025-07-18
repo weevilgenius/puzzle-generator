@@ -8,7 +8,7 @@ import type {
   VertexID,
 } from './types';
 import { TabGeneratorRegistry } from './generators/Generator';
-import { getPieceAABB } from './utils';
+import { generateSegmentsForEdge, getPieceAABB } from './utils';
 import mulberry32 from "../utils/mulberry";
 
 
@@ -83,7 +83,7 @@ export function moveVertex(
   for (const pieceId of affectedPieceIDs) {
     const piece = puzzle.pieces.get(pieceId);
     if (piece) {
-      piece.bbox = getPieceAABB(piece, puzzle);
+      piece.bounds = getPieceAABB(piece, puzzle);
     }
   }
 }
@@ -149,7 +149,7 @@ export function regenerateAffectedTabs(
       if (he2) { he2.segments = undefined; }
 
       // regenerate segments
-      tabGenerator.addTab(edge, { topology: puzzle, random });
+      generateSegmentsForEdge(edge, puzzle, tabGenerator, random);
     }
   }
 }

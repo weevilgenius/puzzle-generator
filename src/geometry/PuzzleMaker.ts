@@ -1,5 +1,12 @@
 import type { PuzzleGeometry, Vec2 } from "./types";
-import { PointGeneratorRegistry, PieceGeneratorRegistry, TabGeneratorRegistry, type GeneratorConfig } from "./generators/Generator";
+import {
+  PointGeneratorRegistry,
+  PieceGeneratorRegistry,
+  TabPlacementStrategyRegistry,
+  TabGeneratorRegistry,
+  type GeneratorConfig,
+} from "./generators/Generator";
+import { generateSegmentsForEdge } from "./utils";
 import mulberry32 from "../utils/mulberry";
 
 /**
@@ -18,6 +25,8 @@ export interface PuzzleGenerationOptions {
   pointConfig: GeneratorConfig;
   /** How should the pieces get built? */
   pieceConfig: GeneratorConfig;
+  /** How should tabs get placed on piece edges? */
+  placementConfig: GeneratorConfig;
   /** How should tabs get constructed? */
   tabConfig: GeneratorConfig;
 }
@@ -29,13 +38,14 @@ export interface PuzzleGenerationOptions {
 // eslint-disable-next-line @typescript-eslint/require-await
 export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<PuzzleGeometry> {
   const { width, height, pieceSize } = options;
-  const { pointConfig, pieceConfig, tabConfig } = options;
+  const { pointConfig, pieceConfig, placementConfig, tabConfig } = options;
 
   console.log(`rebuilding puzzle with dimensions ${width}x${height}, piece size ${pieceSize}`);
 
   // get and configure the necessary generators
   const pointGenerator = PointGeneratorRegistry.create(width, height, pointConfig);
   const pieceGenerator = PieceGeneratorRegistry.create(width, height, pieceConfig);
+  const placementStrategy = TabPlacementStrategyRegistry.create(width, height, placementConfig);
   const tabGenerator = TabGeneratorRegistry.create(width, height, tabConfig);
 
   // seeded PRNG used to generate repeatable random numbers
@@ -50,16 +60,20 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
   const topology = pieceGenerator.generatePieces(points, { random, pieceSize });
   console.log(`Generated ${topology.pieces.size} pieces`);
 
-  // 3. Decorate internal edges with tabs
+  // 3. Place tabs on internal edges
+  placementStrategy.placeTabs({ topology, random });
+
+  // 4. Generate geometry for placed tabs
   for (const edge of topology.edges.values()) {
-    // Only add tabs to internal edges (those with a left and right piece)
+    // only internal edges can accept tabs
     const isInternal = edge.heRight !== -1;
-    if (isInternal) {
-      tabGenerator.addTab(edge, { topology, random });
+    if (isInternal && edge.tabs && edge.tabs.length > 0) {
+      // use the tab generator to create the segment path for an edge based on its TabPlacements
+      generateSegmentsForEdge(edge, topology, tabGenerator, random);
     }
   }
 
-  // 4. Assemble the final puzzle data structure
+  // 5. Assemble the final puzzle data structure
   const puzzle: PuzzleGeometry = {
     created: new Date().toISOString(),
     seed,

@@ -1,7 +1,6 @@
 import { Delaunay } from 'd3-delaunay';
 import { PieceGenerator, PieceGeneratorRuntimeOptions } from "./PieceGenerator";
 import type {
-  AABB,
   Edge,
   EdgeID,
   HalfEdge,
@@ -11,6 +10,7 @@ import type {
   PuzzleTopology,
   Vec2,
 } from '../../types';
+import { polygonBounds, arePointsEqual } from '../../utils';
 import { getUniqueId } from '../../../utils/UniqueId';
 import type { GeneratorUIMetadata } from '../../ui_types';
 import type { GeneratorConfig, GeneratorFactory } from "../Generator";
@@ -41,33 +41,6 @@ export const VoronoiPieceGeneratorUIMetadata: GeneratorUIMetadata = {
 };
 
 /**
- * Calculates the Axis-Aligned Bounding Box (AABB) for a given polygon.
- * @param polygon - An array of vertices representing the polygon.
- * @returns The AABB as `[xmin, ymin, xmax, ymax]`. Returns a zero-area
- * box at the origin if the polygon is empty.
- */
-function calculateBoundingBox(polygon: Vec2[]): AABB {
-  if (polygon.length === 0) {
-    return [0, 0, 0, 0];
-  }
-
-  let minX = polygon[0][0];
-  let minY = polygon[0][1];
-  let maxX = minX;
-  let maxY = minY;
-
-  for (let i = 1; i < polygon.length; i++) {
-    const p = polygon[i];
-    minX = Math.min(minX, p[0]);
-    minY = Math.min(minY, p[1]);
-    maxX = Math.max(maxX, p[0]);
-    maxY = Math.max(maxY, p[1]);
-  }
-
-  return [minX, minY, maxX, maxY];
-}
-
-/**
  * Links the `next` and `prev` properties of a circular list of half-edges for a single piece.
  * @param ids The array of half-edge IDs belonging to a piece.
  * @param map The map containing all half-edge objects.
@@ -88,16 +61,6 @@ function linkPieceHalfEdges(ids: HalfEdgeID[], map: Map<HalfEdgeID, HalfEdge>): 
  */
 function pointToKey(p: Vec2): string {
   return `${p[0].toPrecision(7)},${p[1].toPrecision(7)}`;
-}
-
-/**
- * Checks if two points are effectively at the same location.
- * @param p1 The first point.
- * @param p2 The second point.
- * @returns `true` if points are equal.
- */
-function arePointsEqual(p1: Vec2, p2: Vec2): boolean {
-  return Math.abs(p1[0] - p2[0]) < 1e-6 && Math.abs(p1[1] - p2[1]) < 1e-6;
 }
 
 /**
@@ -149,7 +112,7 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (w
           id: i,
           site,
           halfEdge: -1, // Placeholder, will be set after creating half-edges.
-          bbox: calculateBoundingBox(polygon),
+          bounds: polygonBounds(polygon),
         };
 
         const pieceHalfEdgeIds: HalfEdgeID[] = [];
@@ -216,6 +179,7 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (w
             id: edgeId,
             heLeft: he1.id,
             heRight: he2.id,
+            bounds: polygonBounds([p1, p2]), // no tabs yet
           };
         } else {
           // This is a boundary edge with no twin.
@@ -223,6 +187,7 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (w
             id: edgeId,
             heLeft: he1.id, // The one existing half-edge.
             heRight: -1,     // Sentinel for no half-edge.
+            bounds: polygonBounds([p1, p2]), // no tabs yet
           };
           topology.boundary.push(edgeId);
         }

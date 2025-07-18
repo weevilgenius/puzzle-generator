@@ -1,5 +1,5 @@
-import type { TabGenerator, TabGeneratorRuntimeOptions } from "./TabGenerator";
-import type { Edge } from "../../types";
+import type { TabGenerator } from "./TabGenerator";
+import type { EdgeSegment, RandomFn, TabPlacement, Vec2 } from "../../types";
 import type { GeneratorUIMetadata } from '../../ui_types';
 import type { GeneratorConfig, GeneratorFactory } from "../Generator";
 import { TabGeneratorRegistry } from "../Generator";
@@ -26,8 +26,8 @@ export const NullTabUIMetadata: GeneratorUIMetadata = {
 /** Tab generator that does nothing, piece edges remain straight lines */
 export const NullTabGeneratorFactory: GeneratorFactory<TabGenerator> = (_width: number, _height: number,_config: NullTabGeneratorConfig) => {
   const NullTabGenerator: TabGenerator = {
-    addTab(_edge: Edge, _runtimeOpts: TabGeneratorRuntimeOptions) {
-      // noop
+    createTabSegments(_start: Vec2, _end: Vec2, _tab: TabPlacement, _random: RandomFn): EdgeSegment[] {
+      return []; // does nothing
     },
   };
   return NullTabGenerator;

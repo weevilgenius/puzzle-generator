@@ -1,5 +1,5 @@
-import type { TabGenerator, TabGeneratorRuntimeOptions } from "./TabGenerator";
-import type { CurveTo, Edge, EdgeSegment, RandomFn, Vec2 } from "../../types";
+import type { TabGenerator } from "./TabGenerator";
+import type { CurveTo, EdgeSegment, RandomFn, TabPlacement, Vec2 } from "../../types";
 import type { GeneratorUIMetadata } from '../../ui_types';
 import type { GeneratorConfig, GeneratorFactory } from "../Generator";
 import { TabGeneratorRegistry } from "../Generator";
@@ -11,12 +11,8 @@ export const Name: TraditionalTabGeneratorName = "TraditionalTabGenerator";
 /** Custom config for this generator */
 export interface TraditionalTabGeneratorConfig extends GeneratorConfig {
   name: TraditionalTabGeneratorName;
-  /** Size of the tab relative to its edge as a percent (1-100) */
-  size?: number;
   /** Amount of randomness to apply to each tab (0-100) */
   jitter?: number;
-  /** If provided, tabs will not generate on edges shorter than this value */
-  minTabSize?: number;
   /** If provided, the width of a tab's features will be clamped to this value */
   maxTabSize?: number;
 }
@@ -31,16 +27,6 @@ export const TraditionalTabUIMetadata: GeneratorUIMetadata = {
   controls: [
     {
       type: 'range',
-      name: 'size',
-      label: 'Tab Size',
-      defaultValue: 20,
-      min: 1,
-      max: 100,
-      step: 1,
-      helpText: 'Size of each tab as a percent relative to its edge length',
-    },
-    {
-      type: 'range',
       name: 'jitter',
       label: 'Randomness',
       defaultValue: 8,
@@ -48,14 +34,6 @@ export const TraditionalTabUIMetadata: GeneratorUIMetadata = {
       max: 100,
       step: 1,
       helpText: 'Adds randomness to the tab shape. 0 means completely uniform tabs',
-    },
-    {
-      type: 'number',
-      name: 'minTabSize',
-      label: 'Minimum Tab Size',
-      defaultValue: 20,
-      optional: true,
-      helpText: 'If provided, tabs will not generate on edges shorter than this value',
     },
     {
       type: 'number',
@@ -130,7 +108,7 @@ function createTraditionalTab(
   if (maxTabSize) {
     const absoluteTabWidth = 4 * t * len;
     if (absoluteTabWidth > maxTabSize) {
-      // recalculate t so that the tab width equals the max size, camping it
+      // recalculate t so that the tab width equals the max size, clamping it
       t = maxTabSize / (4 * len);
     }
   }
@@ -164,19 +142,6 @@ function createTraditionalTab(
 }
 
 /**
- * Helper function to reverse a single Bézier curve segment.
- * The new curve starts where the old one ended and vice-versa.
- */
-function invertCurve(segment: CurveTo, newEndPoint: Vec2): CurveTo {
-  return {
-    type: 'bezier',
-    p1: segment.p2, // Control points are swapped
-    p2: segment.p1,
-    p3: newEndPoint, // The new end point is the start point of the original
-  };
-}
-
-/**
  * A factory that creates a TabGenerator for creating traditional, smoothly curved
  * puzzle piece tabs using a provided geometry function. The nub is built using
  * three cubic Bézier segments that replace a straight edge AB. Curve 1 is a
@@ -184,44 +149,13 @@ function invertCurve(segment: CurveTo, newEndPoint: Vec2): CurveTo {
  * nub, Curve 3 is the mirror of curve 1 back to the baseline.
  */
 export const TraditionalTabGeneratorFactory: GeneratorFactory<TabGenerator> = (_width: number, _height: number, config: TraditionalTabGeneratorConfig): TabGenerator => {
-  const { size = 20, jitter = 8, minTabSize, maxTabSize } = config;
+  const { jitter = 8, maxTabSize } = config;
 
   const TraditionalTabGenerator: TabGenerator = {
-    addTab(edge: Edge, runtimeOpts: TabGeneratorRuntimeOptions) {
-      const { topology, random } = runtimeOpts;
-      const he1 = topology.halfEdges.get(edge.heLeft);
-      const he2 = topology.halfEdges.get(edge.heRight);
-
-      if (!he1 || !he2) return;
-
-      const a = he1.origin;
-      const b = he2.origin;
-
-      if (minTabSize) {
-        const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-        if (len < minTabSize) {
-          return; // this tab would be too small
-        }
-      }
-
-      const he1IsInward = random() > 0.5;
-
-      const he1Segments = createTraditionalTab(a, b, size, jitter, random, he1IsInward, maxTabSize);
-      if (he1Segments.length === 0) return;
-
-      // Create the exact inverse path for the twin half-edge. This is critical
-      // for a perfect fit and cannot be done by just calling the function again
-      // due to the random perturbations.
-      const he2Segments: EdgeSegment[] = [];
-      for (let i = he1Segments.length - 1; i >= 0; i--) {
-        const currentSegment = he1Segments[i] as CurveTo; // We know they are curves
-        // The new end point is the start point of the original segment.
-        const originOfOriginal = (i > 0) ? (he1Segments[i-1] as CurveTo).p3 : a;
-        he2Segments.push(invertCurve(currentSegment, originOfOriginal));
-      }
-
-      he1.segments = he1Segments;
-      he2.segments = he2Segments;
+    createTabSegments(start: Vec2, end: Vec2, tab: TabPlacement, random: RandomFn): EdgeSegment[] {
+      const sizePct = tab.size * 100; // convert to percent
+      const inward = !tab.convex;
+      return createTraditionalTab(start, end, sizePct, jitter, random, inward, maxTabSize);
     },
   };
   return TraditionalTabGenerator;

@@ -67,19 +67,17 @@ export type EdgeSegment = LineTo | CurveTo;
  *  Tab geometry                                             *
 \* ========================================================= */
 
-/**
- * Metadata every tab strategy must provide so later modules (laser export,
- * overlap checks, UI highlighting) have the information they need without
- * re-inspecting the curve.
- */
-export interface TabMeta {
-  /** `true` ⇢ tab bulges *out* of the current piece
-   *   `false`⇢ tab indents *into* the piece               */
+/** Details about the placement and orientation of a particular tab */
+export interface TabPlacement {
+  /**
+   * `true` -> tab bulges outward relative to current piece
+   * `false` -> tab indents inward relative to current piece
+   */
   convex: boolean;
-  /** Physical size along the edge (mm, px, …). */
-  length: number;
-  /** Derived bounding box for cheap intersection tests. */
-  bbox: AABB;
+  /** The position of the tab's center along the edge, normalized from 0.0 to 1.0. */
+  position: number;
+  /** The size of the tab, normalized as a fraction of the edge length. */
+  size: number;
 }
 
 /* ========================================================= *\
@@ -95,6 +93,13 @@ export interface Edge {
   heLeft: HalfEdgeID;
   /** Half edge in the CW side */
   heRight: HalfEdgeID;
+  /** Bounding box for this edge including any tabs */
+  bounds: AABB;
+  /**
+   * An ordered list of tabs along this edge. This corresponds to heLeft.
+   * The geometry of tabs corresponding to heRight can be derived as the inverse.
+   */
+  tabs?: TabPlacement[];
 }
 
 /** Directed half-edge record used internally for fast traversal. */
@@ -137,7 +142,7 @@ export interface Piece {
   halfEdge: HalfEdgeID;
 
   /** Bounding box for this piece */
-  bbox: AABB;
+  bounds: AABB;
 }
 
 /* ========================================================= *\

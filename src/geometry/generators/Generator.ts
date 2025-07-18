@@ -112,13 +112,17 @@ export class GeneratorRegistry<T> {
 \* ========================================================= */
 
 // Public registry for PointGenerators
-import { PointGenerator } from "./point/PointGenerator";
+import type { PointGenerator } from "./point/PointGenerator";
 export const PointGeneratorRegistry = new GeneratorRegistry<PointGenerator>();
 
 // Public registry for PieceGenerators
-import { PieceGenerator } from "./piece/PieceGenerator";
+import type { PieceGenerator } from "./piece/PieceGenerator";
 export const PieceGeneratorRegistry = new GeneratorRegistry<PieceGenerator>();
 
+// Public registry for TabPlacementStrategies
+import type { TabPlacementStrategy } from "./tab_placement/TabPlacementStrategy";
+export const TabPlacementStrategyRegistry = new GeneratorRegistry<TabPlacementStrategy>();
+
 // Public registry for TabGenerators
-import { TabGenerator } from "./tab/TabGenerator";
+import type { TabGenerator } from "./tab/TabGenerator";
 export const TabGeneratorRegistry = new GeneratorRegistry<TabGenerator>();

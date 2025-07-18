@@ -15,9 +15,10 @@ import ColorPicker from './ui/ColorPicker';
 // geometry parts
 import type { PuzzleGeometry } from './geometry/types';
 import type { GeneratorConfig, GeneratorName, GeneratorRegistry } from './geometry/generators/Generator';
-import { PointGeneratorRegistry, PieceGeneratorRegistry, TabGeneratorRegistry } from './geometry/generators/Generator';
+import { PointGeneratorRegistry, PieceGeneratorRegistry, TabPlacementStrategyRegistry, TabGeneratorRegistry } from './geometry/generators/Generator';
 import { Name as PoissonGeneratorName } from './geometry/generators/point/PoissonPointGenerator';
 import { Name as VoronoiGeneratorName } from './geometry/generators/piece/VoronoiPieceGenerator';
+import { Name as SimpleTabPlacementStrategyName } from './geometry/generators/tab_placement/SimpleTabPlacementStrategy';
 import { Name as TraditionalTabGeneratorName } from './geometry/generators/tab/TraditionalTabGenerator';
 import { buildPuzzle } from './geometry/PuzzleMaker';
 import { checkGeometryInWorker } from './geometry/GeometryChecker';
@@ -27,6 +28,7 @@ import "./geometry/generators/point/GridJitterPointGenerator";
 import "./geometry/generators/point/PoissonPointGenerator";
 import "./geometry/generators/piece/VoronoiPieceGenerator";
 import "./geometry/generators/piece/RectangularPieceGenerator";
+import "./geometry/generators/tab_placement/SimpleTabPlacementStrategy";
 import "./geometry/generators/tab/NullTabGenerator";
 import "./geometry/generators/tab/TriangleTabGenerator";
 import "./geometry/generators/tab/TraditionalTabGenerator";
@@ -137,6 +139,13 @@ const Page: m.ClosureComponent<unknown> = () => {
         name: defaultPieceGenerator,
         config: PieceGeneratorRegistry.getDefaultConfig(defaultPieceGenerator, defaultWidth, defaultHeight),
       },
+      /** Strategy for placing tabs on piece edges */
+      placement: {
+        label: "Tab Placement",
+        registry: TabPlacementStrategyRegistry,
+        name: SimpleTabPlacementStrategyName,
+        config: TabPlacementStrategyRegistry.getDefaultConfig(SimpleTabPlacementStrategyName, defaultWidth, defaultHeight),
+      },
       /** Style of tabs to generate */
       tab: {
         label: "Tabs",
@@ -185,6 +194,7 @@ const Page: m.ClosureComponent<unknown> = () => {
         pieceSize: state.distance,
         pointConfig: state.generators.point.config,
         pieceConfig: state.generators.piece.config,
+        placementConfig: state.generators.placement.config,
         tabConfig: state.generators.tab.config,
         seed: state.seed,
       }).then((puzzle) => {
@@ -208,6 +218,7 @@ const Page: m.ClosureComponent<unknown> = () => {
           pieceSize: state.distance,
           pointConfig: state.generators.point.config,
           pieceConfig: state.generators.piece.config,
+          placementConfig: state.generators.placement.config,
           tabConfig: state.generators.tab.config,
           seed: state.seed,
         }).then((puzzle) => {

@@ -1,22 +1,14 @@
-import { RandomFn, PuzzleTopology, Edge } from "../../types";
+import { EdgeSegment, RandomFn, TabPlacement, Vec2 } from "../../types";
 
-/** Options passed to all Tab Generators at runtime */
-export interface TabGeneratorRuntimeOptions {
-  /** The current puzzle topology as created by previous generator(s) */
-  topology: PuzzleTopology;
-  /** A function for generating random numbers. */
-  random: RandomFn;
-}
-
-/**
- * Interface for a generator for decorating an edge with a tab curve.
- */
+/** Interface for a generator that constructs tab geometry. */
 export interface TabGenerator {
   /**
-   * Analyzes an edge and, if appropriate, decorates its half-edges with
-   * corresponding tab curves. This gets called for each internal edge and will
-   * modify the half-edge objects in the topology directly.
+   *
+   * @param start Start point of the region defined for this tab
+   * @param end End point of the region defined for this tab
+   * @param tab Placement details for this tab
+   * @param random Function for generating random numbers
    */
-  addTab(edge: Edge, runtimeOpts: TabGeneratorRuntimeOptions): void;
+  createTabSegments(start: Vec2, end: Vec2, tab: TabPlacement, random: RandomFn): EdgeSegment[];
 }
 

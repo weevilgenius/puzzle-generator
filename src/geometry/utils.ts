@@ -5,14 +5,17 @@ import type {
   Vertex,
   Piece,
   PieceID,
+  CurveTo,
   Edge,
   EdgeID,
   HalfEdge,
   HalfEdgeID,
   AABB,
   EdgeSegment,
+  RandomFn,
   VertexID,
 } from "./types";
+import type { TabGenerator } from "./generators/tab/TabGenerator";
 
 /**
  * Calculates the squared Euclidean distance between two points.
@@ -126,7 +129,7 @@ export function getPieceAABB(piece: Piece, topology: PuzzleTopology): AABB {
 
   if (!currentEdge) {
     // Should not happen in a valid topology
-    return piece.bbox;
+    return piece.bounds;
   }
 
   // This helper function expands the bounding box to include a given point.
@@ -196,4 +199,141 @@ export function findClosestVertex(
   }
 
   return closestVertexIndex === -1 ? null : closestVertexIndex;
+}
+
+/**
+ * Calculates the Axis-Aligned Bounding Box (AABB) for a given polygon.
+ * @param polygon - An array of vertices representing the polygon.
+ * @returns The AABB or a zero-area box at the origin if the polygon is empty.
+ */
+export function polygonBounds(polygon: Vec2[]): AABB {
+  if (polygon.length === 0) {
+    return [0, 0, 0, 0];
+  }
+
+  let minX = polygon[0][0];
+  let minY = polygon[0][1];
+  let maxX = minX;
+  let maxY = minY;
+
+  for (let i = 1; i < polygon.length; i++) {
+    const p = polygon[i];
+    minX = Math.min(minX, p[0]);
+    minY = Math.min(minY, p[1]);
+    maxX = Math.max(maxX, p[0]);
+    maxY = Math.max(maxY, p[1]);
+  }
+
+  return [minX, minY, maxX, maxY];
+}
+
+
+/**
+ * Checks if two points are effectively at the same location.
+ * @param p1 The first point.
+ * @param p2 The second point.
+ * @returns `true` if points are equal.
+ */
+export function arePointsEqual(p1: Vec2, p2: Vec2): boolean {
+  return Math.abs(p1[0] - p2[0]) < 1e-6 && Math.abs(p1[1] - p2[1]) < 1e-6;
+}
+
+/**
+ * Generates the full segment path for an edge based on its TabPlacements.
+ * This function modifies the half-edges of the provided edge in place.
+ */
+export function generateSegmentsForEdge(
+  edge: Edge,
+  topology: PuzzleTopology,
+  tabGenerator: TabGenerator,
+  random: RandomFn
+): void {
+  const heLeft = topology.halfEdges.get(edge.heLeft)!;
+  const heRight = topology.halfEdges.get(edge.heRight)!;
+
+  const edgeStart = heLeft.origin;
+  const edgeEnd = heRight.origin;
+  //const edgeLength = Math.hypot(edgeEnd[0] - edgeStart[0], edgeEnd[1] - edgeStart[1]);
+
+  const heLeftSegments: EdgeSegment[] = [];
+  let currentPos = edgeStart;
+
+  // Sort tabs by their position to process them in order
+  edge.tabs!.sort((a, b) => a.position - b.position);
+
+  for (const tab of edge.tabs!) {
+    //const tabWidth = edgeLength * tab.size;
+    // Calculate the start point of this tab's region
+    const tabStartPos = tab.position - tab.size / 2;
+    const tabStartPoint: Vec2 = [
+      edgeStart[0] + (edgeEnd[0] - edgeStart[0]) * tabStartPos,
+      edgeStart[1] + (edgeEnd[1] - edgeStart[1]) * tabStartPos,
+    ];
+
+    // Add a straight line from the last position to the start of this tab
+    if (Math.hypot(tabStartPoint[0] - currentPos[0], tabStartPoint[1] - currentPos[1]) > 1e-6) {
+      heLeftSegments.push({ type: 'line', p: tabStartPoint });
+    }
+
+    // Generate segments for the tab itself
+    const tabEndPoint: Vec2 = [
+      edgeStart[0] + (edgeEnd[0] - edgeStart[0]) * (tabStartPos + tab.size),
+      edgeStart[1] + (edgeEnd[1] - edgeStart[1]) * (tabStartPos + tab.size),
+    ];
+    const tabSegments = tabGenerator.createTabSegments(tabStartPoint, tabEndPoint, tab, random);
+    heLeftSegments.push(...tabSegments);
+
+    currentPos = tabEndPoint;
+  }
+
+  // Add a final line segment to the end of the edge
+  if (Math.hypot(edgeEnd[0] - currentPos[0], edgeEnd[1] - currentPos[1]) > 1e-6) {
+    heLeftSegments.push({ type: 'line', p: edgeEnd });
+  }
+
+  // Assign the generated segments and create the inverse for the twin
+  heLeft.segments = heLeftSegments;
+  heRight.segments = invertSegments(heLeftSegments, edgeStart);
+}
+
+/**
+ * Creates an inverted copy of an array of edge segments.
+ */
+export function invertSegments(segments: EdgeSegment[], originalStart: Vec2): EdgeSegment[] {
+  const inverted: EdgeSegment[] = [];
+
+  for (let i = segments.length - 1; i >= 0; i--) {
+    const segment = segments[i];
+    let segmentStart = originalStart;
+    if (i > 0) {
+      const prevSegment = segments[i-1];
+      segmentStart = (prevSegment.type === 'line') ? prevSegment.p : prevSegment.p3;
+    }
+
+    if (segment.type === 'line') {
+      inverted.push({ type: 'line', p: segmentStart });
+    } else { // 'bezier'
+      inverted.push({
+        type: 'bezier',
+        p1: segment.p2,
+        p2: segment.p1,
+        p3: segmentStart,
+      });
+    }
+  }
+  return inverted;
+}
+
+
+/**
+ * Helper function to reverse a single Bézier curve segment.
+ * The new curve starts where the old one ended and vice-versa.
+ */
+export function invertCurve(segment: CurveTo, newEndPoint: Vec2): CurveTo {
+  return {
+    type: 'bezier',
+    p1: segment.p2, // Control points are swapped
+    p2: segment.p1,
+    p3: newEndPoint, // The new end point is the start point of the original
+  };
 }
