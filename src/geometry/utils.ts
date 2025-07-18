@@ -65,31 +65,6 @@ export function deserializeTopology(serialized: PuzzleTopologySerializable): Puz
   };
 }
 
-/**
- * Calculates the Axis-Aligned Bounding Box (AABB) for a single edge segment.
- * @param segment - The line or curve segment.
- * @param startPoint - The starting coordinate of the segment.
- * @returns An AABB tuple: [xmin, ymin, xmax, ymax].
- */
-export function calculateSegmentAABB(segment: EdgeSegment, startPoint: Vec2): AABB {
-  const points: Vec2[] = [startPoint];
-
-  if (segment.type === 'line') {
-    points.push(segment.p);
-  } else { // 'bezier'
-    points.push(segment.p1, segment.p2, segment.p3);
-  }
-
-  const xCoords = points.map((p) => p[0]);
-  const yCoords = points.map((p) => p[1]);
-
-  return [
-    Math.min(...xCoords),
-    Math.min(...yCoords),
-    Math.max(...xCoords),
-    Math.max(...yCoords),
-  ];
-}
 
 /**
  * Checks if two Axis-Aligned Bounding Boxes intersect.
@@ -109,6 +84,38 @@ export function doAABBsIntersect(a: AABB, b: AABB): boolean {
   return true;
 }
 
+/**
+ * Calculates the Axis-Aligned Bounding Box (AABB) for a path.
+ *
+ * @param startPoint The starting point of the path.
+ * @param segments The array of segments defining the rest of the path.
+ * @returns Bounding box for the entire set of segments
+ */
+export function calculateSegmentsBounds(startPoint: Vec2, segments: EdgeSegment[]): AABB {
+  let [xmin, ymin] = startPoint;
+  let [xmax, ymax] = startPoint;
+
+  const updateBounds = (p: Vec2) => {
+    xmin = Math.min(xmin, p[0]);
+    ymin = Math.min(ymin, p[1]);
+    xmax = Math.max(xmax, p[0]);
+    ymax = Math.max(ymax, p[1]);
+  };
+
+  for (const segment of segments) {
+    if (segment.type === 'line') {
+      updateBounds(segment.p);
+    } else { // 'bezier'
+      // For a robust bounding box, we must check the control points,
+      // as the curve can extend beyond its endpoint.
+      updateBounds(segment.p1);
+      updateBounds(segment.p2);
+      updateBounds(segment.p3);
+    }
+  }
+
+  return [xmin, ymin, xmax, ymax];
+}
 
 /**
  * Calculates the precise bounding box for a single puzzle piece by traversing
@@ -118,7 +125,7 @@ export function doAABBsIntersect(a: AABB, b: AABB): boolean {
  * @param topology The full puzzle topology, used to access half-edge data.
  * @returns A new AABB for the piece.
  */
-export function getPieceAABB(piece: Piece, topology: PuzzleTopology): AABB {
+export function getPieceBounds(piece: Piece, topology: PuzzleTopology): AABB {
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -132,8 +139,8 @@ export function getPieceAABB(piece: Piece, topology: PuzzleTopology): AABB {
     return piece.bounds;
   }
 
-  // This helper function expands the bounding box to include a given point.
-  const expandBbox = (p: Vec2) => {
+  // helper function expands the bounding box to include a given point.
+  const updateBounds = (p: Vec2) => {
     minX = Math.min(minX, p[0]);
     minY = Math.min(minY, p[1]);
     maxX = Math.max(maxX, p[0]);
@@ -142,27 +149,17 @@ export function getPieceAABB(piece: Piece, topology: PuzzleTopology): AABB {
 
   // Traverse the entire boundary of the piece, one half-edge at a time.
   do {
-    // Account for the starting point of the current edge
-    expandBbox(currentEdge.origin);
+    // account for the starting point of the current edge
+    updateBounds(currentEdge.origin);
 
-    // Account for all points within the edge's segments (if any)
+    // account for all points within the edge's segments (if any)
     if (currentEdge.segments) {
-      for (const segment of currentEdge.segments) {
-        if (segment.type === 'line') {
-          expandBbox(segment.p);
-        } else { // 'bezier'
-          // For a bezier curve, we check the control points and the end point.
-          // Note: A precise bounding box would require finding the curve's
-          // mathematical extrema, but checking control points is a common
-          // and often sufficient approximation.
-          expandBbox(segment.p1);
-          expandBbox(segment.p2);
-          expandBbox(segment.p3);
-        }
-      }
+      const segmentBounds = calculateSegmentsBounds(currentEdge.origin, currentEdge.segments);
+      updateBounds([segmentBounds[0], segmentBounds[1]]);
+      updateBounds([segmentBounds[2], segmentBounds[3]]);
     }
 
-    // Move to the next half-edge around the piece
+    // move to the next half-edge around the piece
     currentEdge = topology.halfEdges.get(currentEdge.next);
 
   } while (currentEdge && currentEdge.id !== startingEdgeId);
@@ -295,6 +292,9 @@ export function generateSegmentsForEdge(
   // Assign the generated segments and create the inverse for the twin
   heLeft.segments = heLeftSegments;
   heRight.segments = invertSegments(heLeftSegments, edgeStart);
+
+  // update the edge bounding box
+  edge.bounds = calculateSegmentsBounds(edgeStart, heLeftSegments);
 }
 
 /**

@@ -8,7 +8,7 @@ import type {
 } from "./types";
 import {
   distanceSq,
-  calculateSegmentAABB,
+  calculateSegmentsBounds,
   serializeTopology,
   doAABBsIntersect,
 } from "./utils";
@@ -74,7 +74,7 @@ function getPieceBoundary(piece: Piece, puzzle: PuzzleTopology): BoundarySegment
         boundary.push({
           segment,
           startPoint,
-          bbox: calculateSegmentAABB(segment, startPoint),
+          bbox: calculateSegmentsBounds(startPoint, [segment]),
         });
         // The next segment starts where the current one ends
         startPoint = segment.type === 'line' ? segment.p : segment.p3;
@@ -90,7 +90,7 @@ function getPieceBoundary(piece: Piece, puzzle: PuzzleTopology): BoundarySegment
       boundary.push({
         segment: lineSegment,
         startPoint: startPoint,
-        bbox: calculateSegmentAABB(lineSegment, startPoint),
+        bbox: calculateSegmentsBounds(startPoint, [lineSegment]),
       });
     }
 

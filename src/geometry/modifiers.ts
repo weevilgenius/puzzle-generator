@@ -2,13 +2,14 @@ import type {
   Edge,
   EdgeID,
   HalfEdge,
+  Piece,
   PieceID,
   PuzzleGeometry,
   Vec2,
   VertexID,
 } from './types';
 import { TabPlacementStrategyRegistry, TabGeneratorRegistry } from './generators/Generator';
-import { generateSegmentsForEdge, getPieceAABB } from './utils';
+import { generateSegmentsForEdge, getPieceBounds } from './utils';
 import mulberry32 from "../utils/mulberry";
 
 
@@ -83,7 +84,7 @@ export function moveVertex(
   for (const pieceId of affectedPieceIDs) {
     const piece = puzzle.pieces.get(pieceId);
     if (piece) {
-      piece.bounds = getPieceAABB(piece, puzzle);
+      piece.bounds = getPieceBounds(piece, puzzle);
     }
   }
 }
@@ -141,6 +142,8 @@ export function regenerateAffectedTabs(
   // re-run the placement strategy in case it needs to make a change
   placementStrategy.updateTabPlacements(Array.from(affectedEdges), { topology: puzzle, random });
 
+  const affectedPieces = new Set<Piece>();
+
   // Now, regenerate the tabs for the unique set of affected edges.
   for (const edge of affectedEdges) {
     // only add tabs to internal edges
@@ -148,12 +151,24 @@ export function regenerateAffectedTabs(
     if (isInternal) {
       // remove any existing segments
       const he1 = puzzle.halfEdges.get(edge.heLeft);
-      if (he1) { he1.segments = undefined; }
+      if (he1) {
+        he1.segments = undefined;
+        affectedPieces.add(puzzle.pieces.get(he1.piece)!);
+      }
       const he2 = puzzle.halfEdges.get(edge.heRight);
-      if (he2) { he2.segments = undefined; }
+      if (he2) {
+        he2.segments = undefined;
+        affectedPieces.add(puzzle.pieces.get(he2.piece)!);
+      }
 
       // regenerate segments
       generateSegmentsForEdge(edge, puzzle, tabGenerator, random);
     }
   }
+
+  // recalculate boundaries for affected pieces
+  for (const piece of affectedPieces) {
+    piece.bounds = getPieceBounds(piece, puzzle);
+  }
+
 }
