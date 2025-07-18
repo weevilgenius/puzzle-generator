@@ -28,7 +28,7 @@ export const StringInputControl: m.ClosureComponent<StringInputControlAttr> = ()
       // use Webawesome for the heavy lifting
       return m('wa-input.string-input', {
         label: attrs.config.label,
-        "help-text": attrs.config.helpText,
+        hint: attrs.config.helpText,
         type: "text",
         inputmode: "text",
         size: "small",

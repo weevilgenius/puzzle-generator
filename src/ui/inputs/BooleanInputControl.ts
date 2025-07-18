@@ -27,7 +27,7 @@ export const BooleanInputControl: m.ClosureComponent<BooleanInputControlAttr> = 
     view: ({ attrs }) => {
       // use Webawesome for the heavy lifting
       return m('wa-checkbox.boolean-input', {
-        "help-text": attrs.config.helpText,
+        hint: attrs.config.helpText,
         disabled: attrs.disabled,
         checked: attrs.value,
         onchange: (e: Event) => {
