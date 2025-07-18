@@ -115,6 +115,8 @@ function narrowPhaseDetection(s1: BoundarySegment, s2: BoundarySegment, adjacent
     const intersections: Vec2[] = [];
     const type1 = s1.segment.type;
     const type2 = s2.segment.type;
+    const tolerance = 0.01; // values this close to the beginning or end of a curve are effectively at the ends
+
 
     // Bezier vs. Bezier
     if (type1 === 'bezier' && type2 === 'bezier') {
@@ -131,7 +133,6 @@ function narrowPhaseDetection(s1: BoundarySegment, s2: BoundarySegment, adjacent
 
         // if adjacent, they are allowed to touch at their connection point
         if (adjacent) {
-          const tolerance = 0.01;
           const isConnectionPoint = t1 > (1.0 - tolerance) && t2 < tolerance || t1 < tolerance && t2 > (1.0 - tolerance);
           if (isConnectionPoint) {
             // valid touch, not an intersection
@@ -158,12 +159,25 @@ function narrowPhaseDetection(s1: BoundarySegment, s2: BoundarySegment, adjacent
       // intersects() returns an array of t-values on the curve
       const tValues = curve.intersects(line) as number[]; // always numbers when comparing to line
       tValues.forEach((t) => {
+        // if adjacent, they are allowed to touch at their connection point
+        if (adjacent) {
+          const isConnectionPoint = t > (1.0 - tolerance) || t < tolerance;
+          if (isConnectionPoint) {
+            // valid touch, not an intersection
+            return;
+          }
+        }
         const p = curve.get(t);
         intersections.push([p.x, p.y]);
       });
     }
     // Line vs. Line
     else {
+      // only non-adjacent line segments need to be compared
+      if (!adjacent) {
+        return resolve(intersections);
+      }
+
       const p1 = s1.startPoint;
       const p2 = s1.segment.p;
       const p3 = s2.startPoint;
