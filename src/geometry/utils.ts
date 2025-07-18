@@ -248,6 +248,7 @@ export function generateSegmentsForEdge(
   tabGenerator: TabGenerator,
   random: RandomFn
 ): void {
+  if (!edge.tabs) { return; }
   const heLeft = topology.halfEdges.get(edge.heLeft)!;
   const heRight = topology.halfEdges.get(edge.heRight)!;
 
@@ -259,9 +260,9 @@ export function generateSegmentsForEdge(
   let currentPos = edgeStart;
 
   // Sort tabs by their position to process them in order
-  edge.tabs!.sort((a, b) => a.position - b.position);
+  edge.tabs.sort((a, b) => a.position - b.position);
 
-  for (const tab of edge.tabs!) {
+  for (const tab of edge.tabs) {
     //const tabWidth = edgeLength * tab.size;
     // Calculate the start point of this tab's region
     const tabStartPos = tab.position - tab.size / 2;

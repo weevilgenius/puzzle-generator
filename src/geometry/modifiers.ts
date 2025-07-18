@@ -7,7 +7,7 @@ import type {
   Vec2,
   VertexID,
 } from './types';
-import { TabGeneratorRegistry } from './generators/Generator';
+import { TabPlacementStrategyRegistry, TabGeneratorRegistry } from './generators/Generator';
 import { generateSegmentsForEdge, getPieceAABB } from './utils';
 import mulberry32 from "../utils/mulberry";
 
@@ -100,10 +100,11 @@ export function regenerateAffectedTabs(
   vertex: VertexID
 ): void {
 
-  const { seed, width, height, tabConfig } = puzzle;
+  const { seed, width, height, placementConfig, tabConfig } = puzzle;
   const random = mulberry32(seed);
 
-  // recreate the tab generator that was used for this puzzle
+  // recreate the placement strategy and tab generator that were used for this puzzle
+  const placementStrategy = TabPlacementStrategyRegistry.create(width, height, placementConfig);
   const tabGenerator = TabGeneratorRegistry.create(width, height, tabConfig);
 
   const affectedEdges = new Set<Edge>();
@@ -137,9 +138,12 @@ export function regenerateAffectedTabs(
     }
   }
 
+  // re-run the placement strategy in case it needs to make a change
+  placementStrategy.updateTabPlacements(Array.from(affectedEdges), { topology: puzzle, random });
+
   // Now, regenerate the tabs for the unique set of affected edges.
   for (const edge of affectedEdges) {
-    // Only add tabs to internal edges, as per your original logic.
+    // only add tabs to internal edges
     const isInternal = edge.heRight !== -1;
     if (isInternal) {
       // remove any existing segments

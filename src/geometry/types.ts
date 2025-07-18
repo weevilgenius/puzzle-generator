@@ -182,6 +182,8 @@ export interface PuzzleGeometry extends PuzzleTopology {
   pointConfig: GeneratorConfig;
   /** How did the pieces get built? */
   pieceConfig: GeneratorConfig;
+  /** How did tabs get placed on piece edges? */
+  placementConfig: GeneratorConfig;
   /** How did tabs get constructed? */
   tabConfig: GeneratorConfig;
   /** Coordinates where the puzzle has problems, such as pieces intersecting */

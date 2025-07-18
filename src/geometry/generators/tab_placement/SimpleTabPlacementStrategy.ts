@@ -1,4 +1,4 @@
-import type { TabPlacement } from "../../types";
+import type { PuzzleTopology, Edge, RandomFn, TabPlacement } from "../../types";
 import type { TabPlacementStrategy, TabPlacementStrategyRuntimeOptions } from "./TabPlacementStrategy";
 import type { GeneratorUIMetadata } from '../../ui_types';
 import { GeneratorConfig, GeneratorFactory } from "../Generator";
@@ -47,6 +47,39 @@ export const SimpleTabPlacementStrategyUIMetadata: GeneratorUIMetadata = {
   ],
 };
 
+// helper function to do the actual placement work
+function placeTabOnEdge(
+  edge: Edge,
+  topology: PuzzleTopology,
+  config: { tabSize: number, minEdgeLength: number },
+  random: RandomFn
+): void {
+  // clear any existing tabs in case we're re-evaluating
+  edge.tabs = undefined;
+
+  // we only place on internal edges
+  const isInternal = edge.heRight !== -1;
+  if (!isInternal) { return; }
+
+  const he1 = topology.halfEdges.get(edge.heLeft);
+  const he2 = topology.halfEdges.get(edge.heRight);
+  if (!he1 || !he2) return;
+
+  const p1 = he1.origin;
+  const p2 = he2.origin;
+  const edgeLength = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+
+  // add a tab, if the edge is long enough
+  if (edgeLength >= config.minEdgeLength) {
+    const tab: TabPlacement = {
+      position: 0.5, // center of the edge
+      size: config.tabSize,
+      convex: random() > 0.5, // tab is "innie" or "outie"
+    };
+    edge.tabs = [tab];
+  }
+}
+
 /**
  * A straightforward tab placement strategy that adds a single tab to the
  * center of each internal edge of the puzzle.
@@ -57,32 +90,19 @@ export const SimpleTabPlacementStrategyFactory: GeneratorFactory<TabPlacementStr
   config: SimpleTabPlacementStrategyConfig,
 ): TabPlacementStrategy => {
   const { tabSize = 0.5, minEdgeLength = 0 } = config;
+  const placementConfig = { tabSize, minEdgeLength };
 
   return {
     placeTabs(runtimeOpts: TabPlacementStrategyRuntimeOptions): void {
       const { topology, random } = runtimeOpts;
-
       for (const edge of topology.edges.values()) {
-        const isInternal = edge.heRight !== -1;
-        if (!isInternal) { continue; }
-
-        const he1 = topology.halfEdges.get(edge.heLeft);
-        const he2 = topology.halfEdges.get(edge.heRight);
-        if (!he1 || !he2) continue;
-
-        const p1 = he1.origin;
-        const p2 = he2.origin;
-        const edgeLength = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
-
-        // add a tab, if the edge is long enough
-        if (edgeLength >= minEdgeLength) {
-          const tab: TabPlacement = {
-            position: 0.5, // center of the edge
-            size: tabSize,
-            convex: random() > 0.5, // tab is "innie" or "outie"
-          };
-          edge.tabs = [tab];
-        }
+        placeTabOnEdge(edge, topology, placementConfig, random);
+      }
+    },
+    updateTabPlacements(edges: Edge[], runtimeOpts: TabPlacementStrategyRuntimeOptions): void {
+      const { topology, random } = runtimeOpts;
+      for (const edge of edges) {
+        placeTabOnEdge(edge, topology, placementConfig, random);
       }
     },
   };

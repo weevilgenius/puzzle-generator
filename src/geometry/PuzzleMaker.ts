@@ -82,6 +82,7 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
     pieceSize,
     pointConfig,
     pieceConfig,
+    placementConfig,
     tabConfig,
     vertices: topology.vertices,
     boundary: topology.boundary,

@@ -1,4 +1,4 @@
-import { RandomFn, PuzzleTopology } from "../../types";
+import { RandomFn, PuzzleTopology, Edge } from "../../types";
 
 /** Options passed to a TabPlacementStrategy at runtime */
 export interface TabPlacementStrategyRuntimeOptions {
@@ -15,4 +15,10 @@ export interface TabPlacementStrategy {
    * to the edges. This method modifies the topology in place.
    */
   placeTabs(runtimeOpts: TabPlacementStrategyRuntimeOptions): void;
+
+  /**
+   * Re-evaluates and updates tab placements for a specific set of edges.
+   * This is used for dynamic updates, like after a vertex is moved.
+   */
+  updateTabPlacements(edges: Edge[], runtimeOpts: TabPlacementStrategyRuntimeOptions): void;
 }
