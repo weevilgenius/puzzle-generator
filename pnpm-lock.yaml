@@ -28,8 +28,8 @@ importers:
         specifier: ^9.31.0
         version: 9.31.0
       '@stylistic/eslint-plugin':
-        specifier: ^5.2.0
-        version: 5.2.0(eslint@9.31.0)
+        specifier: ^5.2.1
+        version: 5.2.1(eslint@9.31.0)
       '@tsconfig/recommended':
         specifier: ^1.0.10
         version: 1.0.10
@@ -421,8 +421,8 @@ packages:
   '@shoelace-style/localize@3.2.1':
     resolution: {integrity: sha512-r4C9C/5kSfMBIr0D9imvpRdCNXtUNgyYThc4YlS6K5Hchv1UyxNQ9mxwj+BTRH2i1Neits260sR3OjKMnplsFA==}
 
-  '@stylistic/eslint-plugin@5.2.0':
-    resolution: {integrity: sha512-RCEdbREv9EBiToUBQTlRhVYKG093I6ZnnQ990j08eJ6uRZh71DXkOnoxtTLfDQ6utVCVQzrhZFHZP0zfrfOIjA==}
+  '@stylistic/eslint-plugin@5.2.1':
+    resolution: {integrity: sha512-siNoKzQ0EJOfCrMFyA1wMtv1+t2OVH00PTXR9kZXji7AUVhL1TiumIF0Iufa2aqR3oOKsxjc/a8PiB9ANNW3+g==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
       eslint: '>=9.0.0'
@@ -1450,7 +1450,7 @@ snapshots:
 
   '@shoelace-style/localize@3.2.1': {}
 
-  '@stylistic/eslint-plugin@5.2.0(eslint@9.31.0)':
+  '@stylistic/eslint-plugin@5.2.1(eslint@9.31.0)':
     dependencies:
       '@eslint-community/eslint-utils': 4.7.0(eslint@9.31.0)
       '@typescript-eslint/types': 8.37.0
