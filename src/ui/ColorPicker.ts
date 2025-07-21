@@ -24,20 +24,17 @@ export interface ColorPickerAttrs extends m.Attributes {
 // component with no state
 export const ColorPicker: m.Component<ColorPickerAttrs> = {
   view: ({ attrs }) => {
-    return m('.color-picker', [
-      m('.label', attrs.label),
-      m('wa-color-picker', {
-        label: 'Select a color', // used by assistive devices
-        value: attrs.color,
-        size: attrs.size ?? "medium",
-        format: 'rgb',
-        onchange: (e: Event & MithrilViewEvent) => {
-          e.redraw = false;
-          const input = e.target as WaColorPicker;
-          attrs.onUpdate(input.value ?? '');
-        },
-      }),
-    ]);
+    return m('wa-color-picker', {
+      label: attrs.label,
+      value: attrs.color,
+      size: attrs.size ?? "medium",
+      format: 'rgb',
+      onchange: (e: Event & MithrilViewEvent) => {
+        e.redraw = false;
+        const input = e.target as WaColorPicker;
+        attrs.onUpdate(input.value ?? '');
+      },
+    });
   },
 };
 export default ColorPicker;

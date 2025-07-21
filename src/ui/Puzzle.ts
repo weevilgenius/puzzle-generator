@@ -21,6 +21,8 @@ export interface PuzzleAttrs extends m.Attributes {
   puzzle: PuzzleGeometry,
   /** If true, geometry is being regenerated */
   isDirty: boolean;
+  /** If set, draw the seed points in this color */
+  pointColor?: string;
   /** User uploaded image */
   imageUrl?: string;
   /** Callback indicating user modified the puzzle geometry */
@@ -125,7 +127,7 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
         return;
       }
       if (!attrs.isDirty) {
-        drawPuzzle(attrs.puzzle, state.canvas, attrs.color);
+        drawPuzzle(attrs.puzzle, state.canvas, attrs.color, attrs.pointColor);
       }
     },
 
@@ -135,7 +137,7 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
         return;
       }
       if (!attrs.isDirty) {
-        drawPuzzle(attrs.puzzle, state.canvas, attrs.color);
+        drawPuzzle(attrs.puzzle, state.canvas, attrs.color, attrs.pointColor);
       }
     },
 

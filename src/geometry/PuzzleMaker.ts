@@ -95,7 +95,7 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
 }
 
 /** Draws puzzle geometry onto a canvas */
-export function drawPuzzle(puzzle: PuzzleGeometry, canvas: HTMLCanvasElement, pieceColor: string, showPoints = false) {
+export function drawPuzzle(puzzle: PuzzleGeometry, canvas: HTMLCanvasElement, pieceColor: string, pointColor?: string) {
   const ctx = canvas.getContext('2d');
   if (!ctx) {
     console.error("Could not get 2D context from canvas");
@@ -234,8 +234,8 @@ export function drawPuzzle(puzzle: PuzzleGeometry, canvas: HTMLCanvasElement, pi
   }
 
   // draw the piece sites (original Voronoi points) for reference
-  if (showPoints) {
-    ctx.fillStyle = 'blue';
+  if (pointColor) {
+    ctx.fillStyle = pointColor;
     for (const piece of puzzle.pieces.values()) {
       const [x, y] = piece.site;
       ctx.beginPath();

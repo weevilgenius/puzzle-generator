@@ -9,6 +9,7 @@ import GeometryCheckIndicator from './ui/GeometryCheckIndicator';
 import UploadImageButton from './ui/UploadImageButton';
 import GeneratorPicker from './ui/GeneratorPicker';
 import NumberInputControl from './ui/inputs/NumberInputControl';
+import BooleanInputControl from './ui/inputs/BooleanInputControl';
 import AspectRatioPicker from './ui/AspectRatioPicker';
 import ColorPicker from './ui/ColorPicker';
 
@@ -89,6 +90,10 @@ const Page: m.ClosureComponent<unknown> = () => {
     distance: number;
     /** Color of pieces */
     color: string;
+    /** Should we draw the seed points? */
+    drawPoints: boolean;
+    /** Color of seed points */
+    pointColor: string;
     /** Problems found by the geometry check algorithms */
     geometryProblems: {
       /** If true, the geometry will be re-checked whenever a new puzzle is generated */
@@ -118,6 +123,8 @@ const Page: m.ClosureComponent<unknown> = () => {
     aspectRatio: defaultWidth / defaultHeight,
     distance: 40,
     color: isDarkMode ? "#DDDDDD" : "#333333",
+    drawPoints: false,
+    pointColor: isDarkMode ? "#FF0000" : "#0000FF",
     geometryProblems: {
       autoCheck: false,
       problems: undefined,
@@ -263,6 +270,7 @@ const Page: m.ClosureComponent<unknown> = () => {
               imageUrl: state.backgroundImageUrl,
               puzzle: state.puzzle,
               isDirty: state.dirty,
+              pointColor: state.drawPoints ? state.pointColor : undefined,
               onPuzzleChanged: (puzzle) => {
                 // user dragged a vertex to tweak the puzzle
                 state.puzzle = puzzle;
@@ -378,6 +386,31 @@ const Page: m.ClosureComponent<unknown> = () => {
                 m.redraw();
               },
             }),
+
+            // draw seed points?
+            m('.draw-points', [
+              m(BooleanInputControl, {
+                config: {
+                  name: 'drawPoints',
+                  label: 'Draw seed points',
+                  type: 'boolean',
+                },
+                value: state.drawPoints,
+                onChange: (value) => {
+                  state.drawPoints = value;
+                  m.redraw();
+                },
+              }),
+              state.drawPoints && m(ColorPicker, {
+                label: 'Seed points color',
+                color: state.pointColor,
+                size: "small",
+                onUpdate: (newColor) => {
+                  state.pointColor = newColor;
+                  m.redraw();
+                },
+              }),
+            ]),
 
             // render a generator picker for each type of generator
             ...Object.entries(state.generators).map(([type, generator]) => {
