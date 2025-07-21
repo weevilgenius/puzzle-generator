@@ -12,5 +12,5 @@
 
 .geometry-check-indicator wa-progress-bar {
   min-width: 200px;
-  height: 8px;
+  --track-height: 4px;
 }
