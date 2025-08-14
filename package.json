@@ -32,7 +32,7 @@
     "rollup-plugin-visualizer": "^6.0.3",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.39.1",
-    "vite": "^7.0.6"
+    "vite": "^7.1.2"
   },
   "dependencies": {
     "@awesome.me/webawesome": "3.0.0-beta.4",
