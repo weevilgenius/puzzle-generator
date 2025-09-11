@@ -18,8 +18,8 @@ importers:
         specifier: ^6.0.4
         version: 6.0.4
       mithril:
-        specifier: ^2.3.5
-        version: 2.3.5
+        specifier: ^2.3.7
+        version: 2.3.7
       poisson-disk-sampling:
         specifier: ^2.3.1
         version: 2.3.1
@@ -927,8 +927,8 @@ packages:
     resolution: {integrity: sha512-G6T0ZX48xgozx7587koeX9Ys2NYy6Gmv//P89sEte9V9whIapMNF4idKxnW2QtCcLiTWlb/wfCabAtAFWhhBow==}
     engines: {node: '>=16 || 14 >=14.17'}
 
-  mithril@2.3.5:
-    resolution: {integrity: sha512-wcuBG6S32JwZ6ii+g5lRu0rQnnUtkoZIB3sg7bqnGg38UGC+Y7GIPzc097BBpOn54/mf2CMzS9WlULmTWi2iAQ==}
+  mithril@2.3.7:
+    resolution: {integrity: sha512-igRr/o79tNDTL2wa4ta16V7B0A0KdtjPcRVBdw2BMHF0c08xpCk4GxN+Ws04NYq2kGDBA0En1QHF/dgCw1oIIw==}
 
   moore@1.0.0:
     resolution: {integrity: sha512-xcsFo/jgtMuVaGePHod5TdSzxnRAQQ4wFpDmFuu34lHvx5sNMsioA84NW7iBWYZ10jHR/nyGaDkhunMJxqAzkw==}
@@ -2021,7 +2021,7 @@ snapshots:
     dependencies:
       brace-expansion: 2.0.2
 
-  mithril@2.3.5: {}
+  mithril@2.3.7: {}
 
   moore@1.0.0: {}
 
