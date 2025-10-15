@@ -127,6 +127,9 @@ export default tseslint.config(
       // prefer use of .startsWith() and .endsWith() for strings
       "@typescript-eslint/prefer-string-starts-ends-with": "warn",
 
+      // complain about using a computed key with a constant
+      "no-useless-computed-key": "warn",
+
       // ==================================================
       // Style/formatting rules
       // ==================================================
