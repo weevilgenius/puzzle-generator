@@ -33,8 +33,17 @@ export type RandomFn = () => number;
 
 
 /* ========================================================= *\
- * Edge Segment Geometry                                     *
+ * Path Geometry                                             *
 \* ========================================================= */
+
+/**
+ * Move to a new position. The position is specified as an offset from the
+ * previous segment's end point.
+ */
+export interface MoveTo {
+  type: 'move';
+  p: Vec2;
+}
 
 /**
  * A straight line segment, defined by its end point. The start point is
@@ -58,10 +67,27 @@ export interface CurveTo {
   p3: Vec2;
 }
 
-/**
- * A discriminated union representing a segment of a half-edge's path.
- */
+/** An elliptical arc segment. */
+export interface ArcTo {
+  type: 'arc';
+  /** The end point of the arc */
+  p: Vec2;
+  /** The x and y radii of the ellipse */
+  radii: Vec2;
+  /** The rotation of the ellipse's x-axis in degrees */
+  rotation: number;
+  /** Should the larger of the two possible arcs be used? */
+  largeArc: boolean;
+  /** Should the arc be drawn in a "positive-angle" direction? */
+  sweep: boolean;
+}
+
+/** A discriminated union representing a segment of a half-edge's path. */
 export type EdgeSegment = LineTo | CurveTo;
+
+/** A discriminated union representing all segment types. */
+export type PathCommand = MoveTo | LineTo | CurveTo | ArcTo;
+
 
 /* ========================================================= *\
  *  Tab geometry                                             *
@@ -164,6 +190,8 @@ export interface PuzzleTopology {
   halfEdges: Map<EdgeID, HalfEdge>;
   /** IDs of edges that form the outer boundary of the puzzle. */
   boundary: EdgeID[];
+  /** The boundary path that defines the puzzle's outer shape */
+  borderPath: PathCommand[];
 }
 
 /** Fully-generated puzzle ready for rendering / export. */

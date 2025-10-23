@@ -1,4 +1,4 @@
-import type { PuzzleTopology, Edge, RandomFn, TabPlacement } from "../../types";
+import type { PuzzleTopology, Edge, PathCommand, RandomFn, TabPlacement } from "../../types";
 import type { TabPlacementStrategy, TabPlacementStrategyRuntimeOptions } from "./TabPlacementStrategy";
 import type { GeneratorUIMetadata } from '../../ui_types';
 import { GeneratorConfig, GeneratorFactory } from "../Generator";
@@ -100,8 +100,8 @@ function placeTabOnEdge(
  * center of each internal edge of the puzzle.
  */
 export const SimpleTabPlacementStrategyFactory: GeneratorFactory<TabPlacementStrategy> = (
-  _width: number,
-  _height: number,
+  _border: PathCommand[],
+  _bounds: { width: number; height: number },
   config: SimpleTabPlacementStrategyConfig,
 ): TabPlacementStrategy => {
   const { tabSize = 0.5, minEdgeLength = 0, maxTabSize } = config;

@@ -1,5 +1,5 @@
 import type { TabGenerator } from "./TabGenerator";
-import type { EdgeSegment, TabPlacement, RandomFn, Vec2 } from "../../types";
+import type { EdgeSegment, PathCommand, TabPlacement, RandomFn, Vec2 } from "../../types";
 import type { GeneratorUIMetadata } from '../../ui_types';
 import type { GeneratorConfig, GeneratorFactory } from "../Generator";
 import { TabGeneratorRegistry } from "../Generator";
@@ -30,7 +30,7 @@ export const TriangleTabUIMetadata: GeneratorUIMetadata = {
  * TabGenerator interface. It generates a three line segment that forms a
  * triangular tab.
  */
-export const TriangleTabGeneratorFactory: GeneratorFactory<TabGenerator> = (_width: number, _height: number, _config: TriangleTabGeneratorConfig) => {
+export const TriangleTabGeneratorFactory: GeneratorFactory<TabGenerator> = (_border: PathCommand[], _bounds: { width: number; height: number }, _config: TriangleTabGeneratorConfig) => {
 
   const TriangleTabGenerator: TabGenerator = {
     createTabSegments(start: Vec2, end: Vec2, tab: TabPlacement, _random: RandomFn): EdgeSegment[] {

@@ -1,4 +1,4 @@
-import type { PuzzleGeometry, Vec2 } from "./types";
+import type { PathCommand, PuzzleGeometry, Vec2 } from "./types";
 import {
   PointGeneratorRegistry,
   PieceGeneratorRegistry,
@@ -13,10 +13,11 @@ import mulberry32 from "../utils/mulberry";
  * Configuration options for the entire puzzle generation process.
  */
 export interface PuzzleGenerationOptions {
-  /** Width of the puzzle */
-  width: number;
-  /** Height of the puzzle */
-  height: number;
+  /** Maximum bounds of the puzzle (pre-computed from the boundary path) */
+  bounds: {
+    width: number;
+    height: number;
+  };
   /** A rough guide for piece size */
   pieceSize: number;
   /** Random seed to produce repeatable puzzles */
@@ -29,6 +30,8 @@ export interface PuzzleGenerationOptions {
   placementConfig: GeneratorConfig;
   /** How should tabs get constructed? */
   tabConfig: GeneratorConfig;
+  /** Boundary path of the puzzle border */
+  border: PathCommand[];
 }
 
 /**
@@ -37,27 +40,27 @@ export interface PuzzleGenerationOptions {
  */
 // eslint-disable-next-line @typescript-eslint/require-await
 export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<PuzzleGeometry> {
-  const { width, height, pieceSize } = options;
+  const { bounds, pieceSize, border } = options;
   const { pointConfig, pieceConfig, placementConfig, tabConfig } = options;
 
-  console.log(`rebuilding puzzle with dimensions ${width}x${height}, piece size ${pieceSize}`);
+  console.log(`rebuilding puzzle with dimensions ${bounds.width}x${bounds.height}, piece size ${pieceSize}`);
 
   // get and configure the necessary generators
-  const pointGenerator = PointGeneratorRegistry.create(width, height, pointConfig);
-  const pieceGenerator = PieceGeneratorRegistry.create(width, height, pieceConfig);
-  const placementStrategy = TabPlacementStrategyRegistry.create(width, height, placementConfig);
-  const tabGenerator = TabGeneratorRegistry.create(width, height, tabConfig);
+  const pointGenerator = PointGeneratorRegistry.create(border, bounds, pointConfig);
+  const pieceGenerator = PieceGeneratorRegistry.create(border, bounds, pieceConfig);
+  const placementStrategy = TabPlacementStrategyRegistry.create(border, bounds, placementConfig);
+  const tabGenerator = TabGeneratorRegistry.create(border, bounds, tabConfig);
 
   // seeded PRNG used to generate repeatable random numbers
   const seed = options.seed ?? new Date().getTime();
   const random = mulberry32(seed);
 
   // 1. Generate seed points for the pieces
-  const points = pointGenerator.generatePoints({ width, height, pieceSize, random });
+  const points = pointGenerator.generatePoints({ width: bounds.width, height: bounds.height, pieceSize, random, border });
   console.log(`Generated ${points.length} points`);
 
   // 2. Convert points to a puzzle topology (pieces and edges)
-  const topology = pieceGenerator.generatePieces(points, { random, pieceSize });
+  const topology = pieceGenerator.generatePieces(points, { random, pieceSize, border, bounds });
   console.log(`Generated ${topology.pieces.size} pieces`);
 
   // 3. Place tabs on internal edges
@@ -77,8 +80,8 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
   const puzzle: PuzzleGeometry = {
     created: new Date().toISOString(),
     seed,
-    width,
-    height,
+    width: bounds.width,
+    height: bounds.height,
     pieceSize,
     pointConfig,
     pieceConfig,
@@ -86,6 +89,7 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
     tabConfig,
     vertices: topology.vertices,
     boundary: topology.boundary,
+    borderPath: topology.borderPath,
     pieces: topology.pieces,
     edges: topology.edges,
     halfEdges: topology.halfEdges,

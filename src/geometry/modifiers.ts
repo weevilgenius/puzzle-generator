@@ -10,6 +10,7 @@ import type {
 } from './types';
 import { TabPlacementStrategyRegistry, TabGeneratorRegistry } from './generators/Generator';
 import { generateSegmentsForEdge, getPieceBounds } from './utils';
+import { createRectangleBorder } from './borderShapes';
 import mulberry32 from "../utils/mulberry";
 
 
@@ -104,9 +105,13 @@ export function regenerateAffectedTabs(
   const { seed, width, height, placementConfig, tabConfig } = puzzle;
   const random = mulberry32(seed);
 
+  // Create a simple rectangular border for the modifier operations
+  const border = createRectangleBorder(width, height);
+  const bounds = { width, height };
+
   // recreate the placement strategy and tab generator that were used for this puzzle
-  const placementStrategy = TabPlacementStrategyRegistry.create(width, height, placementConfig);
-  const tabGenerator = TabGeneratorRegistry.create(width, height, tabConfig);
+  const placementStrategy = TabPlacementStrategyRegistry.create(border, bounds, placementConfig);
+  const tabGenerator = TabGeneratorRegistry.create(border, bounds, tabConfig);
 
   const affectedEdges = new Set<Edge>();
   const movedVertexPos = puzzle.vertices[vertex];

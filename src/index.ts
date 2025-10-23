@@ -12,6 +12,7 @@ import NumberInputControl from './ui/inputs/NumberInputControl';
 import BooleanInputControl from './ui/inputs/BooleanInputControl';
 import AspectRatioPicker from './ui/AspectRatioPicker';
 import ColorPicker from './ui/ColorPicker';
+import BorderShapePicker, { type BorderShapeType } from './ui/BorderShapePicker';
 
 // geometry parts
 import type { PuzzleGeometry } from './geometry/types';
@@ -23,6 +24,7 @@ import { Name as SimpleTabPlacementStrategyName } from './geometry/generators/ta
 import { Name as TraditionalTabGeneratorName } from './geometry/generators/tab/TraditionalTabGenerator';
 import { buildPuzzle } from './geometry/PuzzleMaker';
 import { checkGeometryInWorker } from './geometry/GeometryChecker';
+import { createRectangleBorder, createCircleBorder, createEllipseBorder, createRoundedRectBorder } from './geometry/borderShapes';
 
 // register generators
 import "./geometry/generators/point/GridJitterPointGenerator";
@@ -94,6 +96,10 @@ const Page: m.ClosureComponent<unknown> = () => {
     drawPoints: boolean;
     /** Color of seed points */
     pointColor: string;
+    /** Selected border shape */
+    borderShape: BorderShapeType;
+    /** Corner radius for rounded rectangle (pixels) */
+    borderCornerRadius: number;
     /** Problems found by the geometry check algorithms */
     geometryProblems: {
       /** If true, the geometry will be re-checked whenever a new puzzle is generated */
@@ -125,6 +131,8 @@ const Page: m.ClosureComponent<unknown> = () => {
     color: isDarkMode ? "#DDDDDD" : "#333333",
     drawPoints: false,
     pointColor: isDarkMode ? "#FF0000" : "#0000FF",
+    borderShape: 'rectangle',
+    borderCornerRadius: 50,
     geometryProblems: {
       autoCheck: false,
       problems: undefined,
@@ -166,6 +174,25 @@ const Page: m.ClosureComponent<unknown> = () => {
     backgroundImageName: '',
   };
 
+  // utility to create border based on selected shape
+  function createBorder(): import('./geometry/types').PathCommand[] {
+    const { canvasWidth, canvasHeight, borderShape, borderCornerRadius } = state;
+
+    switch (borderShape) {
+    case 'rectangle':
+      return createRectangleBorder(canvasWidth, canvasHeight);
+    case 'circle':
+      // Use the smaller dimension to ensure the circle fits
+      return createCircleBorder(Math.min(canvasWidth, canvasHeight));
+    case 'ellipse':
+      return createEllipseBorder(canvasWidth, canvasHeight);
+    case 'rounded-rect':
+      return createRoundedRectBorder(canvasWidth, canvasHeight, borderCornerRadius);
+    default:
+      return createRectangleBorder(canvasWidth, canvasHeight);
+    }
+  }
+
   // utility to invoke the geometry checks
   function handleCheckGeometry() {
     if (!state.puzzle) return;
@@ -196,8 +223,11 @@ const Page: m.ClosureComponent<unknown> = () => {
 
     oncreate: () => {
       buildPuzzle({
-        width: state.canvasWidth,
-        height: state.canvasHeight,
+        bounds: {
+          width: state.canvasWidth,
+          height: state.canvasHeight,
+        },
+        border: createBorder(),
         pieceSize: state.distance,
         pointConfig: state.generators.point.config,
         pieceConfig: state.generators.piece.config,
@@ -220,8 +250,11 @@ const Page: m.ClosureComponent<unknown> = () => {
         state.dirty = false;
         // rebuild the puzzle geometry
         buildPuzzle({
-          width: state.canvasWidth,
-          height: state.canvasHeight,
+          bounds: {
+            width: state.canvasWidth,
+            height: state.canvasHeight,
+          },
+          border: createBorder(),
           pieceSize: state.distance,
           pointConfig: state.generators.point.config,
           pieceConfig: state.generators.piece.config,
@@ -341,6 +374,32 @@ const Page: m.ClosureComponent<unknown> = () => {
               onChange: (ratio) => {
                 state.aspectRatio = ratio;
                 state.canvasWidth = state.canvasHeight * ratio;
+                state.dirty = true;
+                m.redraw();
+              },
+            }),
+
+            // Border shape
+            m(BorderShapePicker, {
+              shape: state.borderShape,
+              disabled: state.backgroundImageUrl !== undefined,
+              onChange: (shape) => {
+                state.borderShape = shape;
+                state.dirty = true;
+                m.redraw();
+              },
+            }),
+
+            // Corner radius for rounded rectangle
+            state.borderShape === 'rounded-rect' && m(NumberInputControl, {
+              config: {
+                name: 'cornerRadius',
+                label: 'Corner Radius',
+                type: 'number',
+              },
+              value: state.borderCornerRadius,
+              onChange: (value) => {
+                state.borderCornerRadius = value ?? 50;
                 state.dirty = true;
                 m.redraw();
               },

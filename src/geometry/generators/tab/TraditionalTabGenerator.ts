@@ -1,5 +1,5 @@
 import type { TabGenerator } from "./TabGenerator";
-import type { CurveTo, EdgeSegment, RandomFn, TabPlacement, Vec2 } from "../../types";
+import type { CurveTo, EdgeSegment, PathCommand, RandomFn, TabPlacement, Vec2 } from "../../types";
 import type { GeneratorUIMetadata } from '../../ui_types';
 import type { GeneratorConfig, GeneratorFactory } from "../Generator";
 import { TabGeneratorRegistry } from "../Generator";
@@ -159,7 +159,7 @@ function createTraditionalTab(
  * gentle S-curve up to the nub edge, Curve 2 is the arch across the top of the
  * nub, Curve 3 is the mirror of curve 1 back to the baseline.
  */
-export const TraditionalTabGeneratorFactory: GeneratorFactory<TabGenerator> = (_width: number, _height: number, config: TraditionalTabGeneratorConfig): TabGenerator => {
+export const TraditionalTabGeneratorFactory: GeneratorFactory<TabGenerator> = (_border: PathCommand[], _bounds: { width: number; height: number }, config: TraditionalTabGeneratorConfig): TabGenerator => {
   const { jitter = 8, heightToWidthRatio = 50 } = config;
 
   const TraditionalTabGenerator: TabGenerator = {

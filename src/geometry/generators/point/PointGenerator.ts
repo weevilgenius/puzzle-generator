@@ -1,4 +1,4 @@
-import { RandomFn, Vec2 } from "../../types";
+import { PathCommand, RandomFn, Vec2 } from "../../types";
 
 
 /** Options passed to all Point Generators at run time. */
@@ -11,6 +11,8 @@ export interface PointGenerationRuntimeOptions {
   pieceSize: number;
   /** A function for generating random numbers. */
   random: RandomFn;
+  /** The boundary path that defines the puzzle's outer shape */
+  border: PathCommand[];
 }
 
 /**

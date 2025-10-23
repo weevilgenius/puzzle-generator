@@ -1,9 +1,10 @@
 import PoissonDiskSampling from 'poisson-disk-sampling';
-import type { Vec2 } from "../../types";
+import type { Vec2, PathCommand } from "../../types";
 import type { PointGenerator, PointGenerationRuntimeOptions } from "./PointGenerator";
 import type { GeneratorUIMetadata } from '../../ui_types';
 import type { GeneratorConfig, GeneratorFactory } from "../Generator";
 import { PointGeneratorRegistry } from "../Generator";
+import { isPointInBoundary } from '../../utils';
 
 // Name of this generator, uniquely identifies it from all other PointGenerators
 type PoissonPointGeneratorName = "PoissonPointGenerator";
@@ -33,12 +34,12 @@ export const PoissonPointUIMetadata: GeneratorUIMetadata = {
  * distribution of random points. `pieceSize` is interpreted as the minimum
  * distance between generated points.
  */
-export const PoissonPointGeneratorFactory: GeneratorFactory<PointGenerator> = (_width: number, _height: number, _config: PoissonPointGeneratorConfig) => {
+export const PoissonPointGeneratorFactory: GeneratorFactory<PointGenerator> = (_border: PathCommand[], _bounds: { width: number; height: number }, _config: PoissonPointGeneratorConfig) => {
   const PoissonPointGenerator: PointGenerator = {
     generatePoints(runtimeOpts: PointGenerationRuntimeOptions): Vec2[] {
-      const { width, height, pieceSize, random } = runtimeOpts;
+      const { width, height, pieceSize, random, border } = runtimeOpts;
 
-      // generate points randomly in a Poisson disk sampling
+      // generate points randomly in a Poisson disk sampling within rectangular bounds
       const poisson = new PoissonDiskSampling(
         {
           shape: [width, height], // clamps generated points within bounds
@@ -49,8 +50,12 @@ export const PoissonPointGeneratorFactory: GeneratorFactory<PointGenerator> = (_
       );
 
       // have to cast because @types/PoissonDiskSampling is not correct for fill()
-      const points = poisson.fill() as unknown as Vec2[];
-      return points;
+      const allPoints = poisson.fill() as unknown as Vec2[];
+
+      // Filter points to only include those inside the custom boundary
+      const filteredPoints = allPoints.filter((point) => isPointInBoundary(point, border));
+
+      return filteredPoints;
     },
   };
   return PoissonPointGenerator;

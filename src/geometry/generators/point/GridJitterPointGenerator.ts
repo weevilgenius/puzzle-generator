@@ -1,8 +1,9 @@
-import type { Vec2 } from "../../types";
+import type { Vec2, PathCommand } from "../../types";
 import type { PointGenerator, PointGenerationRuntimeOptions } from "./PointGenerator";
 import type { GeneratorUIMetadata } from '../../ui_types';
 import type { GeneratorConfig, GeneratorFactory } from "../Generator";
 import { PointGeneratorRegistry } from "../Generator";
+import { isPointInBoundary } from '../../utils';
 
 // Name of this generator, uniquely identifies it from all other PointGenerators
 type GridJitterPointGeneratorName = "GridJitterPointGenerator";
@@ -42,12 +43,12 @@ export const GridJitterPointUIMetadata: GeneratorUIMetadata = {
  * strength of jitter applied to each point, from 0 (straight grid) to 1
  * (completely random).
  */
-export const GridJitterPointGeneratorFactory: GeneratorFactory<PointGenerator> = (width: number, height: number, config: GridJitterPointGeneratorConfig) => {
+export const GridJitterPointGeneratorFactory: GeneratorFactory<PointGenerator> = (_border: PathCommand[], _bounds: { width: number; height: number }, config: GridJitterPointGeneratorConfig) => {
   const { jitter = 50 } = config;
 
   const GridJitterPointGenerator: PointGenerator = {
     generatePoints(runtimeOpts: PointGenerationRuntimeOptions): Vec2[] {
-      const { width, height, pieceSize, random } = runtimeOpts;
+      const { width, height, pieceSize, random, border } = runtimeOpts;
 
       const points: Vec2[] = [];
       // assemble a grid
@@ -60,7 +61,11 @@ export const GridJitterPointGeneratorFactory: GeneratorFactory<PointGenerator> =
             point[0] += (random() - 0.5) * (jitter / 100) * pieceSize;
             point[1] += (random() - 0.5) * (jitter / 100)  * pieceSize;
           }
-          points.push(point);
+
+          // Only include points that are inside the custom boundary
+          if (isPointInBoundary(point, border)) {
+            points.push(point);
+          }
         }
       }
       return points;

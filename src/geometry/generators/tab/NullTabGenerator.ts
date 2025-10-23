@@ -1,5 +1,5 @@
 import type { TabGenerator } from "./TabGenerator";
-import type { EdgeSegment, RandomFn, TabPlacement, Vec2 } from "../../types";
+import type { EdgeSegment, PathCommand, RandomFn, TabPlacement, Vec2 } from "../../types";
 import type { GeneratorUIMetadata } from '../../ui_types';
 import type { GeneratorConfig, GeneratorFactory } from "../Generator";
 import { TabGeneratorRegistry } from "../Generator";
@@ -24,7 +24,7 @@ export const NullTabUIMetadata: GeneratorUIMetadata = {
 };
 
 /** Tab generator that does nothing, piece edges remain straight lines */
-export const NullTabGeneratorFactory: GeneratorFactory<TabGenerator> = (_width: number, _height: number,_config: NullTabGeneratorConfig) => {
+export const NullTabGeneratorFactory: GeneratorFactory<TabGenerator> = (_border: PathCommand[], _bounds: { width: number; height: number }, _config: NullTabGeneratorConfig) => {
   const NullTabGenerator: TabGenerator = {
     createTabSegments(_start: Vec2, _end: Vec2, _tab: TabPlacement, _random: RandomFn): EdgeSegment[] {
       return []; // does nothing

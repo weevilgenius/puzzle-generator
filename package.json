@@ -25,6 +25,7 @@
     "@types/d3-delaunay": "^6.0.4",
     "@types/mithril": "^2.2.7",
     "@types/poisson-disk-sampling": "^2.2.4",
+    "@types/svg-arc-to-cubic-bezier": "^3.2.3",
     "eslint": "^9.38.0",
     "eslint-plugin-unused-imports": "^4.3.0",
     "gh-pages": "^6.3.0",
@@ -38,7 +39,9 @@
     "@awesome.me/webawesome": "3.0.0-beta.6",
     "bezier-js": "^6.1.4",
     "d3-delaunay": "^6.0.4",
+    "martinez-polygon-clipping": "^0.7.4",
     "mithril": "^2.3.7",
-    "poisson-disk-sampling": "^2.3.1"
+    "poisson-disk-sampling": "^2.3.1",
+    "svg-arc-to-cubic-bezier": "^3.2.0"
   }
 }

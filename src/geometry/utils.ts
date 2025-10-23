@@ -1,20 +1,26 @@
 // this file contains various geometry-related utilities
 import type {
-  Vec2,
-  PuzzleTopology,
-  Vertex,
-  Piece,
-  PieceID,
+  AABB,
+  ArcTo,
   CurveTo,
   Edge,
   EdgeID,
+  EdgeSegment,
   HalfEdge,
   HalfEdgeID,
-  AABB,
-  EdgeSegment,
+  PathCommand,
+  Piece,
+  PieceID,
+  PuzzleTopology,
   RandomFn,
+  Vec2,
+  Vertex,
   VertexID,
 } from "./types";
+import { getUniqueId } from "../utils/UniqueId";
+import { Bezier } from "bezier-js";
+import arcToBezier from 'svg-arc-to-cubic-bezier';
+import * as martinez from 'martinez-polygon-clipping';
 import type { TabGenerator } from "./generators/tab/TabGenerator";
 
 /**
@@ -37,6 +43,7 @@ export interface PuzzleTopologySerializable {
   edges: [EdgeID, Edge][];
   halfEdges: [HalfEdgeID, HalfEdge][];
   boundary: EdgeID[];
+  borderPath: PathCommand[];
 }
 
 /**
@@ -51,6 +58,7 @@ export function serializeTopology(topology: PuzzleTopology): PuzzleTopologySeria
     edges: Array.from(topology.edges.entries()),
     halfEdges: Array.from(topology.halfEdges.entries()),
     boundary: topology.boundary,
+    borderPath: topology.borderPath,
   };
 }
 
@@ -62,6 +70,7 @@ export function deserializeTopology(serialized: PuzzleTopologySerializable): Puz
     edges: new Map(serialized.edges),
     halfEdges: new Map(serialized.halfEdges),
     boundary: serialized.boundary,
+    borderPath: serialized.borderPath,
   };
 }
 
@@ -337,4 +346,299 @@ export function invertCurve(segment: CurveTo, newEndPoint: Vec2): CurveTo {
     p2: segment.p1,
     p3: newEndPoint, // The new end point is the start point of the original
   };
+}
+
+/**
+ * Converts an arc segment into an array of cubic Bézier curves.
+ * @param start - The starting point of the arc.
+ * @param arc - The ArcTo segment.
+ * @returns An array of Bézier curve definitions.
+ */
+function arcToBeziers(start: Vec2, arc: ArcTo): CurveTo[] {
+  const { p, radii, rotation, largeArc, sweep } = arc;
+  const [startX, startY] = start;
+  const [endX, endY] = p;
+  const [rx, ry] = radii;
+
+  const cubicBeziers = arcToBezier({
+    px: startX,
+    py: startY,
+    cx: endX,
+    cy: endY,
+    rx,
+    ry,
+    xAxisRotation: rotation,
+    largeArcFlag: largeArc ? 1 : 0,
+    sweepFlag: sweep ? 1 : 0,
+  });
+
+
+  // convert output to CurveTo
+  const curves: CurveTo[] = cubicBeziers.map((curve) => {
+    return {
+      type: 'bezier',
+      p1: [ curve.x1, curve.y1 ],
+      p2: [ curve.x2, curve.y2 ],
+      p3: [ curve.x, curve.y ],
+    };
+  });
+  return curves;
+}
+
+/**
+ * Flattens a complex boundary path into an array of simple polygons.
+ * This is used to prepare the boundary for geometric clipping operations.
+ * @param boundary The boundary path to flatten.
+ * @returns An array of polygons, where each polygon is an array of vertices.
+ * The first polygon is the outer boundary, and subsequent ones are holes.
+ */
+export function flattenBoundary(boundary: PathCommand[]): Vec2[][] {
+  const polygons: Vec2[][] = [];
+  let currentPolygon: Vec2[] = [];
+
+  if (boundary.length === 0 || boundary[0].type !== 'move') {
+    // Return an empty array if the boundary is malformed or empty
+    return [];
+  }
+
+  let currentPoint: Vec2 = [0, 0];
+  for (const command of boundary) {
+    switch (command.type) {
+    case 'move':
+      if (currentPolygon.length > 0) {
+        polygons.push(currentPolygon);
+      }
+      currentPoint = command.p;
+      currentPolygon = [currentPoint];
+      break;
+
+    case 'line':
+      currentPolygon.push(command.p);
+      currentPoint = command.p;
+      break;
+
+    case 'bezier': {
+      // use bezier-js to create a Look-Up Table (LUT) of points
+      const { p1, p2, p3 } = command;
+      const curve = new Bezier([...currentPoint, ...p1, ...p2, ...p3]);
+      const points = curve.getLUT(100);
+      currentPolygon.push(...points.slice(1).map((p) => [p.x, p.y] as Vec2));
+      currentPoint = p3;
+      break;
+    }
+
+    case 'arc': {
+      // Convert the arc into one or more Bézier curves.
+      const beziers = arcToBeziers(currentPoint, command);
+      let arcStartPoint = currentPoint;
+      for (const b of beziers) {
+        // convert each Bézier as above
+        const curve = new Bezier([...arcStartPoint, ...b.p1, ...b.p2, ...b.p3]);
+        const points = curve.getLUT(100); // 100 points is a good approximation
+        currentPolygon.push(...points.slice(1).map((p) => [p.x, p.y] as Vec2));
+        arcStartPoint = b.p3;
+      }
+      currentPoint = command.p;
+      break;
+    }}
+  }
+  if (currentPolygon.length > 0) {
+    polygons.push(currentPolygon);
+  }
+
+  return polygons;
+}
+
+/**
+ * Determines if a point is inside a complex boundary path.
+ *
+ * This function uses the ray casting (even-odd) algorithm. It handles complex
+ * paths by first flattening them into a series of simple polygons. It also correctly
+ * handles "holes" created by sub-paths (via `MoveTo`), assuming standard winding
+ * rules.
+ *
+ * @param point The point to check.
+ * @param boundary The boundary path defining the shape.
+ * @returns `true` if the point is inside the boundary, `false` otherwise.
+ */
+export function isPointInBoundary(point: Vec2, boundary: PathCommand[]): boolean {
+
+  if (boundary.length > 0 && boundary[0].type !== 'move') {
+    throw new Error("Boundary path must start with a 'move' command.");
+  }
+
+  // flatten the entire path into simple polygons
+  const polygons = flattenBoundary(boundary);
+
+  // use the even-odd rule to determine inclusion
+  let insideCount = 0;
+  for (const poly of polygons) {
+    if (isPointInPolygon(point, poly)) {
+      insideCount++;
+    }
+  }
+  return insideCount % 2 === 1;
+}
+
+// type guard for Martinez library return values
+function isMartinezPolygon(geometry: martinez.Geometry): geometry is martinez.Polygon {
+  return Array.isArray(geometry[0]) && Array.isArray(geometry[0][0]) && typeof geometry[0][0][0] === 'number';
+}
+
+/**
+ * Clips a polygon against the puzzle boundary.
+ *
+ * @param polygon The polygon to be clipped (e.g., a grid cell). This should be a simple array of vertices.
+ * @param boundary The pre-flattened boundary to clip against.
+ * @returns An array of resulting polygons, or null if there is no intersection.
+ * Each resulting polygon is an array of vertices.
+ */
+export function clipPolygonAgainstBoundary(polygon: Vec2[], boundary: Vec2[]): Vec2[][] | null {
+
+  // use the martinez-polygon-clipping library to handle clipping
+  // It expects input in a specific GeoJSON-like format, so we must wrap our
+  // simple polygons in arrays to match.
+  const subject = [polygon.map((p) => ([p[0], p[1]]))];
+  const clipper = [boundary.map((p) => ([p[0], p[1]]))];
+
+  const clipped = martinez.intersection(subject, clipper);
+
+  if (!clipped || clipped.length === 0) {
+    return null; // No intersection found.
+  }
+
+  if (isMartinezPolygon(clipped)) {
+    return clipped as Vec2[][];
+  }
+
+  // unwrap the result back to our Vec2[][] format.
+  return clipped.map((poly) =>
+    poly[0].map((p) => ([p[0], p[1]] as Vec2))
+  );
+}
+
+/**
+ * Checks if a point is inside a simple polygon using the ray casting algorithm.
+ * @param point The point to check.
+ * @param polygon An array of vertices defining the polygon.
+ * @returns `true` if the point is inside.
+ */
+export function isPointInPolygon(point: Vec2, polygon: Vec2[]): boolean {
+  const [x, y] = point;
+  let isInside = false;
+
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [xi, yi] = polygon[i];
+    const [xj, yj] = polygon[j];
+
+    // This condition checks if the horizontal ray from the point intersects the edge.
+    const intersect = ((yi > y) !== (yj > y)) &&
+      (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+
+    if (intersect) {
+      isInside = !isInside;
+    }
+  }
+
+  return isInside;
+}
+
+/**
+ * Creates a closed, doubly-linked loop of half-edges from an ordered list of vertices.
+ * @param vertices - An array of vertices in counter-clockwise order.
+ * @param pieceId - The ID of the piece this half-edge loop belongs to.
+ * @param topology - The main puzzle topology object, which will be mutated.
+ * @returns The array of newly created HalfEdge objects.
+ */
+export function createHalfEdgeLoop(
+  vertices: Vec2[],
+  pieceId: PieceID,
+  topology: PuzzleTopology,
+): HalfEdge[] {
+  const newHalfEdges: HalfEdge[] = [];
+
+  // 1. Add any new, unique vertices to the main list
+  for (const vertex of vertices) {
+    if (!topology.vertices.find((v) => arePointsEqual(v, vertex))) {
+      topology.vertices.push(vertex);
+    }
+  }
+
+  // 2. Create a half-edge for each vertex
+  for (const vertex of vertices) {
+    const he: HalfEdge = {
+      id: getUniqueId(),
+      origin: vertex,
+      twin: -1,
+      next: -1,
+      prev: -1,
+      piece: pieceId,
+    };
+    newHalfEdges.push(he);
+  }
+
+  // 3. Link the created half-edges into a circular doubly-linked list
+  const numEdges = newHalfEdges.length;
+  for (let i = 0; i < numEdges; i++) {
+    const nextIndex = (i + 1) % numEdges;
+    const prevIndex = (i + numEdges - 1) % numEdges;
+    newHalfEdges[i].next = newHalfEdges[nextIndex].id;
+    newHalfEdges[i].prev = newHalfEdges[prevIndex].id;
+  }
+
+  // 4. Add all new half-edges to the topology
+  newHalfEdges.forEach((he) => topology.halfEdges.set(he.id, he));
+
+  return newHalfEdges;
+}
+
+/**
+ * Links a set of half-edges to their twins or creates new boundary edges.
+ * @param halfEdges - The list of half-edges to process.
+ * @param topology - The main puzzle topology object, which will be mutated.
+ * @param halfEdgeTwinMap - The map used to look up twin half-edges.
+ * @param isBoundaryEdgeFn - A callback function that returns true if a given edge should be treated as part of the puzzle's outer boundary.
+ */
+export function linkAndCreateEdges(
+  halfEdges: HalfEdge[],
+  topology: PuzzleTopology,
+  halfEdgeTwinMap: Map<string, HalfEdgeID>,
+  isBoundaryEdgeFn: (p1: Vec2, p2: Vec2) => boolean,
+): void {
+  const key = (p1: Vec2, p2: Vec2) => `${p1[0]},${p1[1]}-${p2[0]},${p2[1]}`;
+  const numEdges = halfEdges.length;
+
+  for (let i = 0; i < numEdges; i++) {
+    const he = halfEdges[i];
+    const p1 = he.origin;
+    const p2 = topology.halfEdges.get(he.next)!.origin;
+
+    const twinKey = key(p2, p1);
+    const twinId = halfEdgeTwinMap.get(twinKey);
+    const edgeId = getUniqueId();
+    let edge: Edge;
+
+    if (twinId !== undefined) {
+      // Found a twin! This is an internal edge.
+      const twinHe = topology.halfEdges.get(twinId)!;
+      he.twin = twinHe.id;
+      twinHe.twin = he.id;
+      edge = { id: edgeId, heLeft: twinHe.id, heRight: he.id, bounds: polygonBounds([p1, p2]) };
+      halfEdgeTwinMap.delete(twinKey);
+    } else {
+      // No twin found.
+      const selfKey = key(p1, p2);
+      halfEdgeTwinMap.set(selfKey, he.id);
+
+      if (isBoundaryEdgeFn(p1, p2)) {
+        // This is a new edge on the puzzle's custom boundary.
+        edge = { id: edgeId, heLeft: he.id, heRight: -1, bounds: polygonBounds([p1, p2]) };
+        topology.boundary.push(edgeId);
+      } else {
+        // It's an internal grid edge, wait for its neighbor to find it.
+        continue;
+      }
+    }
+    topology.edges.set(edgeId, edge);
+  }
 }

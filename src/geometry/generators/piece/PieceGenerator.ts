@@ -1,4 +1,4 @@
-import { RandomFn, PuzzleTopology, Vec2 } from "../../types";
+import { RandomFn, PuzzleTopology, Vec2, PathCommand } from "../../types";
 
 /** Options options passed to all piece generators at runtime. */
 export interface PieceGeneratorRuntimeOptions {
@@ -6,6 +6,13 @@ export interface PieceGeneratorRuntimeOptions {
   pieceSize: number;
   /** A function for generating random numbers. */
   random: RandomFn;
+  /** The boundary path of the puzzle border. */
+  border: PathCommand[];
+  /** Maximum bounds of the puzzle */
+  bounds: {
+    width: number;
+    height: number;
+  };
 }
 
 /**

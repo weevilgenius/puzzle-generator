@@ -1,4 +1,5 @@
 import type { GeneratorUIMetadata } from '../ui_types';
+import type { PathCommand } from '../types';
 
 /** The name of a particular generator implementation. Must be unique. */
 export type GeneratorName = string;
@@ -13,9 +14,13 @@ export interface GeneratorConfig {
 
 /**
  * A generic interface for a function that creates a configured generator instance.
+ * @template T - The particular generator desired, e.g. RectangularPieceGenerator
+ * @param border - The border of the puzzle
+ * @param bounds - The maximum bounds of the puzzle
+ * @param options - Options specific to this generator
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type GeneratorFactory<T> = (width: number, height: number, options: any) => T;
+export type GeneratorFactory<T> = (border: PathCommand[], bounds: { width: number; height: number }, options: any) => T;
 
 
 interface RegisteredGenerator<T> {
@@ -49,15 +54,17 @@ export class GeneratorRegistry<T> {
   /**
    * Creates an instance of a generator based on the provided configuration object.
    * It looks up the correct factory using the `name` property from the config.
+   * @param border The path of the border of the puzzle
+   * @param bounds The maximum bounds of the puzzle
    * @param config A configuration object for the generator
    * @returns A configured instance of the requested generator
    */
-  public create(width: number, height: number, config: GeneratorConfig): T {
+  public create(border: PathCommand[], bounds: { width: number; height: number }, config: GeneratorConfig): T {
     const generator = this.generators.get(config.name);
     if (!generator) {
       throw new Error(`Unknown generator "${config.name}". Is it registered?`);
     }
-    return generator.factory(width, height, config);
+    return generator.factory(border, bounds, config);
   }
 
   /**
