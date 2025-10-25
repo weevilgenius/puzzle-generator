@@ -100,7 +100,7 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
 
     // move the dragged vertex and redraw
     moveVertex(attrs.puzzle, state.draggedVertexId, coords);
-    drawPuzzle(attrs.puzzle, state.canvas!, attrs.color);
+    drawPuzzle(attrs.puzzle, state.canvas!, attrs.color, attrs.pointColor);
   };
 
   // handles the end of a drag (mouse or mobile)
