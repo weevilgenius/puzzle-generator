@@ -55,6 +55,10 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
     lastRegenerationTime: 0,
     /** Pending setTimeout ID for throttled regeneration. */
     pendingRegeneration: null as number | null,
+    /** Document-level mousemove handler for dragging outside canvas */
+    documentMouseMove: null as ((e: MouseEvent) => void) | null,
+    /** Document-level mouseup handler for ending drag outside canvas */
+    documentMouseUp: null as ((e: MouseEvent) => void) | null,
   };
 
   // helper function to check if mouse is hovering near a draggable item
@@ -194,6 +198,22 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
     } else if (target.type === 'seedPoint') {
       state.draggedSeedPointId = target.id;
     }
+
+    // For mouse events, attach document-level listeners to track drag outside canvas
+    if (e instanceof MouseEvent && (state.draggedVertexId >= 0 || state.draggedSeedPointId >= 0)) {
+      state.documentMouseMove = (docEvent: MouseEvent) => {
+        const mithrilEvent = docEvent as MouseEvent & MithrilViewEvent;
+        mithrilEvent.redraw = false;
+        handleDragMove(mithrilEvent, attrs);
+      };
+      state.documentMouseUp = (docEvent: MouseEvent) => {
+        const mithrilEvent = docEvent as MouseEvent & MithrilViewEvent;
+        mithrilEvent.redraw = false;
+        handleDragEnd(mithrilEvent, attrs);
+      };
+      document.addEventListener('mousemove', state.documentMouseMove);
+      document.addEventListener('mouseup', state.documentMouseUp);
+    }
   };
 
   // handles drag movement (mouse or mobile)
@@ -275,6 +295,16 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
       }
     }
 
+    // Remove document-level listeners if they were attached
+    if (state.documentMouseMove) {
+      document.removeEventListener('mousemove', state.documentMouseMove);
+      state.documentMouseMove = null;
+    }
+    if (state.documentMouseUp) {
+      document.removeEventListener('mouseup', state.documentMouseUp);
+      state.documentMouseUp = null;
+    }
+
     // Reset cursor
     if (state.canvas) {
       state.canvas.style.cursor = 'default';
@@ -310,6 +340,19 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
       }
     },
 
+    // component lifecycle: cleanup when component is removed
+    onremove: () => {
+      // Clean up document-level listeners if component is destroyed during drag
+      if (state.documentMouseMove) {
+        document.removeEventListener('mousemove', state.documentMouseMove);
+        state.documentMouseMove = null;
+      }
+      if (state.documentMouseUp) {
+        document.removeEventListener('mouseup', state.documentMouseUp);
+        state.documentMouseUp = null;
+      }
+    },
+
     // component lifecycle: render our output
     view: ({ attrs }) => {
 
@@ -339,7 +382,6 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
             handleDragMove(e, attrs);
           },
           onmouseup: (e: MouseEvent & MithrilViewEvent) => handleDragEnd(e, attrs),
-          onmouseleave: (e: MouseEvent & MithrilViewEvent) => handleDragEnd(e, attrs),
 
           // touch events
           ontouchstart: (e: TouchEvent & MithrilViewEvent) => handleDragStart(e, attrs),
