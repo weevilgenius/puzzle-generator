@@ -214,6 +214,8 @@ export interface PuzzleGeometry extends PuzzleTopology {
   placementConfig: GeneratorConfig;
   /** How did tabs get constructed? */
   tabConfig: GeneratorConfig;
+  /** Original seed points used to generate pieces */
+  seedPoints: Vec2[];
   /** Coordinates where the puzzle has problems, such as pieces intersecting */
   problems?: Vec2[];
 }

@@ -1,4 +1,4 @@
-import type { PathCommand, PuzzleGeometry, Vec2 } from "./types";
+import type { PathCommand, PieceID, PuzzleGeometry, Vec2 } from "./types";
 import {
   PointGeneratorRegistry,
   PieceGeneratorRegistry,
@@ -32,6 +32,10 @@ export interface PuzzleGenerationOptions {
   tabConfig: GeneratorConfig;
   /** Boundary path of the puzzle border */
   border: PathCommand[];
+  /** Optional pre-generated seed points. If provided, point generation is skipped. */
+  seedPoints?: Vec2[];
+  /** If true, skip tab placement and generation (for real-time preview) */
+  skipTabs?: boolean;
 }
 
 /**
@@ -55,24 +59,27 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
   const seed = options.seed ?? new Date().getTime();
   const random = mulberry32(seed);
 
-  // 1. Generate seed points for the pieces
-  const points = pointGenerator.generatePoints({ width: bounds.width, height: bounds.height, pieceSize, random, border });
-  console.log(`Generated ${points.length} points`);
+  // 1. Generate or use provided seed points for the pieces
+  const points = options.seedPoints ??
+    pointGenerator.generatePoints({ width: bounds.width, height: bounds.height, pieceSize, random, border });
+  console.log(`${options.seedPoints ? 'Using' : 'Generated'} ${points.length} points`);
 
   // 2. Convert points to a puzzle topology (pieces and edges)
   const topology = pieceGenerator.generatePieces(points, { random, pieceSize, border, bounds });
   console.log(`Generated ${topology.pieces.size} pieces`);
 
-  // 3. Place tabs on internal edges
-  placementStrategy.placeTabs({ topology, random });
+  // 3. Place tabs on internal edges (skip if requested)
+  if (!options.skipTabs) {
+    placementStrategy.placeTabs({ topology, random });
 
-  // 4. Generate geometry for placed tabs
-  for (const edge of topology.edges.values()) {
-    // only internal edges can accept tabs
-    const isInternal = edge.heRight !== -1;
-    if (isInternal && edge.tabs && edge.tabs.length > 0) {
-      // use the tab generator to create the segment path for an edge based on its TabPlacements
-      generateSegmentsForEdge(edge, topology, tabGenerator, random);
+    // 4. Generate geometry for placed tabs
+    for (const edge of topology.edges.values()) {
+      // only internal edges can accept tabs
+      const isInternal = edge.heRight !== -1;
+      if (isInternal && edge.tabs && edge.tabs.length > 0) {
+        // use the tab generator to create the segment path for an edge based on its TabPlacements
+        generateSegmentsForEdge(edge, topology, tabGenerator, random);
+      }
     }
   }
 
@@ -87,6 +94,7 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
     pieceConfig,
     placementConfig,
     tabConfig,
+    seedPoints: points,
     vertices: topology.vertices,
     boundary: topology.boundary,
     borderPath: topology.borderPath,
@@ -96,6 +104,49 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
   };
 
   return puzzle;
+}
+
+/**
+ * Rebuilds a puzzle with modified seed points, preserving all other configuration.
+ * This is used when the user drags a seed point to a new location.
+ *
+ * @param originalPuzzle The original puzzle geometry
+ * @param pieceId The ID of the piece whose seed point was moved
+ * @param newSeedPosition The new position for the seed point
+ * @returns A new puzzle with the updated seed point
+ */
+export async function rebuildPuzzleWithUpdatedSeedPoint(
+  originalPuzzle: PuzzleGeometry,
+  pieceId: PieceID,
+  newSeedPosition: Vec2
+): Promise<PuzzleGeometry> {
+  // Create updated points array by finding the piece index
+  const updatedPoints = [...originalPuzzle.seedPoints];
+  let pointIndex = 0;
+  for (const piece of originalPuzzle.pieces.values()) {
+    if (piece.id === pieceId) {
+      updatedPoints[pointIndex] = newSeedPosition;
+      break;
+    }
+    pointIndex++;
+  }
+
+  // Rebuild with updated points but same configuration (INCLUDING tabs this time)
+  return buildPuzzle({
+    bounds: {
+      width: originalPuzzle.width,
+      height: originalPuzzle.height,
+    },
+    border: originalPuzzle.borderPath,
+    pieceSize: originalPuzzle.pieceSize,
+    pointConfig: originalPuzzle.pointConfig,
+    pieceConfig: originalPuzzle.pieceConfig,
+    placementConfig: originalPuzzle.placementConfig,
+    tabConfig: originalPuzzle.tabConfig,
+    seed: originalPuzzle.seed,
+    seedPoints: updatedPoints,
+    skipTabs: false, // Include tabs in final version
+  });
 }
 
 /** Draws puzzle geometry onto a canvas */

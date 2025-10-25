@@ -1,8 +1,8 @@
 import m from 'mithril';
-import { drawPuzzle } from "../geometry/PuzzleMaker";
+import { buildPuzzle, drawPuzzle } from "../geometry/PuzzleMaker";
 import { moveVertex } from '../geometry/modifiers';
-import { findClosestVertex } from '../geometry/utils';
-import type { VertexID } from '../geometry/types';
+import { findClosestVertex, findClosestSeedPoint, distanceSq } from '../geometry/utils';
+import type { PieceID, VertexID } from '../geometry/types';
 import type { PuzzleGeometry, Vec2 } from '../geometry/types';
 import type MithrilViewEvent from '../utils/MithrilViewEvent';
 
@@ -27,7 +27,16 @@ export interface PuzzleAttrs extends m.Attributes {
   imageUrl?: string;
   /** Callback indicating user modified the puzzle geometry */
   onPuzzleChanged: (puzzle: PuzzleGeometry) => void;
+  /** Callback when user drags a seed point */
+  onSeedPointMoved?: (pieceId: PieceID, newPosition: Vec2) => void;
 }
+
+// Throttling constant for real-time regeneration during drag
+const REGENERATION_THROTTLE_MS = 50; // Limit to ~20 updates/second
+
+// Distance thresholds for hover feedback (smaller than click/drag threshold)
+const HOVER_DISTANCE = 5; // pixels
+const HOVER_DISTANCE_SQ = HOVER_DISTANCE * HOVER_DISTANCE;
 
 // Mithril component
 export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
@@ -36,10 +45,37 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
   const state = {
     /** Canvas HTML element */
     canvas: null as HTMLCanvasElement | null,
-    /** Is the user currently dragging a vertex? */
+    /** Is the user currently dragging something? */
     isDragging: false,
     /** The index of the vertex being dragged. */
     draggedVertexId: -1 as VertexID,
+    /** The ID of the seed point (piece) being dragged. */
+    draggedSeedPointId: -1 as PieceID,
+    /** Timestamp of last regeneration (for throttling). */
+    lastRegenerationTime: 0,
+    /** Pending setTimeout ID for throttled regeneration. */
+    pendingRegeneration: null as number | null,
+  };
+
+  // helper function to check if mouse is hovering near a draggable item
+  const isNearDraggableItem = (mousePos: Vec2, attrs: PuzzleAttrs): boolean => {
+    // Check seed points if visible
+    if (attrs.pointColor) {
+      for (const piece of attrs.puzzle.pieces.values()) {
+        if (distanceSq(piece.site, mousePos) < HOVER_DISTANCE_SQ) {
+          return true;
+        }
+      }
+    }
+
+    // Check vertices
+    for (const vertex of attrs.puzzle.vertices) {
+      if (distanceSq(vertex, mousePos) < HOVER_DISTANCE_SQ) {
+        return true;
+      }
+    }
+
+    return false;
   };
 
   // helper function to normalize coordinates between mouse clicks and mobile touches
@@ -60,6 +96,79 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
     return [0, 0];
   };
 
+  // helper function to determine what is being dragged
+  const getDragTarget = (clickPos: Vec2, attrs: PuzzleAttrs):
+    { type: 'vertex'; id: VertexID } |
+    { type: 'seedPoint'; id: PieceID } |
+    { type: 'none' } =>
+  {
+    // Only allow seed point dragging if points are visible
+    if (attrs.pointColor) {
+      const seedPointId = findClosestSeedPoint(attrs.puzzle, clickPos);
+      if (seedPointId !== null) {
+        return { type: 'seedPoint', id: seedPointId };
+      }
+    }
+
+    // Check for vertex dragging
+    const vertexId = findClosestVertex(attrs.puzzle, clickPos);
+    if (vertexId !== null) {
+      return { type: 'vertex', id: vertexId };
+    }
+
+    return { type: 'none' };
+  };
+
+  // handles mouse movement for cursor changes (not dragging)
+  const handleMouseMove = (e: MouseEvent & MithrilViewEvent, attrs: PuzzleAttrs) => {
+    e.redraw = false;
+
+    // Don't change cursor while dragging
+    if (state.isDragging) return;
+
+    const coords = getEventCoords(e);
+    const isNearItem = isNearDraggableItem(coords, attrs);
+
+    if (state.canvas) {
+      state.canvas.style.cursor = isNearItem ? 'grab' : 'default';
+    }
+  };
+
+  // helper function to regenerate puzzle without tabs for real-time preview
+  const regeneratePuzzleWithoutTabs = (attrs: PuzzleAttrs, pieceId: PieceID, newPosition: Vec2) => {
+    // Update seed points array
+    const updatedPoints = [...attrs.puzzle.seedPoints];
+    let pointIndex = 0;
+    for (const piece of attrs.puzzle.pieces.values()) {
+      if (piece.id === pieceId) {
+        updatedPoints[pointIndex] = newPosition;
+        break;
+      }
+      pointIndex++;
+    }
+
+    // Regenerate WITHOUT tabs for real-time preview
+    buildPuzzle({
+      bounds: { width: attrs.puzzle.width, height: attrs.puzzle.height },
+      border: attrs.puzzle.borderPath,
+      pieceSize: attrs.puzzle.pieceSize,
+      pointConfig: attrs.puzzle.pointConfig,
+      pieceConfig: attrs.puzzle.pieceConfig,
+      placementConfig: attrs.puzzle.placementConfig,
+      tabConfig: attrs.puzzle.tabConfig,
+      seed: attrs.puzzle.seed,
+      seedPoints: updatedPoints,
+      skipTabs: true, // KEY: Skip expensive tab generation
+    }).then((previewPuzzle) => {
+      // Only update if still dragging the same point (avoid race conditions)
+      if (state.draggedSeedPointId === pieceId) {
+        drawPuzzle(previewPuzzle, state.canvas!, attrs.color, attrs.pointColor);
+      }
+    }).catch((err) => {
+      console.error('Failed to regenerate preview:', err);
+    });
+  };
+
   // handles the start of a drag operation (mouse or mobile)
   const handleDragStart = (e: (MouseEvent | TouchEvent) & MithrilViewEvent, attrs: PuzzleAttrs) => {
     e.redraw = false;
@@ -69,6 +178,7 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
       if (e.touches.length > 1) {
         state.isDragging = false;
         state.draggedVertexId = -1;
+        state.draggedSeedPointId = -1;
         return;
       }
     }
@@ -76,13 +186,13 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
     // for mouse events, only handle the primary button.
     if (e instanceof MouseEvent && e.button !== 0) return;
 
-    //e.preventDefault();
     const coords = getEventCoords(e);
+    const target = getDragTarget(coords, attrs);
 
-    // find the nearest vertex and store it as a potential drag target
-    const vertexIndex = findClosestVertex(attrs.puzzle, coords);
-    if (vertexIndex !== null) {
-      state.draggedVertexId = vertexIndex;
+    if (target.type === 'vertex') {
+      state.draggedVertexId = target.id;
+    } else if (target.type === 'seedPoint') {
+      state.draggedSeedPointId = target.id;
     }
   };
 
@@ -90,32 +200,91 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
   const handleDragMove = (e: (MouseEvent | TouchEvent) & MithrilViewEvent, attrs: PuzzleAttrs) => {
     e.redraw = false;
 
-    // if the user didn't target a vertex, do nothing
-    if (state.draggedVertexId < 0 ) return;
-
-    state.isDragging = true;
-
-    e.preventDefault();
     const coords = getEventCoords(e);
 
-    // move the dragged vertex and redraw
-    moveVertex(attrs.puzzle, state.draggedVertexId, coords);
-    drawPuzzle(attrs.puzzle, state.canvas!, attrs.color, attrs.pointColor);
+    // Handle vertex dragging (existing logic)
+    if (state.draggedVertexId >= 0) {
+      state.isDragging = true;
+      e.preventDefault();
+
+      // Update cursor to grabbing
+      if (state.canvas) {
+        state.canvas.style.cursor = 'grabbing';
+      }
+
+      moveVertex(attrs.puzzle, state.draggedVertexId, coords);
+      drawPuzzle(attrs.puzzle, state.canvas!, attrs.color, attrs.pointColor);
+      return;
+    }
+
+    // Handle seed point dragging (NEW: real-time regeneration without tabs)
+    if (state.draggedSeedPointId >= 0) {
+      state.isDragging = true;
+      e.preventDefault();
+
+      // Update cursor to grabbing
+      if (state.canvas) {
+        state.canvas.style.cursor = 'grabbing';
+      }
+
+      // Throttle regeneration to avoid overwhelming the system
+      const now = performance.now();
+      if (now - state.lastRegenerationTime < REGENERATION_THROTTLE_MS) {
+        // Schedule a delayed regeneration
+        if (state.pendingRegeneration) {
+          clearTimeout(state.pendingRegeneration);
+        }
+        state.pendingRegeneration = window.setTimeout(() => {
+          regeneratePuzzleWithoutTabs(attrs, state.draggedSeedPointId, coords);
+        }, REGENERATION_THROTTLE_MS);
+        return;
+      }
+
+      // Perform immediate regeneration
+      state.lastRegenerationTime = now;
+      regeneratePuzzleWithoutTabs(attrs, state.draggedSeedPointId, coords);
+    }
   };
 
   // handles the end of a drag (mouse or mobile)
   const handleDragEnd = (e: (MouseEvent | TouchEvent) & MithrilViewEvent, attrs: PuzzleAttrs) => {
     e.redraw = false;
-    if (state.draggedVertexId < 0) return;
-    e.preventDefault();
 
-    // we only care about the end of a drag, not a click
-    if (state.isDragging) {
+    // Clear any pending regeneration
+    if (state.pendingRegeneration) {
+      clearTimeout(state.pendingRegeneration);
+      state.pendingRegeneration = null;
+    }
+
+    const wasDraggingVertex = state.draggedVertexId >= 0 && state.isDragging;
+    const wasDraggingSeedPoint = state.draggedSeedPointId >= 0 && state.isDragging;
+
+    if (wasDraggingVertex) {
+      e.preventDefault();
       attrs.onPuzzleChanged(attrs.puzzle);
     }
 
+    if (wasDraggingSeedPoint) {
+      e.preventDefault();
+      // Trigger final regeneration with FULL geometry including tabs
+      const pieceId = state.draggedSeedPointId;
+      const finalPosition = getEventCoords(e);
+
+      if (attrs.onSeedPointMoved) {
+        attrs.onSeedPointMoved(pieceId, finalPosition);
+      }
+    }
+
+    // Reset cursor
+    if (state.canvas) {
+      state.canvas.style.cursor = 'default';
+    }
+
+    // Reset state
     state.isDragging = false;
     state.draggedVertexId = -1;
+    state.draggedSeedPointId = -1;
+    state.lastRegenerationTime = 0;
   };
 
   return {
@@ -165,7 +334,10 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
 
           // mouse events
           onmousedown: (e: MouseEvent & MithrilViewEvent) => handleDragStart(e, attrs),
-          onmousemove: (e: MouseEvent & MithrilViewEvent) => handleDragMove(e, attrs),
+          onmousemove: (e: MouseEvent & MithrilViewEvent) => {
+            handleMouseMove(e, attrs);
+            handleDragMove(e, attrs);
+          },
           onmouseup: (e: MouseEvent & MithrilViewEvent) => handleDragEnd(e, attrs),
           onmouseleave: (e: MouseEvent & MithrilViewEvent) => handleDragEnd(e, attrs),
 

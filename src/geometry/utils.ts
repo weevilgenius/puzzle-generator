@@ -208,6 +208,31 @@ export function findClosestVertex(
 }
 
 /**
+ * Finds the piece ID of the seed point closest to a given position.
+ *
+ * @param puzzle The puzzle topology to search within.
+ * @param clickPos The position of the user's click.
+ * @returns The PieceID whose seed point is closest, or null if none within threshold.
+ */
+export function findClosestSeedPoint(
+  puzzle: PuzzleTopology,
+  clickPos: Vec2
+): PieceID | null {
+  let closestPieceId: PieceID | null = null;
+  let minDistanceSq = MAX_CLICK_DISTANCE_SQ;
+
+  for (const piece of puzzle.pieces.values()) {
+    const distSq = distanceSq(piece.site, clickPos);
+    if (distSq < minDistanceSq) {
+      minDistanceSq = distSq;
+      closestPieceId = piece.id;
+    }
+  }
+
+  return closestPieceId;
+}
+
+/**
  * Calculates the Axis-Aligned Bounding Box (AABB) for a given polygon.
  * @param polygon - An array of vertices representing the polygon.
  * @returns The AABB or a zero-area box at the origin if the polygon is empty.

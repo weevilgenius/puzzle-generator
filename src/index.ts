@@ -22,7 +22,7 @@ import { Name as PoissonGeneratorName } from './geometry/generators/point/Poisso
 import { Name as VoronoiGeneratorName } from './geometry/generators/piece/VoronoiPieceGenerator';
 import { Name as SimpleTabPlacementStrategyName } from './geometry/generators/tab_placement/SimpleTabPlacementStrategy';
 import { Name as TraditionalTabGeneratorName } from './geometry/generators/tab/TraditionalTabGenerator';
-import { buildPuzzle } from './geometry/PuzzleMaker';
+import { buildPuzzle, rebuildPuzzleWithUpdatedSeedPoint } from './geometry/PuzzleMaker';
 import { checkGeometryInWorker } from './geometry/GeometryChecker';
 import { createRectangleBorder, createCircleBorder, createEllipseBorder, createRoundedRectBorder } from './geometry/borderShapes';
 
@@ -308,6 +308,27 @@ const Page: m.ClosureComponent<unknown> = () => {
                 // user dragged a vertex to tweak the puzzle
                 state.puzzle = puzzle;
                 m.redraw();
+              },
+              onSeedPointMoved: (pieceId, newPosition) => {
+                // user dragged a seed point to a new position
+                state.dirty = false; // Prevent double-regeneration
+
+                if (!state.puzzle) return;
+
+                rebuildPuzzleWithUpdatedSeedPoint(state.puzzle, pieceId, newPosition)
+                  .then((puzzle) => {
+                    state.geometryProblems.problems = undefined;
+                    state.geometryProblems.progress = undefined;
+                    state.puzzle = puzzle;
+                    m.redraw();
+
+                    if (state.geometryProblems.autoCheck) {
+                      handleCheckGeometry();
+                    }
+                  })
+                  .catch((err) => {
+                    console.error('Failed to rebuild puzzle with updated seed point:', err);
+                  });
               },
             }),
 
