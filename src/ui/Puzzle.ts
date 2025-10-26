@@ -317,6 +317,9 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
     state.lastRegenerationTime = 0;
   };
 
+  // used for the background image when there is none
+  const transparentPixel = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
   return {
     // component lifecycle: called after our DOM element is created and attached
     oncreate: ({ dom, attrs }) => {
@@ -362,7 +365,7 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
         m("img.background", {
           width: attrs.width,
           height: attrs.height,
-          src: attrs.imageUrl,
+          src: attrs.imageUrl ?? transparentPixel,
         }),
 
         // canvas for rendering the current puzzle

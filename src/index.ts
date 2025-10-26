@@ -384,8 +384,17 @@ const Page: m.ClosureComponent<unknown> = () => {
                   state.dirty = true;
                   m.redraw();
                 },
+                onClear: () => {
+                  // clear any previous image
+                  if (state.backgroundImageUrl) {
+                    URL.revokeObjectURL(state.backgroundImageUrl);
+                  }
+                  state.backgroundImageUrl = undefined;
+                  state.backgroundImageName = '';
+                  state.dirty = true;
+                  m.redraw();
+                },
               }),
-              m('span.background-image-label', state.backgroundImageName),
             ]),
 
             // Puzzle aspect ratio

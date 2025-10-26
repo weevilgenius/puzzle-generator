@@ -4,6 +4,10 @@ import MithrilViewEvent from '../utils/MithrilViewEvent';
 
 // Webawesome components
 import '@awesome.me/webawesome/dist/components/button/button.js';
+import '@awesome.me/webawesome/dist/components/icon/icon.js';
+
+// include our CSS
+import "./UploadImageButton.css";
 
 // component attributes
 export interface UploadImageAttrs extends m.Attributes {
@@ -16,6 +20,8 @@ export interface UploadImageAttrs extends m.Attributes {
    * cleaning up the returned image URL.
    */
   onUpload: (imageUrl: string, filename: string, width: number, height: number) => void;
+  /** Called when the user wants to clear the background image */
+  onClear: () => void;
 };
 
 // utility to determine display dimensions that are the same aspect ratio
@@ -43,6 +49,8 @@ export const UploadImageButton: m.ClosureComponent<UploadImageAttrs> = () => {
   // component state
   const state = {
     inputElement: undefined as HTMLInputElement | undefined,
+    imageLoaded: false,
+    imageName: '',
   };
 
   return {
@@ -79,7 +87,9 @@ export const UploadImageButton: m.ClosureComponent<UploadImageAttrs> = () => {
                     const { width, height } = calculateDisplayDimensions(bitmap.width, bitmap.height);
                     const uploadUrl = URL.createObjectURL(file);
                     bitmap.close();
+                    state.imageName = file.name;
                     attrs.onUpload(uploadUrl, file.name, width, height);
+                    state.imageLoaded = true;
                   })
                   .catch((err) => {
                     console.error('could not create a bitmap image: ', err);
@@ -88,6 +98,23 @@ export const UploadImageButton: m.ClosureComponent<UploadImageAttrs> = () => {
             }
           },
         }),
+
+        m('span.background-image-label', state.imageName),
+
+        // clear button
+        state.imageLoaded && m('wa-icon.clear-button', {
+          library: 'material',
+          name: 'close',
+          label: 'Clear background image',
+          onclick: (e: MithrilViewEvent) => {
+            e.redraw = false;
+            if (attrs.disabled) { return; }
+            state.imageName = '';
+            state.imageLoaded = false;
+            attrs.onClear();
+          },
+        }, 'Clear'),
+
       ];
     },
   };
