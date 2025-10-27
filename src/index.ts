@@ -7,6 +7,7 @@ import Navigation from './ui/Navigation';
 
 // Pages
 import PuzzlePage from './pages/PuzzlePage';
+import TestPage from './pages/TestPage';
 
 // Webawesome components
 import { registerIconLibrary } from '@awesome.me/webawesome/dist/webawesome.js';
@@ -59,5 +60,8 @@ registerIconLibrary('material', {
 m.route(document.body, "/puzzle", {
   "/puzzle": {
     render: () => m(Layout, m(PuzzlePage)),
+  },
+  "/test": {
+    render: () => m(Layout, m(TestPage)),
   },
 });
