@@ -1,3 +1,4 @@
+// The main puzzle generation UI component
 import m from 'mithril';
 import { buildPuzzle, drawPuzzle } from "../geometry/PuzzleMaker";
 import { moveVertex } from '../geometry/modifiers';

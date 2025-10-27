@@ -1,0 +1,23 @@
+/* Navigation menu styles */
+.navigation {
+  background: var(--wa-color-neutral-50);
+  border-bottom: 1px solid var(--wa-color-neutral-200);
+  padding: 0.5rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.wa-dark .navigation {
+  background: var(--wa-color-neutral-900);
+  border-bottom-color: var(--wa-color-neutral-700);
+}
+
+.nav-links {
+  display: flex;
+  gap: 0.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.nav-links wa-button {
+  cursor: pointer;
+}
