@@ -1,0 +1,24 @@
+/**
+ * Styles for the PathEditor component
+ */
+
+/* Canvas styles */
+.path-editor canvas {
+  display: block;
+  border: 1px solid #ccc;
+  background: white;
+}
+
+/* Controls row below canvas */
+.path-editor .path-editor-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+/* Mode indicator text */
+.path-editor .mode-indicator {
+  font-size: 12px;
+  color: #666;
+}

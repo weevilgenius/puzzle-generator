@@ -12,9 +12,8 @@ machines. The application is built with TypeScript, Vite, Mithril.js, and Web Aw
 ## Development Commands
 
 Ensure the project compiles and lint checks pass when making changes:
-- Check compilation: `pnpm exec tsc --noEmit`
+- Check compilation and lint: `pnpm exec tsc --noEmit && pnpm run lint`
 - Build project: `pnpm run build`
-- Lint project: `pnpm run lint`
 - Tests are not yet implemented
 
 ## Coding Conventions
@@ -80,6 +79,54 @@ Ensure the project compiles and lint checks pass when making changes:
 - **Component state** should be stored in a single `state` object within the closure
 - **Helper functions** should be defined within the component closure
 - **Props interfaces** must extend `m.Attributes` and document all properties
+
+#### Component Styling
+
+- **Scope component CSS** - When creating component-specific CSS files, always scope styles with the component's root or wrapper class to prevent conflicts with other styles. E.g. use `.path-editor canvas { }` instead of `canvas { }`.
+- **CSS file naming** - Use `ComponentName.css` matching the component name (e.g., `PathEditor.css` for `PathEditor` component)
+- **Import CSS in component** - Import CSS files directly in the component's main file: `import './ComponentName.css'`
+
+#### Event Handler Redraws
+
+- **Consider redraw behavior** - When implementing component event handlers via Mithril convenience methods (`onclick`, `onchange`, etc.), consider whether they should automatically trigger a Mithril redraw based on the component's expected usage
+- **Prevent unnecessary redraws** - If a handler doesn't change visual state or if the parent component will handle the redraw, prevent automatic redraws to improve performance:
+  ```ts
+  onchange: (e: Event & MithrilViewEvent) => {
+    e.redraw = false;
+    // parent will decide whether to redraw
+    attrs.onChange(value);
+  }
+  ```
+- **When to prevent redraws**:
+  - Handler only calls a parent callback that will trigger its own redraw
+  - Handler updates external state (not Mithril-managed)
+  - High-frequency events (mousemove, scroll) where redraws are handled separately
+  - Component uses a render loop or external rendering system (e.g., Paper.js, Canvas API)
+
+#### Web Awesome Components
+
+- **Use Web Awesome for standard UI controls** - For basic UI elements like buttons, checkboxes, color pickers, sliders, etc., prefer Web Awesome components over custom implementations
+- **Benefits**: Web Awesome (derived from Shoelace) provides standardized, accessible UI components with consistent styling and behavior
+- **Import pattern**: Import the component registration (side-effect) and the TypeScript type (if needed)
+  ```ts
+  // Import for registration (side-effect)
+  import '@awesome.me/webawesome/dist/components/color-picker/color-picker.js';
+  // Import for TypeScript type if needed
+  import WaColorPicker from '@awesome.me/webawesome/dist/components/color-picker/color-picker.js';
+  ```
+- **Usage in Mithril**: Use the web component tag name and cast event targets to the component type
+  ```ts
+  m('wa-color-picker', {
+    onchange: (e: Event & MithrilViewEvent) => {
+      e.redraw = false;
+      const picker = e.target as WaColorPicker;
+      // Access picker properties/methods
+      state.color = picker.value;
+    },
+  })
+  ```
+  Custom event names such as `wa-tab-show` can be attached using Mithril's convenience `on` prefix like this: `'onwa-tab-show': (e: WaTabShowEvent) => { ... }`
+- **Documentation**: Consult component usage, properties, and events at https://webawesome.com/docs/components/
 
 ### General Style
 

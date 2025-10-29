@@ -1,0 +1,278 @@
+/**
+ * PathEditor component - Interactive path editing with Paper.js
+ * Phase 3: Bezier curve support with handle editing
+ */
+
+import m from 'mithril';
+import paper from 'paper';
+import type { PathCommand } from '../../geometry/types';
+import type { PathEditorState } from './constants';
+import {
+  DEFAULT_STROKE_COLOR,
+  DEFAULT_STROKE_WIDTH,
+  PREVIEW_STROKE_COLOR,
+  PREVIEW_STROKE_WIDTH,
+  PREVIEW_DASH_ARRAY,
+} from './constants';
+import { paperPathToPathCommands, pathCommandsToPaperPath } from './geometry';
+import { setupMouseHandling } from './mouseHandling';
+import './PathEditor.css';
+
+// Web Awesome components
+import '@awesome.me/webawesome/dist/components/button/button.js';
+
+/* ========================================================= *\
+ *  Component Interface                                      *
+\* ========================================================= */
+
+/**
+ * Attributes for the PathEditor component.
+ */
+export interface PathEditorAttrs extends m.Attributes {
+  /**
+   * Optional initial path to load into the editor.
+   * If provided, the path will be displayed and made editable.
+   * If undefined, the editor starts with an empty canvas in draw mode.
+   *
+   * Phase 2: Only MoveTo and LineTo commands are supported.
+   */
+  initialPath?: PathCommand[];
+
+  /**
+   * Callback invoked when the path changes.
+   * Called after mouse up, point deletion, or other path modifications.
+   *
+   * @param path - The updated path as PathCommand array
+   */
+  onPathChanged: (path: PathCommand[]) => void;
+
+  /**
+   * Width of the editor canvas in pixels.
+   */
+  width: number;
+
+  /**
+   * Height of the editor canvas in pixels.
+   */
+  height: number;
+
+  /**
+   * Optional: Stroke color for the path.
+   * Default: '#2196F3' (blue)
+   */
+  strokeColor?: string;
+}
+
+/* ========================================================= *\
+ *  Component Implementation                                 *
+\* ========================================================= */
+
+/**
+ * PathEditor - A reusable path editing component using Paper.js
+ *
+ * Phase 3 Features:
+ * - Click to add points (straight lines)
+ * - Click-drag to add points with smooth bezier curves
+ * - Drag anchor points to move them
+ * - Drag curve handles to adjust curve shape
+ * - Automatic mode switching (draw when empty, edit when path exists)
+ * - PathCommand conversion (MoveTo/LineTo/CurveTo)
+ */
+export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
+  const state: PathEditorState = {
+    canvas: null,
+    path: null,
+    previewPath: null,
+    mode: 'draw',
+    selectedSegment: null,
+    selectedHandle: null,
+  };
+
+  let tool: paper.Tool | null = null;
+  let previousInitialPath: PathCommand[] | undefined = undefined;
+
+  /**
+   * Initialize Paper.js and set up the drawing environment
+   */
+  const initializePaper = (canvas: HTMLCanvasElement, attrs: PathEditorAttrs) => {
+    paper.setup(canvas);
+    state.canvas = canvas;
+
+    // Configure Paper.js settings for better visibility
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    paper.settings.handleSize = 8;
+
+    // Determine initial mode based on whether we have an initial path
+    const hasInitialPath = attrs.initialPath && attrs.initialPath.length > 0;
+    state.mode = hasInitialPath ? 'edit' : 'draw';
+
+    // Create the main path
+    state.path = new paper.Path();
+    state.path.strokeColor = new paper.Color(attrs.strokeColor ?? DEFAULT_STROKE_COLOR);
+    state.path.strokeWidth = DEFAULT_STROKE_WIDTH;
+
+    // Load initial path if provided
+    if (hasInitialPath && attrs.initialPath) {
+      const loadedPath = pathCommandsToPaperPath(attrs.initialPath);
+      state.path.segments = loadedPath.segments;
+      state.path.strokeColor = new paper.Color(attrs.strokeColor ?? DEFAULT_STROKE_COLOR);
+      state.path.strokeWidth = DEFAULT_STROKE_WIDTH;
+    }
+
+    // Create preview path for draw mode
+    state.previewPath = new paper.Path();
+    state.previewPath.strokeColor = new paper.Color(PREVIEW_STROKE_COLOR);
+    state.previewPath.strokeWidth = PREVIEW_STROKE_WIDTH;
+    state.previewPath.dashArray = PREVIEW_DASH_ARRAY;
+    state.previewPath.visible = false;
+
+    // Set up mouse handling
+    tool = setupMouseHandling(state, () => {
+      notifyPathChanged(attrs);
+    });
+  };
+
+  /**
+   * Notify parent component that the path has changed
+   */
+  const notifyPathChanged = (attrs: PathEditorAttrs) => {
+    if (state.path) {
+      const commands = paperPathToPathCommands(state.path);
+      attrs.onPathChanged(commands);
+    }
+    m.redraw();
+  };
+
+  /**
+   * End drawing mode and switch to edit mode
+   */
+  const endDrawing = () => {
+    if (state.mode === 'draw') {
+      state.mode = 'edit';
+
+      // Don't select anything by default in edit mode
+      // Vertices will only be shown when clicked
+
+      // Hide preview path in edit mode
+      if (state.previewPath) {
+        state.previewPath.visible = false;
+      }
+
+      m.redraw();
+    }
+  };
+
+  /**
+   * Clean up Paper.js resources
+   */
+  const cleanup = () => {
+    if (tool) {
+      tool.remove();
+      tool = null;
+    }
+    if (paper.project) {
+      paper.project.remove();
+    }
+    state.canvas = null;
+    state.path = null;
+    state.previewPath = null;
+    state.selectedSegment = null;
+    state.selectedHandle = null;
+  };
+
+  return {
+    oncreate: ({ dom, attrs }) => {
+      const canvas = dom.querySelector('canvas') as HTMLCanvasElement;
+      if (canvas) {
+        initializePaper(canvas, attrs);
+        // Track the initial path to detect changes in onupdate
+        previousInitialPath = attrs.initialPath;
+      }
+    },
+
+    onupdate: ({ attrs }) => {
+      if (!state.path) return;
+
+      // Handle stroke color changes
+      if (attrs.strokeColor) {
+        state.path.strokeColor = new paper.Color(attrs.strokeColor);
+      }
+
+      // Only handle initialPath changes if it actually changed
+      // Compare by reference - if same reference, no change
+      if (attrs.initialPath === previousInitialPath) {
+        return;
+      }
+
+      const prevLength = previousInitialPath?.length ?? 0;
+      const currLength = attrs.initialPath?.length ?? 0;
+
+      // Update tracking
+      previousInitialPath = attrs.initialPath;
+
+      // Only act if the length changed OR both are empty but with different references
+      // (the latter handles Clear Canvas after drawing)
+      const lengthChanged = prevLength !== currLength;
+      const bothEmptyButDifferent = prevLength === 0 && currLength === 0;
+
+      if (!lengthChanged && !bothEmptyButDifferent) {
+        return;
+      }
+
+      const hasInitialPath = attrs.initialPath && attrs.initialPath.length > 0;
+
+      // If initialPath is empty, clear the canvas
+      if (!hasInitialPath) {
+        state.path.removeSegments();
+        state.mode = 'draw';
+        state.selectedSegment = null;
+        state.selectedHandle = null;
+        m.redraw();
+      }
+      // If initialPath has data, reload it
+      else if (attrs.initialPath) {
+        // Clear existing path
+        state.path.removeSegments();
+
+        // Load new path
+        const loadedPath = pathCommandsToPaperPath(attrs.initialPath);
+        state.path.segments = loadedPath.segments;
+        state.path.strokeColor = new paper.Color(attrs.strokeColor ?? DEFAULT_STROKE_COLOR);
+
+        // Switch to edit mode
+        state.mode = 'edit';
+        state.selectedSegment = null;
+        state.selectedHandle = null;
+        m.redraw();
+      }
+    },
+
+    onremove: () => {
+      cleanup();
+    },
+
+    view: ({ attrs }) => {
+      return m('.path-editor', {
+        style: `width: ${attrs.width}px; height: ${attrs.height}px;`,
+      }, [
+        m('canvas', {
+          width: attrs.width,
+          height: attrs.height,
+        }),
+        // Controls row
+        m('.path-editor-controls', [
+          // Mode indicator
+          m('.mode-indicator', `Mode: ${state.mode === 'draw' ? 'Drawing' : 'Editing'}`),
+          // End Drawing button (only visible in draw mode)
+          state.mode === 'draw' && m('wa-button.end-drawing-button', {
+            variant: 'success',
+            size: 'small',
+            onclick: endDrawing,
+          }, 'End Drawing'),
+        ]),
+      ]);
+    },
+  };
+};
+
+export default PathEditor;
