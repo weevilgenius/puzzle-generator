@@ -99,6 +99,8 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
     selectedHandle: null,
     zoom: DEFAULT_ZOOM,
     isSpacebarPressed: false,
+    pendingPoint: null,
+    isDraggingCurve: false,
   };
 
   let tool: paper.Tool | null = null;
@@ -173,11 +175,16 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
     if (state.mode === 'draw') {
       state.mode = 'edit';
 
+      // Clear any pending curve state
+      state.pendingPoint = null;
+      state.isDraggingCurve = false;
+
       // Don't select anything by default in edit mode
       // Vertices will only be shown when clicked
 
       // Hide preview path in edit mode
       if (state.previewPath) {
+        state.previewPath.removeSegments();
         state.previewPath.visible = false;
       }
 
@@ -271,6 +278,8 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
         state.mode = 'draw';
         state.selectedSegment = null;
         state.selectedHandle = null;
+        state.pendingPoint = null;
+        state.isDraggingCurve = false;
         m.redraw();
       }
       // If initialPath has data, reload it
@@ -287,6 +296,8 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
         state.mode = 'edit';
         state.selectedSegment = null;
         state.selectedHandle = null;
+        state.pendingPoint = null;
+        state.isDraggingCurve = false;
         m.redraw();
       }
     },

@@ -158,7 +158,41 @@ export function setupMouseHandling(
     }
 
     if (state.mode === 'draw') {
-      // Finished dragging in draw mode - notify of changes
+      // Finalize the pending point by adding it to the main path
+      if (state.pendingPoint && state.path) {
+        if (state.isDraggingCurve && state.previewPath && state.previewPath.segments.length > 0) {
+          // User dragged - add the curve segment with handles from preview
+          const previewSegment = state.previewPath.lastSegment;
+          const newSegment = new paper.Segment(
+            state.pendingPoint,
+            previewSegment.handleIn,
+            previewSegment.handleOut
+          );
+          state.path.add(newSegment);
+
+          // Apply the handleOut from preview to the previous segment (if exists)
+          if (state.path.segments.length > 1 && state.previewPath.segments.length > 1) {
+            const prevSegment = state.path.segments[state.path.segments.length - 2];
+            const previewPrevSegment = state.previewPath.segments[0];
+            prevSegment.handleOut = previewPrevSegment.handleOut;
+          }
+        } else {
+          // User just clicked (no drag) - add a straight line segment
+          state.path.add(state.pendingPoint);
+        }
+
+        // Clear pending state
+        state.pendingPoint = null;
+        state.isDraggingCurve = false;
+
+        // Hide preview path
+        if (state.previewPath) {
+          state.previewPath.removeSegments();
+          state.previewPath.visible = false;
+        }
+      }
+
+      // Notify of changes
       onPathChanged();
     } else {
       // Clear selection state when mouse is released in edit mode
@@ -223,7 +257,7 @@ export function cleanupMouseHandling(canvas: HTMLCanvasElement | null): void {
 \* ========================================================= */
 
 /**
- * Handle mouse down in draw mode - add a new point to the path
+ * Handle mouse down in draw mode - store the pending point
  */
 function handleDrawModeDown(
   state: PathEditorState,
@@ -241,22 +275,21 @@ function handleDrawModeDown(
     }
   }
 
-  // Add a new segment to the path
-  state.path.add(event.point);
+  // Store the pending point (don't add to main path yet)
+  state.pendingPoint = event.point.clone();
+  state.isDraggingCurve = false;
 
-  // Hide preview while we have the mouse down
-  if (state.previewPath) {
-    state.previewPath.visible = false;
-  }
+  // Show the pending point as a straight line in the preview
+  updatePreviewPath(state, event.point);
 }
 
 /**
- * Handle mouse drag in draw mode - create smooth bezier curves
+ * Handle mouse drag in draw mode - create smooth bezier curves in preview
  *
  * Nomenclature:
  * - A: Point before B (if it exists)
- * - B: End of current shape (previous last point)
- * - C: Mouse down point (where we just added new segment)
+ * - B: End of current shape (last point in main path)
+ * - C: Mouse down point (pending point, not yet added to main path)
  * - D: Current drag position (mouse position during drag)
  *
  * We're drawing a curve from B→C, influenced by D:
@@ -267,48 +300,73 @@ function handleDrawModeDrag(
   state: PathEditorState,
   event: paper.ToolEvent,
 ): void {
-  if (!state.path || state.path.segments.length === 0) return;
+  if (!state.path || !state.previewPath || !state.pendingPoint) return;
 
-  // C: The segment we just added (at mouse down position)
-  const segmentC = state.path.lastSegment;
-  if (!segmentC) return;
+  state.isDraggingCurve = true;
+
+  // C: The pending point (at mouse down position)
+  const pointC = state.pendingPoint;
 
   // Vector from C to D (drag direction)
-  const vectorCD = event.point.subtract(segmentC.point);
+  const vectorCD = event.point.subtract(pointC);
 
-  // Set C's handles parallel to drag direction (C→D)
-  segmentC.handleOut = vectorCD.multiply(DRAG_HANDLE_MULTIPLIER);
-  segmentC.handleIn = vectorCD.multiply(-DRAG_HANDLE_MULTIPLIER);
+  // Calculate C's handles parallel to drag direction (C→D)
+  const handleCOut = vectorCD.multiply(DRAG_HANDLE_MULTIPLIER);
+  const handleCIn = vectorCD.multiply(-DRAG_HANDLE_MULTIPLIER);
 
-  if (state.path.segments.length > 1) {
-    // B: The previous segment (end of existing shape)
-    const segmentB = state.path.segments[state.path.segments.length - 2];
+  // Calculate B's handleOut based on the existing path
+  let handleBOut = new paper.Point(0, 0);
+
+  if (state.path.segments.length > 0) {
+    // B: The last segment in the main path
+    const segmentB = state.path.lastSegment;
 
     // Vector from B to C
-    const vectorBC = segmentC.point.subtract(segmentB.point);
+    const vectorBC = pointC.subtract(segmentB.point);
 
-    // Check if segment before B (A→B) was a line or curve
-    const ABwasCurve = (segmentB.handleIn && segmentB.handleIn.length > 0);
+    if (state.path.segments.length > 1) {
+      // Check if segment before B (A→B) was a line or curve
+      const ABwasCurve = (segmentB.handleIn && segmentB.handleIn.length > 0);
 
-    if (ABwasCurve) {
-      // A→B was a curve: Set B.handleOut tangent to B.handleIn for smooth flow
-      // Make them colinear (opposite directions) with length based on B→C distance
-      const tangentDir = segmentB.handleIn.normalize();
-      const handleOutLength = vectorBC.length;
-      segmentB.handleOut = tangentDir.multiply(-handleOutLength);
-    } else {
-      // A→B was a line: Set B.handleOut parallel to the line direction (A→B)
-      if (state.path.segments.length > 2) {
-        // A: The segment before B
-        const segmentA = state.path.segments[state.path.segments.length - 3];
-        // Vector from A to B (the line direction)
-        const vectorAB = segmentB.point.subtract(segmentA.point);
-        segmentB.handleOut = vectorAB.multiply(0.33);
+      if (ABwasCurve) {
+        // A→B was a curve: Set B.handleOut tangent to B.handleIn for smooth flow
+        // Make them colinear (opposite directions) with length based on B→C distance
+        const tangentDir = segmentB.handleIn.normalize();
+        const handleOutLength = vectorBC.length;
+        handleBOut = tangentDir.multiply(-handleOutLength);
       } else {
-        // No A exists (B is first point), use B→C direction
-        segmentB.handleOut = vectorBC.multiply(0.33);
+        // A→B was a line: Set B.handleOut parallel to the line direction (A→B)
+        if (state.path.segments.length > 1) {
+          // A: The segment before B
+          const segmentA = state.path.segments[state.path.segments.length - 2];
+          // Vector from A to B (the line direction)
+          const vectorAB = segmentB.point.subtract(segmentA.point);
+          handleBOut = vectorAB.multiply(0.33);
+        } else {
+          // No A exists (B is first point), use B→C direction
+          handleBOut = vectorBC.multiply(0.33);
+        }
       }
     }
+
+    // Render the curve in the preview path
+    state.previewPath.removeSegments();
+
+    // Add first segment at B with its handleOut
+    const firstSeg = new paper.Segment(segmentB.point, new paper.Point(0, 0), handleBOut);
+    state.previewPath.add(firstSeg);
+
+    // Add curve from B to C with calculated handles
+    const curveSegment = new paper.Segment(pointC, handleCIn, handleCOut);
+    state.previewPath.add(curveSegment);
+
+    state.previewPath.visible = true;
+  } else {
+    // First segment - just show the curve with symmetric handles
+    state.previewPath.removeSegments();
+    const firstSegment = new paper.Segment(pointC, handleCIn, handleCOut);
+    state.previewPath.add(firstSegment);
+    state.previewPath.visible = true;
   }
   // Note: If this is the first segment (no B), C's handles are already set above
 }
