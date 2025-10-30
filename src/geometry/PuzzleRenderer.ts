@@ -4,124 +4,114 @@
  */
 
 import paper from 'paper';
-import type { PuzzleGeometry, Vec2, HalfEdge, EdgeSegment } from './types';
+import type { PuzzleGeometry, EdgeSegment, Piece } from './types';
+import { pathCommandsToPaperPath } from './paperUtils';
 
 /**
  * Draws puzzle geometry using Paper.js.
- * Creates a single path containing all puzzle edges.
+ * Creates one Path per piece plus one for the border, all grouped together.
+ * This enables easy piece selection, highlighting, and manipulation.
  *
  * @param puzzle - The puzzle geometry to render
  * @param strokeColor - Color for the puzzle edges (CSS color string)
- * @returns The Paper.js Path object representing the puzzle
+ * @returns A Paper.js Group containing the border path and all piece paths
  */
 export function drawPuzzleWithPaper(
   puzzle: PuzzleGeometry,
   strokeColor: string
+): paper.Group {
+  const group = new paper.Group();
+
+  // Draw the border path
+  const borderPath = pathCommandsToPaperPath(puzzle.borderPath);
+  borderPath.strokeColor = new paper.Color(strokeColor);
+  borderPath.strokeWidth = 1;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  borderPath.data.isBorder = true; // Mark for future features
+  group.addChild(borderPath);
+
+  // Draw each piece as a separate path
+  for (const piece of puzzle.pieces.values()) {
+    const piecePath = createPiecePath(piece, puzzle);
+    piecePath.strokeColor = new paper.Color(strokeColor);
+    piecePath.strokeWidth = 1;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    piecePath.data.pieceId = piece.id; // Store for future selection features
+    group.addChild(piecePath);
+  }
+
+  return group;
+}
+
+/**
+ * Create a Paper.js Path for a single piece by traversing its boundary.
+ * This follows the half-edge structure around the piece's perimeter.
+ *
+ * @param piece - The piece to create a path for
+ * @param puzzle - The puzzle geometry containing the half-edge data
+ * @returns A Paper.js Path representing the piece's complete outline
+ */
+function createPiecePath(
+  piece: Piece,
+  puzzle: PuzzleGeometry
 ): paper.Path {
   const path = new paper.Path();
-  path.strokeColor = new paper.Color(strokeColor);
-  path.strokeWidth = 1;
 
-  // By iterating through all unique edges and drawing the curve for one of
-  // its half-edges, we ensure every cut is defined exactly once.
-  for (const edge of puzzle.edges.values()) {
-    // We consistently choose heLeft. The tab generator puts the "outie"
-    // or "innie" on this half-edge, and the twin gets the inverse.
-    const he = puzzle.halfEdges.get(edge.heLeft);
-    if (!he) continue; // should not happen
+  // Get the starting half-edge for this piece's boundary
+  let currentHe = puzzle.halfEdges.get(piece.halfEdge);
+  if (!currentHe) return path;
 
-    // Move to the start of this edge segment
-    const startPoint = new paper.Point(he.origin[0], he.origin[1]);
+  const startHeId = currentHe.id;
+  path.moveTo(new paper.Point(currentHe.origin[0], currentHe.origin[1]));
 
-    if (he.segments && he.segments.length > 0) {
-      // If a custom tab is defined, draw each segment in order
-      const edgeSegments: paper.Segment[] = [];
-      edgeSegments.push(new paper.Segment(startPoint));
-
-      for (const segment of he.segments) {
-        addSegmentToPaperPath(edgeSegments, segment);
+  // Traverse the boundary of the piece by following the 'next' pointers
+  // until we get back to the starting half-edge
+  do {
+    if (currentHe.segments) {
+      // If the edge has a custom tab, draw its segments
+      for (const segment of currentHe.segments) {
+        addSegmentToPaperPath(path, segment);
       }
-
-      // Add all segments to the main path
-      path.addSegments(edgeSegments);
     } else {
-      // No tab, draw a straight line to the edge's endpoint
-      const destination = getHalfEdgeDestination(he, puzzle);
-      const endPoint = new paper.Point(destination[0], destination[1]);
-
-      path.addSegments([
-        new paper.Segment(startPoint),
-        new paper.Segment(endPoint),
-      ]);
+      // Otherwise, draw a straight line to the start of the next half-edge
+      const nextHe = puzzle.halfEdges.get(currentHe.next)!;
+      path.lineTo(new paper.Point(nextHe.origin[0], nextHe.origin[1]));
     }
-  }
+    // Move to the next half-edge in the loop
+    currentHe = puzzle.halfEdges.get(currentHe.next)!;
+  } while (currentHe.id !== startHeId);
 
   return path;
 }
 
 /**
- * Add a single EdgeSegment to a Paper.js segment array.
+ * Add a single EdgeSegment to a Paper.js path.
  * Handles both line and bezier curve segments.
  *
- * @param segments - The array of Paper.js segments to add to
+ * @param path - The Paper.js path to add the segment to
  * @param segment - The edge segment to convert and add
  */
 function addSegmentToPaperPath(
-  segments: paper.Segment[],
+  path: paper.Path,
   segment: EdgeSegment
 ): void {
   switch (segment.type) {
   case 'line': {
-    const point = new paper.Point(segment.p[0], segment.p[1]);
-    segments.push(new paper.Segment(point));
+    path.lineTo(new paper.Point(segment.p[0], segment.p[1]));
     break;
   }
   case 'bezier': {
-    // Paper.js uses relative handles, but EdgeSegment stores absolute control points
-    // We need to convert the absolute control points to relative handles
-    const endPoint = new paper.Point(segment.p3[0], segment.p3[1]);
-    const cp1 = new paper.Point(segment.p1[0], segment.p1[1]);
-    const cp2 = new paper.Point(segment.p2[0], segment.p2[1]);
-
-    // Get the previous segment to set its handleOut
-    const prevSegment = segments[segments.length - 1];
-    if (prevSegment) {
-      const handleOut = cp1.subtract(prevSegment.point);
-      prevSegment.handleOut = handleOut;
-    }
-
-    // Create new segment with handleIn
-    const handleIn = cp2.subtract(endPoint);
-    const newSegment = new paper.Segment(endPoint, handleIn, undefined);
-    segments.push(newSegment);
+    // Paper.js cubicCurveTo takes: handle1, handle2, endPoint (all absolute)
+    path.cubicCurveTo(
+      new paper.Point(segment.p1[0], segment.p1[1]),
+      new paper.Point(segment.p2[0], segment.p2[1]),
+      new paper.Point(segment.p3[0], segment.p3[1])
+    );
     break;
   }
   }
 }
 
-/**
- * Get the destination point of a half-edge.
- * For internal edges, this is the origin of the twin half-edge.
- * For boundary edges, this is the origin of the next half-edge.
- *
- * @param he - The half-edge to find the destination for
- * @param puzzle - The puzzle geometry containing the half-edge data
- * @returns The destination point coordinates
- */
-function getHalfEdgeDestination(
-  he: HalfEdge,
-  puzzle: PuzzleGeometry
-): Vec2 {
-  if (he.twin !== -1) {
-    // For an internal edge, the destination is the origin of the twin half-edge
-    const twinHe = puzzle.halfEdges.get(he.twin)!;
-    return twinHe.origin;
-  } else {
-    // For a boundary edge, the destination is the origin of the next half-edge in the loop
-    const nextHe = puzzle.halfEdges.get(he.next)!;
-    return nextHe.origin;
-  }
-}
 
 /**
  * Draw seed points (piece centers) as circles.

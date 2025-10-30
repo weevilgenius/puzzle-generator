@@ -26,8 +26,8 @@ export interface PuzzlePaperState {
   documentMouseUp: ((e: MouseEvent) => void) | null;
 
   // Paper.js items
-  /** Main puzzle outline path */
-  paperPath: paper.Path | null;
+  /** Main puzzle group containing border and all piece paths */
+  paperPath: paper.Group | null;
   /** Group for seed point circles */
   seedPointItems: paper.Group | null;
   /** Group for problem indicators */

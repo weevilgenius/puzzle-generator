@@ -105,14 +105,14 @@ Ensure the project compiles and lint checks pass when making changes:
 
 #### Web Awesome Components
 
-- **Use Web Awesome for standard UI controls** - For basic UI elements like buttons, checkboxes, color pickers, sliders, etc., prefer Web Awesome components over custom implementations
+- **Use Web Awesome for standard UI controls** - For basic UI elements like buttons, checkboxes, color pickers, sliders, etc., prefer Web Awesome components over custom HTML implementations
 - **Benefits**: Web Awesome (derived from Shoelace) provides standardized, accessible UI components with consistent styling and behavior
 - **Import pattern**: Import the component registration (side-effect) and the TypeScript type (if needed)
   ```ts
   // Import for registration (side-effect)
   import '@awesome.me/webawesome/dist/components/color-picker/color-picker.js';
   // Import for TypeScript type if needed
-  import WaColorPicker from '@awesome.me/webawesome/dist/components/color-picker/color-picker.js';
+  import type WaColorPicker from '@awesome.me/webawesome/dist/components/color-picker/color-picker.js';
   ```
 - **Usage in Mithril**: Use the web component tag name and cast event targets to the component type
   ```ts
@@ -130,12 +130,12 @@ Ensure the project compiles and lint checks pass when making changes:
 
 ### General Style
 
-- **No emoji** in code (comments, strings, etc.) unless explicitly required by the domain
+- **Avoid emoji** in code (comments, strings, etc.) unless explicitly required by the domain
 - **Explicit return types** on exported functions
 - **Readonly where appropriate** - use `readonly` modifier for immutable arrays/tuples
 - **Callback naming** - use `on<Event>` pattern for callbacks (`onChange`, `onPuzzleChanged`)
-- **Optional chaining** - prefer `?.` for potentially null/undefined values
-- **Nullish coalescing** - prefer `??` over `||` when dealing with null/undefined
+- **Optional chaining** - prefer `?.` for potentially null/undefined values, enforced by lint rule
+- **Nullish coalescing** - prefer `??` over `||` when dealing with null/undefined, enforced by lint rule
 
 ## Architecture
 
