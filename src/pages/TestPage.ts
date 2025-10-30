@@ -63,8 +63,8 @@ export const TestPage: m.ClosureComponent<unknown> = () => {
   return {
     view: () => {
       return m(".page", [
-        m("h1", "Path Editor - Phase 3 Bezier Curve Support"),
-        m("p", "Testing the PathEditor component with bezier curve creation and editing."),
+        m("h1", "Path Editor - Phase 4 Pan and Zoom"),
+        m("p", "Testing the PathEditor component with pan and zoom support."),
 
         m(".test-page", [
           // PathEditor component
@@ -108,6 +108,13 @@ export const TestPage: m.ClosureComponent<unknown> = () => {
                 ]),
                 m("li", "The mode indicator below the canvas shows the current mode"),
               ]),
+              m("h3", { style: "margin-top: 1rem;" }, "Pan and Zoom:"),
+              m("ul", { style: "margin: 0.5rem 0;" }, [
+                m("li", "Hold ", m("strong", "Spacebar"), " and drag to pan the canvas"),
+                m("li", "Use ", m("strong", "mouse wheel"), " to zoom in/out (zooms toward cursor position)"),
+                m("li", "Use the ", m("strong", "Zoom dropdown"), " to select preset zoom levels (25%, 50%, 100%, 200%, 400%)"),
+                m("li", "Click the ", m("strong", "Recenter button"), " to reset view to 100% zoom and center position"),
+              ]),
             ]),
           ]),
 
@@ -124,27 +131,15 @@ export const TestPage: m.ClosureComponent<unknown> = () => {
             }),
           ]),
 
-          // Phase 3 status
+          // Phasestatus
           m(".findings", [
-            m("h2", "Phase 3 Status"),
-            m("p", "Bezier curve support:"),
+            m("h2", "Implementation Status"),
+            m("h3", { style: "margin-top: 1rem;" }, "Phase 4 - Pan and Zoom:"),
             m("ul", [
-              m("li", "✅ Click to add points with straight lines"),
-              m("li", "✅ Click-drag to create smooth bezier curves"),
-              m("li", "✅ Symmetric handle generation (handleIn and handleOut)"),
-              m("li", "✅ Edit bezier handles in edit mode (drag control points)"),
-              m("li", "✅ Show handles only for selected point"),
-              m("li", "✅ PathCommand conversion supports CurveTo"),
-              m("li", "✅ Visual feedback: control handles shown as Paper.js selection"),
-            ]),
-            m("h3", { style: "margin-top: 1rem;" }, "Deferred to Later Phases:"),
-            m("ul", [
-              m("li", "Pan and zoom (Phase 4)"),
-              m("li", "Keyboard shortcuts (Phase 4)"),
-              m("li", "Cursor changes (Phase 4)"),
-              m("li", "Close path / snap to first point (Phase 4)"),
-              m("li", "Point insertion/deletion (Phase 4)"),
-              m("li", "SVG import (Phase 5)"),
+              m("li", "✅ Spacebar + drag to pan"),
+              m("li", "✅ Mouse wheel to zoom (centered on cursor)"),
+              m("li", "✅ Zoom dropdown with preset levels"),
+              m("li", "✅ Recenter button to reset view"),
             ]),
           ]),
         ]),

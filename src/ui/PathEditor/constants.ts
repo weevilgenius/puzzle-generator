@@ -27,6 +27,10 @@ export interface PathEditorState {
   selectedSegment: paper.Segment | null;
   /** Currently selected handle for editing curves */
   selectedHandle: { segment: paper.Segment; type: 'handleIn' | 'handleOut' } | null;
+  /** Current zoom level (1.0 = 100%) */
+  zoom: number;
+  /** Whether spacebar is currently pressed (for panning) */
+  isSpacebarPressed: boolean;
 }
 
 /* ========================================================= *\
@@ -60,3 +64,25 @@ export const ANCHOR_POINT_RADIUS = 5;
  * Higher values create more pronounced curves
  */
 export const DRAG_HANDLE_MULTIPLIER = 0.5;
+
+/* ========================================================= *\
+ *  Zoom and Pan Constants                                   *
+\* ========================================================= */
+
+/** Minimum zoom level (10%) */
+export const MIN_ZOOM = 0.1;
+
+/** Maximum zoom level (1000%) */
+export const MAX_ZOOM = 10;
+
+/** Default zoom level (100%) */
+export const DEFAULT_ZOOM = 1;
+
+/** Zoom step for mouse wheel (2.5% per wheel event) */
+export const ZOOM_STEP = 0.025;
+
+/** Preset zoom levels for dropdown */
+export const PRESET_ZOOM_LEVELS = [0.25, 0.5, 1, 2, 4];
+
+/** Preset zoom labels for dropdown */
+export const PRESET_ZOOM_LABELS = ['25%', '50%', '100%', '200%', '400%'];

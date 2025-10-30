@@ -4,27 +4,131 @@
 
 import paper from 'paper';
 import type { PathEditorState } from './constants';
-import { HIT_TOLERANCE, DRAG_HANDLE_MULTIPLIER } from './constants';
+import {
+  HIT_TOLERANCE,
+  DRAG_HANDLE_MULTIPLIER,
+  MIN_ZOOM,
+  MAX_ZOOM,
+  ZOOM_STEP,
+} from './constants';
 
 /* ========================================================= *\
  *  Tool Setup                                               *
 \* ========================================================= */
+
+// Store event handler references for cleanup
+let keyDownHandler: ((event: KeyboardEvent) => void) | null = null;
+let keyUpHandler: ((event: KeyboardEvent) => void) | null = null;
+let wheelHandler: ((event: WheelEvent) => void) | null = null;
+let mouseDownHandler: ((event: MouseEvent) => void) | null = null;
+let mouseMoveHandler: ((event: MouseEvent) => void) | null = null;
+let mouseUpHandler: ((event: MouseEvent) => void) | null = null;
+
+// Track panning state for raw mouse events
+let isPanningWithRawEvents = false;
+let lastPanPoint: { x: number; y: number } | null = null;
 
 /**
  * Initialize Paper.js tool and set up mouse event handlers
  *
  * @param state - The PathEditor state object
  * @param onPathChanged - Callback to invoke when the path changes
+ * @param onZoomChanged - Callback to invoke when the zoom level changes
  * @returns The initialized Paper.js Tool
  */
 export function setupMouseHandling(
   state: PathEditorState,
   onPathChanged: () => void,
+  onZoomChanged: () => void,
 ): paper.Tool {
   const tool = new paper.Tool();
 
+  // Set up keyboard event listeners for spacebar (pan mode)
+  keyDownHandler = (event: KeyboardEvent) => {
+    if (event.code === 'Space' && !state.isSpacebarPressed) {
+      state.isSpacebarPressed = true;
+      event.preventDefault();
+    }
+  };
+
+  keyUpHandler = (event: KeyboardEvent) => {
+    if (event.code === 'Space') {
+      state.isSpacebarPressed = false;
+      event.preventDefault();
+    }
+  };
+
+  // Set up wheel event listener for zooming
+  wheelHandler = (event: WheelEvent) => {
+    event.preventDefault();
+
+    // Calculate zoom delta (negative deltaY means zoom in)
+    const delta = -Math.sign(event.deltaY) * ZOOM_STEP;
+    const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, state.zoom + delta));
+
+    if (newZoom !== state.zoom) {
+      // Get mouse position in view coordinates
+      const mousePos = new paper.Point(event.offsetX, event.offsetY);
+
+      // Zoom centered on mouse position
+      const viewPos = paper.view.viewToProject(mousePos);
+      const zoomFactor = newZoom / state.zoom;
+
+      paper.view.scale(zoomFactor, viewPos);
+      state.zoom = newZoom;
+
+      onZoomChanged();
+    }
+  };
+
+  // Set up raw mouse event listeners for panning (to avoid Paper.js coordinate feedback)
+  mouseDownHandler = (event: MouseEvent) => {
+    if (state.isSpacebarPressed) {
+      isPanningWithRawEvents = true;
+      lastPanPoint = { x: event.clientX, y: event.clientY };
+      event.preventDefault();
+    }
+  };
+
+  mouseMoveHandler = (event: MouseEvent) => {
+    if (isPanningWithRawEvents && lastPanPoint) {
+      const dx = event.clientX - lastPanPoint.x;
+      const dy = event.clientY - lastPanPoint.y;
+
+      // Pan by translating the view (move content with the mouse)
+      paper.view.translate(new paper.Point(dx, dy));
+
+      lastPanPoint = { x: event.clientX, y: event.clientY };
+      event.preventDefault();
+    }
+  };
+
+  mouseUpHandler = () => {
+    if (isPanningWithRawEvents) {
+      isPanningWithRawEvents = false;
+      lastPanPoint = null;
+    }
+  };
+
+  // Add event listeners
+  window.addEventListener('keydown', keyDownHandler);
+  window.addEventListener('keyup', keyUpHandler);
+  if (state.canvas) {
+    state.canvas.addEventListener('wheel', wheelHandler, { passive: false });
+    state.canvas.addEventListener('mousedown', mouseDownHandler);
+    state.canvas.addEventListener('mousemove', mouseMoveHandler);
+    state.canvas.addEventListener('mouseup', mouseUpHandler);
+    // Also handle mouse leaving canvas while panning
+    state.canvas.addEventListener('mouseleave', mouseUpHandler);
+  }
+
   // Mouse down handler
   tool.onMouseDown = (event: paper.ToolEvent) => {
+    // Skip Paper.js tool handling when panning with spacebar
+    if (state.isSpacebarPressed) {
+      return;
+    }
+
     if (state.mode === 'draw') {
       handleDrawModeDown(state, event);
     } else {
@@ -34,6 +138,11 @@ export function setupMouseHandling(
 
   // Mouse drag handler
   tool.onMouseDrag = (event: paper.ToolEvent) => {
+    // Skip Paper.js tool handling when panning with spacebar
+    if (state.isSpacebarPressed) {
+      return;
+    }
+
     if (state.mode === 'draw') {
       handleDrawModeDrag(state, event);
     } else {
@@ -43,6 +152,11 @@ export function setupMouseHandling(
 
   // Mouse up handler
   tool.onMouseUp = () => {
+    // Skip Paper.js tool handling when panning with spacebar
+    if (state.isSpacebarPressed) {
+      return;
+    }
+
     if (state.mode === 'draw') {
       // Finished dragging in draw mode - notify of changes
       onPathChanged();
@@ -56,13 +170,52 @@ export function setupMouseHandling(
 
   // Mouse move handler (for preview in draw mode)
   tool.onMouseMove = (event: paper.ToolEvent) => {
-    if (state.mode === 'draw') {
+    if (state.mode === 'draw' && !state.isSpacebarPressed) {
       updatePreviewPath(state, event.point);
     }
   };
 
   tool.activate();
+
   return tool;
+}
+
+/**
+ * Clean up event listeners for keyboard, wheel, and mouse
+ */
+export function cleanupMouseHandling(canvas: HTMLCanvasElement | null): void {
+  // Remove event listeners
+  if (keyDownHandler) {
+    window.removeEventListener('keydown', keyDownHandler);
+    keyDownHandler = null;
+  }
+  if (keyUpHandler) {
+    window.removeEventListener('keyup', keyUpHandler);
+    keyUpHandler = null;
+  }
+  if (canvas) {
+    if (wheelHandler) {
+      canvas.removeEventListener('wheel', wheelHandler);
+      wheelHandler = null;
+    }
+    if (mouseDownHandler) {
+      canvas.removeEventListener('mousedown', mouseDownHandler);
+      mouseDownHandler = null;
+    }
+    if (mouseMoveHandler) {
+      canvas.removeEventListener('mousemove', mouseMoveHandler);
+      mouseMoveHandler = null;
+    }
+    if (mouseUpHandler) {
+      canvas.removeEventListener('mouseup', mouseUpHandler);
+      canvas.removeEventListener('mouseleave', mouseUpHandler);
+      mouseUpHandler = null;
+    }
+  }
+
+  // Reset panning state
+  isPanningWithRawEvents = false;
+  lastPanPoint = null;
 }
 
 /* ========================================================= *\

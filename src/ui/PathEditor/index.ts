@@ -1,6 +1,5 @@
 /**
- * PathEditor component - Interactive path editing with Paper.js
- * Phase 3: Bezier curve support with handle editing
+ * PathEditor component - Interactive path drawing and editing with Paper.js
  */
 
 import m from 'mithril';
@@ -13,13 +12,25 @@ import {
   PREVIEW_STROKE_COLOR,
   PREVIEW_STROKE_WIDTH,
   PREVIEW_DASH_ARRAY,
+  DEFAULT_ZOOM,
+  PRESET_ZOOM_LEVELS,
+  PRESET_ZOOM_LABELS,
 } from './constants';
 import { paperPathToPathCommands, pathCommandsToPaperPath } from './geometry';
-import { setupMouseHandling } from './mouseHandling';
+import { setupMouseHandling, cleanupMouseHandling } from './mouseHandling';
+import type MithrilViewEvent from '../../utils/MithrilViewEvent';
+
+// component level CSS
 import './PathEditor.css';
 
 // Web Awesome components
 import '@awesome.me/webawesome/dist/components/button/button.js';
+import '@awesome.me/webawesome/dist/components/dropdown/dropdown.js';
+import '@awesome.me/webawesome/dist/components/dropdown-item/dropdown-item.js';
+import type WaDropdownItem from '@awesome.me/webawesome/dist/components/dropdown-item/dropdown-item.js';
+import '@awesome.me/webawesome/dist/components/icon/icon.js';
+import '@awesome.me/webawesome/dist/components/tooltip/tooltip.js';
+
 
 /* ========================================================= *\
  *  Component Interface                                      *
@@ -86,6 +97,8 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
     mode: 'draw',
     selectedSegment: null,
     selectedHandle: null,
+    zoom: DEFAULT_ZOOM,
+    isSpacebarPressed: false,
   };
 
   let tool: paper.Tool | null = null;
@@ -97,6 +110,9 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
   const initializePaper = (canvas: HTMLCanvasElement, attrs: PathEditorAttrs) => {
     paper.setup(canvas);
     state.canvas = canvas;
+
+    // Ensure Paper.js view matches the canvas CSS size
+    paper.view.viewSize = new paper.Size(attrs.width, attrs.height);
 
     // Configure Paper.js settings for better visibility
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -127,9 +143,16 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
     state.previewPath.visible = false;
 
     // Set up mouse handling
-    tool = setupMouseHandling(state, () => {
-      notifyPathChanged(attrs);
-    });
+    tool = setupMouseHandling(
+      state,
+      () => {
+        notifyPathChanged(attrs);
+      },
+      () => {
+        // Zoom changed - trigger redraw to update zoom display
+        m.redraw();
+      },
+    );
   };
 
   /**
@@ -170,6 +193,8 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
       tool.remove();
       tool = null;
     }
+    // Clean up event listeners
+    cleanupMouseHandling(state.canvas);
     if (paper.project) {
       paper.project.remove();
     }
@@ -178,6 +203,25 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
     state.previewPath = null;
     state.selectedSegment = null;
     state.selectedHandle = null;
+  };
+
+  /**
+   * Set zoom level programmatically (from dropdown selection)
+   */
+  const setZoom = (newZoom: number) => {
+    if (newZoom === state.zoom) return;
+
+    const zoomFactor = newZoom / state.zoom;
+    paper.view.scale(zoomFactor, paper.view.center);
+    state.zoom = newZoom;
+    m.redraw();
+  };
+
+  /**
+   * Get the current zoom as a percentage string
+   */
+  const getZoomPercentage = (): string => {
+    return `${Math.round(state.zoom * 100)}%`;
   };
 
   return {
@@ -252,15 +296,17 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
     },
 
     view: ({ attrs }) => {
-      return m('.path-editor', {
-        style: `width: ${attrs.width}px; height: ${attrs.height}px;`,
-      }, [
+      // Get current zoom as percentage string
+      const currentZoomStr = getZoomPercentage();
+
+      return m('.path-editor', [
         m('canvas', {
-          width: attrs.width,
-          height: attrs.height,
+          style: `width: ${attrs.width}px; height: ${attrs.height}px;`,
         }),
+
         // Controls row
         m('.path-editor-controls', [
+
           // Mode indicator
           m('.mode-indicator', `Mode: ${state.mode === 'draw' ? 'Drawing' : 'Editing'}`),
           // End Drawing button (only visible in draw mode)
@@ -269,6 +315,59 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
             size: 'small',
             onclick: endDrawing,
           }, 'End Drawing'),
+
+          // Zoom control
+          m('wa-dropdown.zoom-control', {
+            'onwa-select': (e: CustomEvent<{ item: WaDropdownItem }> & MithrilViewEvent) => {
+              e.redraw = false;
+              const selectedValue = e.detail.item.value;
+
+              if (selectedValue && typeof selectedValue === 'string') {
+                const newZoom = parseFloat(selectedValue);
+                if (!isNaN(newZoom)) {
+                  setZoom(newZoom);
+                }
+              }
+            },
+          }, [
+            m('wa-button', {
+              slot: 'trigger',
+              'with-caret': true,
+              size: 'small',
+              value: state.zoom,
+            }, currentZoomStr),
+            ...PRESET_ZOOM_LEVELS.map((level, index) =>
+              m('wa-dropdown-item', {
+                type: 'checkbox',
+                checked: state.zoom == level ? true : undefined,
+                value: level.toString(),
+              }, PRESET_ZOOM_LABELS[index])
+            ),
+          ]),
+
+          // Recenter button
+          m('wa-tooltip', { for: "recenter-button" }, "Recenter view"),
+          m('wa-button#recenter-button', {
+            appearance: 'plain',
+            size: 'large',
+            onclick: () => {
+              // reset zoom to 100%
+              const zoomFactor = DEFAULT_ZOOM / state.zoom;
+              paper.view.scale(zoomFactor, paper.view.center);
+              state.zoom = DEFAULT_ZOOM;
+
+              // pan to the middle of the view
+              paper.view.center = new paper.Point(
+                paper.view.viewSize.width / 2,
+                paper.view.viewSize.height / 2
+              );
+            },
+          }, m('wa-icon', {
+            library: 'material',
+            name: 'recenter',
+            label: 'Recenter view',
+          })),
+
         ]),
       ]);
     },
