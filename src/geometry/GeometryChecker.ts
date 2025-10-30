@@ -11,6 +11,7 @@ import {
   calculateSegmentsBounds,
   serializeTopology,
   doAABBsIntersect,
+  isPointInBoundary,
 } from "./utils";
 import type { CheckGeometryWorkerInput, CheckGeometryWorkerOutput } from '../workers/CheckGeometryWorker';
 import { Bezier } from 'bezier-js';
@@ -291,6 +292,38 @@ async function detectIntersections(
 
 
 /**
+ * Detects vertices that lie outside the puzzle boundary.
+ *
+ * @param puzzle - The fully generated puzzle geometry.
+ * @returns An array of Vec2 points representing vertices outside the boundary.
+ */
+function detectVerticesOutsideBoundary(puzzle: PuzzleTopology): Vec2[] {
+  const outsideVertices: Vec2[] = [];
+
+  // Collect all boundary edge vertices (vertices on half-edges with twin === -1)
+  // These should be excluded from the check due to floating point precision issues
+  const boundaryEdgeVertices = new Set<Vec2>();
+  for (const halfEdge of puzzle.halfEdges.values()) {
+    if (halfEdge.twin === -1) {
+      boundaryEdgeVertices.add(halfEdge.origin);
+    }
+  }
+
+  // Check each vertex to see if it's inside the boundary
+  for (const vertex of puzzle.vertices) {
+    if (!isPointInBoundary(vertex, puzzle.borderPath, boundaryEdgeVertices)) {
+      outsideVertices.push(vertex);
+    }
+  }
+
+  if (outsideVertices.length > 0) {
+    console.log(`detected ${outsideVertices.length} vertices outside the boundary`);
+  }
+
+  return outsideVertices;
+}
+
+/**
  * Checks a puzzle for geometry issues such as intersecting pieces or too narrow geometry.
  * @param puzzle - Geometry to check
  * @param onProgress - Optional callpack for managing a progress bar
@@ -304,17 +337,23 @@ export async function checkGeometry(
   // find points where pieces intersect/overlap
   const intersections = await detectIntersections(puzzle, onProgress);
 
-  if (intersections.length < 2) {
-    return intersections;
+  // find vertices outside the boundary
+  const outsideVertices = detectVerticesOutsideBoundary(puzzle);
+
+  // combine both types of problems
+  const allProblems = [...intersections, ...outsideVertices];
+
+  if (allProblems.length < 2) {
+    return allProblems;
   }
 
   // Note: the intersection algorithm can return multiple points clustered very
   // closely, which is confusing for the user, so here we filter them out
   const MIN_DISTANCE = 1;
-  const filtered: Vec2[] = [intersections[0]];
+  const filtered: Vec2[] = [allProblems[0]];
 
-  for (let i = 1; i < intersections.length; i++) {
-    const current = intersections[i];
+  for (let i = 1; i < allProblems.length; i++) {
+    const current = allProblems[i];
     const last = filtered[filtered.length - 1];
     if (distanceSq(current, last) > MIN_DISTANCE * MIN_DISTANCE) {
       filtered.push(current);

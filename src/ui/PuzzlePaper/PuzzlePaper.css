@@ -4,19 +4,22 @@
 
 .puzzle-paper-stack {
   position: relative;
-  display: inline-block;
-}
-
-.puzzle-paper-stack .background {
-  position: absolute;
-  top: 0;
-  left: 0;
-  pointer-events: none;
-  user-select: none;
 }
 
 .puzzle-paper-stack canvas.puzzle-paper {
-  position: relative;
+  /* canvas on top */
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2; /* above image */
   border: 1px solid #ccc;
   cursor: default;
+}
+
+.puzzle-paper-stack .background {
+  display: block;
+  position: relative;
+  z-index: 1; /* below canvas */
+  pointer-events: none;
+  user-select: none;
 }

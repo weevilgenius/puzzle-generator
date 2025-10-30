@@ -484,9 +484,25 @@ export function flattenBoundary(boundary: PathCommand[]): Vec2[][] {
  *
  * @param point The point to check.
  * @param boundary The boundary path defining the shape.
+ * @param excludeVertices Optional set of vertices to exclude from the check.
+ *                        If the point matches one of these vertices, it's considered inside
+ *                        (useful for boundary edge vertices that may have floating point precision issues).
  * @returns `true` if the point is inside the boundary, `false` otherwise.
  */
-export function isPointInBoundary(point: Vec2, boundary: PathCommand[]): boolean {
+export function isPointInBoundary(
+  point: Vec2,
+  boundary: PathCommand[],
+  excludeVertices?: Set<Vec2>
+): boolean {
+
+  // If this point should be excluded (e.g., it's a boundary vertex), treat it as inside
+  if (excludeVertices) {
+    for (const excludeVertex of excludeVertices) {
+      if (point[0] === excludeVertex[0] && point[1] === excludeVertex[1]) {
+        return true;
+      }
+    }
+  }
 
   if (boundary.length > 0 && boundary[0].type !== 'move') {
     throw new Error("Boundary path must start with a 'move' command.");

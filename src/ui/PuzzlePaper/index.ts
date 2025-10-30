@@ -46,6 +46,11 @@ export const PuzzlePaper: m.ClosureComponent<PuzzleAttrs> = () => {
     paperPath: null,
     seedPointItems: null,
     problemItems: null,
+    vertexItems: null,
+
+    // Hover and selection state
+    hoveredVertexId: -1,
+    selectedPieceId: -1,
   };
 
   return {
@@ -118,7 +123,7 @@ export const PuzzlePaper: m.ClosureComponent<PuzzleAttrs> = () => {
             touchAction: 'manipulation',
           },
 
-          // Mouse events (Phase 4 will implement these fully)
+          // Mouse events
           onmousedown: (e: MouseEvent & MithrilViewEvent) => handleDragStart(e, attrs, state),
           onmousemove: (e: MouseEvent & MithrilViewEvent) => {
             handleMouseMove(e, attrs, state);
@@ -126,7 +131,7 @@ export const PuzzlePaper: m.ClosureComponent<PuzzleAttrs> = () => {
           },
           onmouseup: (e: MouseEvent & MithrilViewEvent) => handleDragEnd(e, attrs, state),
 
-          // Touch events (Phase 4 will implement these fully)
+          // Touch events
           ontouchstart: (e: TouchEvent & MithrilViewEvent) => handleDragStart(e, attrs, state),
           ontouchmove: (e: TouchEvent & MithrilViewEvent) => handleDragMove(e, attrs, state),
           ontouchend: (e: TouchEvent & MithrilViewEvent) => handleDragEnd(e, attrs, state),

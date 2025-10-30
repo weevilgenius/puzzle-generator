@@ -32,6 +32,14 @@ export interface PuzzlePaperState {
   seedPointItems: paper.Group | null;
   /** Group for problem indicators */
   problemItems: paper.Group | null;
+  /** Group for vertex circles (shown on hover) */
+  vertexItems: paper.Group | null;
+
+  // Hover and selection state
+  /** Currently hovered vertex ID */
+  hoveredVertexId: VertexID;
+  /** Currently selected piece ID (for future features) */
+  selectedPieceId: PieceID;
 }
 
 // Throttling constant for real-time regeneration during drag

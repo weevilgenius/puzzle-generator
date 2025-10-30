@@ -7,7 +7,7 @@ import PathEditor from '../ui/PathEditor';
 import "./TestPage.css";
 
 /**
- * Test page component for PathEditor (Phase 2)
+ * Test page component for PathEditor
  */
 export const TestPage: m.ClosureComponent<unknown> = () => {
   const state = {

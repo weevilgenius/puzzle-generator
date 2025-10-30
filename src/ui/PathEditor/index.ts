@@ -44,8 +44,6 @@ export interface PathEditorAttrs extends m.Attributes {
    * Optional initial path to load into the editor.
    * If provided, the path will be displayed and made editable.
    * If undefined, the editor starts with an empty canvas in draw mode.
-   *
-   * Phase 2: Only MoveTo and LineTo commands are supported.
    */
   initialPath?: PathCommand[];
 
@@ -80,14 +78,6 @@ export interface PathEditorAttrs extends m.Attributes {
 
 /**
  * PathEditor - A reusable path editing component using Paper.js
- *
- * Phase 3 Features:
- * - Click to add points (straight lines)
- * - Click-drag to add points with smooth bezier curves
- * - Drag anchor points to move them
- * - Drag curve handles to adjust curve shape
- * - Automatic mode switching (draw when empty, edit when path exists)
- * - PathCommand conversion (MoveTo/LineTo/CurveTo)
  */
 export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
   const state: PathEditorState = {
