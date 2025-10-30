@@ -35,6 +35,10 @@ export interface PathEditorState {
   pendingPoint: paper.Point | null;
   /** Whether user is currently dragging to create a curve */
   isDraggingCurve: boolean;
+  /** Whether cursor is near first point for snapping to close path */
+  isNearFirstPoint: boolean;
+  /** Visual indicator for first point when snapping */
+  snapIndicator: paper.Path.Circle | null;
 }
 
 /* ========================================================= *\
@@ -68,6 +72,28 @@ export const ANCHOR_POINT_RADIUS = 5;
  * Higher values create more pronounced curves
  */
 export const DRAG_HANDLE_MULTIPLIER = 0.5;
+
+/**
+ * Distance threshold (in pixels) for snapping to first point to close path
+ * When cursor is within this distance of the first point, snap mode is enabled
+ */
+export const SNAP_THRESHOLD = 15;
+
+/**
+ * Snap indicator circle radius (pixels)
+ * Visual indicator shown around the first point when snapping
+ */
+export const SNAP_INDICATOR_RADIUS = 10;
+
+/**
+ * Snap indicator stroke color
+ */
+export const SNAP_INDICATOR_COLOR = '#4CAF50';
+
+/**
+ * Snap indicator stroke width
+ */
+export const SNAP_INDICATOR_WIDTH = 2;
 
 /* ========================================================= *\
  *  Zoom and Pan Constants                                   *

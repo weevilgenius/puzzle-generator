@@ -63,8 +63,8 @@ export const TestPage: m.ClosureComponent<unknown> = () => {
   return {
     view: () => {
       return m(".page", [
-        m("h1", "Path Editor - Phase 4 Pan and Zoom"),
-        m("p", "Testing the PathEditor component with pan and zoom support."),
+        m("h1", "Path Editor"),
+        m("p", "Testing the PathEditor component."),
 
         m(".test-page", [
           // PathEditor component
@@ -131,17 +131,6 @@ export const TestPage: m.ClosureComponent<unknown> = () => {
             }),
           ]),
 
-          // Phasestatus
-          m(".findings", [
-            m("h2", "Implementation Status"),
-            m("h3", { style: "margin-top: 1rem;" }, "Phase 4 - Pan and Zoom:"),
-            m("ul", [
-              m("li", "✅ Spacebar + drag to pan"),
-              m("li", "✅ Mouse wheel to zoom (centered on cursor)"),
-              m("li", "✅ Zoom dropdown with preset levels"),
-              m("li", "✅ Recenter button to reset view"),
-            ]),
-          ]),
         ]),
       ]);
     },

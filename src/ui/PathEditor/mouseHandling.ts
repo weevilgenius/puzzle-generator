@@ -10,6 +10,10 @@ import {
   MIN_ZOOM,
   MAX_ZOOM,
   ZOOM_STEP,
+  SNAP_THRESHOLD,
+  SNAP_INDICATOR_RADIUS,
+  SNAP_INDICATOR_COLOR,
+  SNAP_INDICATOR_WIDTH,
 } from './constants';
 
 /* ========================================================= *\
@@ -47,6 +51,7 @@ export function setupMouseHandling(
   keyDownHandler = (event: KeyboardEvent) => {
     if (event.code === 'Space' && !state.isSpacebarPressed) {
       state.isSpacebarPressed = true;
+      updateCursor(state);
       event.preventDefault();
     }
   };
@@ -54,6 +59,7 @@ export function setupMouseHandling(
   keyUpHandler = (event: KeyboardEvent) => {
     if (event.code === 'Space') {
       state.isSpacebarPressed = false;
+      updateCursor(state);
       event.preventDefault();
     }
   };
@@ -86,6 +92,7 @@ export function setupMouseHandling(
     if (state.isSpacebarPressed) {
       isPanningWithRawEvents = true;
       lastPanPoint = { x: event.clientX, y: event.clientY };
+      updateCursor(state);
       event.preventDefault();
     }
   };
@@ -107,6 +114,7 @@ export function setupMouseHandling(
     if (isPanningWithRawEvents) {
       isPanningWithRawEvents = false;
       lastPanPoint = null;
+      updateCursor(state);
     }
   };
 
@@ -194,6 +202,9 @@ export function setupMouseHandling(
 
       // Notify of changes
       onPathChanged();
+
+      // Update cursor after changes
+      updateCursor(state);
     } else {
       // Clear selection state when mouse is released in edit mode
       state.selectedSegment = null;
@@ -202,10 +213,19 @@ export function setupMouseHandling(
     }
   };
 
-  // Mouse move handler (for preview in draw mode)
+  // Mouse move handler (for preview in draw mode and cursor updates)
   tool.onMouseMove = (event: paper.ToolEvent) => {
-    if (state.mode === 'draw' && !state.isSpacebarPressed) {
+    if (state.isSpacebarPressed) {
+      // Skip when panning
+      return;
+    }
+
+    if (state.mode === 'draw') {
       updatePreviewPath(state, event.point);
+      // Cursor is updated in updatePreviewPath based on snap state
+    } else if (state.mode === 'edit') {
+      // Update cursor based on what's under the mouse
+      updateCursor(state, event.point);
     }
   };
 
@@ -253,17 +273,117 @@ export function cleanupMouseHandling(canvas: HTMLCanvasElement | null): void {
 }
 
 /* ========================================================= *\
+ *  Cursor Management                                        *
+\* ========================================================= */
+
+/**
+ * Update the cursor based on the current state and mouse position
+ *
+ * @param state - The PathEditor state object
+ * @param point - The current mouse position (in view coordinates)
+ */
+function updateCursor(state: PathEditorState, point?: paper.Point): void {
+  if (!state.canvas) return;
+
+  // Priority 1: Panning with spacebar
+  if (state.isSpacebarPressed) {
+    state.canvas.style.cursor = isPanningWithRawEvents ? 'grabbing' : 'grab';
+    return;
+  }
+
+  // Priority 2: Drawing mode
+  if (state.mode === 'draw') {
+    if (state.isNearFirstPoint) {
+      // Near first point - show close-loop indicator
+      // Using "copy" cursor as a placeholder for close-loop
+      // Could be customized with a custom cursor image
+      state.canvas.style.cursor = 'copy';
+    } else {
+      // Default drawing cursor
+      state.canvas.style.cursor = 'crosshair';
+    }
+    return;
+  }
+
+  // Priority 3: Edit mode - check what's under the cursor
+  if (state.mode === 'edit' && point && state.path) {
+    // Check if hovering over a handle (only if something is selected)
+    const hasSelection = state.selectedSegment !== null || state.path.fullySelected;
+
+    if (hasSelection) {
+      const handleHit = state.path.hitTest(point, {
+        handles: true,
+        tolerance: HIT_TOLERANCE,
+      });
+
+      if (handleHit?.type === 'handle-in' || handleHit?.type === 'handle-out') {
+        state.canvas.style.cursor = 'pointer';
+        return;
+      }
+    }
+
+    // Check if hovering over an anchor point
+    const segmentHit = state.path.hitTest(point, {
+      segments: true,
+      tolerance: HIT_TOLERANCE,
+    });
+
+    if (segmentHit?.segment) {
+      state.canvas.style.cursor = 'move';
+      return;
+    }
+
+    // Check if hovering over the path stroke
+    const strokeHit = state.path.hitTest(point, {
+      stroke: true,
+      tolerance: HIT_TOLERANCE,
+    });
+
+    if (strokeHit) {
+      state.canvas.style.cursor = 'pointer';
+      return;
+    }
+  }
+
+  // Default cursor
+  state.canvas.style.cursor = 'default';
+}
+
+/* ========================================================= *\
  *  Draw Mode Handlers                                       *
 \* ========================================================= */
 
 /**
- * Handle mouse down in draw mode - store the pending point
+ * Handle mouse down in draw mode - store the pending point or close path if snapping
  */
 function handleDrawModeDown(
   state: PathEditorState,
   event: paper.ToolEvent,
 ): void {
   if (!state.path) return;
+
+  // Check if we're snapping to the first point to close the path
+  if (state.isNearFirstPoint && state.path.segments.length >= 2) {
+    // Close the path
+    state.path.closed = true;
+
+    // Hide snap indicator
+    if (state.snapIndicator) {
+      state.snapIndicator.visible = false;
+    }
+
+    // Switch to edit mode
+    state.mode = 'edit';
+    state.isNearFirstPoint = false;
+
+    // Hide preview path
+    if (state.previewPath) {
+      state.previewPath.removeSegments();
+      state.previewPath.visible = false;
+    }
+
+    return;
+  }
 
   // If there's a previous segment with a curve (has handleOut),
   // clear it temporarily. If the user drags, onMouseDrag will set it again.
@@ -383,14 +503,55 @@ function updatePreviewPath(
   // Clear previous preview
   state.previewPath.removeSegments();
 
+  // Reset snap state and hide indicator
+  state.isNearFirstPoint = false;
+  if (state.snapIndicator) {
+    state.snapIndicator.visible = false;
+  }
+
   // Only show preview if there's at least one point in the path
   if (state.path.segments.length > 0) {
     const lastPoint = state.path.lastSegment.point;
+
+    // Check for snap to first point (need at least 2 points to close)
+    if (state.path.segments.length >= 2) {
+      const firstPoint = state.path.firstSegment.point;
+      const distance = point.getDistance(firstPoint);
+
+      if (distance < SNAP_THRESHOLD) {
+        // Snap to first point - show closed loop preview
+        state.isNearFirstPoint = true;
+        state.previewPath.moveTo(lastPoint);
+        state.previewPath.lineTo(firstPoint);
+        state.previewPath.visible = true;
+
+        // Show snap indicator around first point
+        if (!state.snapIndicator) {
+          state.snapIndicator = new paper.Path.Circle({
+            center: firstPoint,
+            radius: SNAP_INDICATOR_RADIUS,
+            strokeColor: new paper.Color(SNAP_INDICATOR_COLOR),
+            strokeWidth: SNAP_INDICATOR_WIDTH,
+            fillColor: null,
+          });
+        } else {
+          state.snapIndicator.position = firstPoint;
+          state.snapIndicator.visible = true;
+        }
+
+        updateCursor(state);
+        return;
+      }
+    }
+
+    // Normal preview (not snapping)
     state.previewPath.moveTo(lastPoint);
     state.previewPath.lineTo(point);
     state.previewPath.visible = true;
+    updateCursor(state);
   } else {
     state.previewPath.visible = false;
+    updateCursor(state);
   }
 }
 
