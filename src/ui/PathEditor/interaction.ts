@@ -1,5 +1,6 @@
 /**
- * Mouse event handling for the PathEditor component
+ * Interaction handling for the PathEditor component
+ * Manages mouse/touch events, keyboard shortcuts, and cursor feedback
  */
 
 import paper from 'paper';

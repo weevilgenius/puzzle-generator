@@ -17,7 +17,7 @@ import {
   PRESET_ZOOM_LABELS,
 } from './constants';
 import { paperPathToPathCommands, pathCommandsToPaperPath } from './geometry';
-import { setupMouseHandling, cleanupMouseHandling } from './mouseHandling';
+import { setupMouseHandling, cleanupMouseHandling } from './interaction';
 import type MithrilViewEvent from '../../utils/MithrilViewEvent';
 
 // component level CSS

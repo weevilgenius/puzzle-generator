@@ -223,7 +223,7 @@ Given the complexity of this component, it will be organized as a directory with
 src/ui/PathEditor/
 ├── index.ts           # Main component export and Mithril rendering
 ├── geometry.ts        # Path conversion (Paper.js ↔ PathCommand[])
-├── mouseHandling.ts   # Mouse/touch event handling and tools
+├── interaction.ts     # Mouse/touch event handling and tools
 ├── constants.ts       # Types and tweakable constants
 └── [others as needed] # Additional utilities for maintainability
 ```
@@ -243,7 +243,7 @@ src/ui/PathEditor/
   - Component-specific geometric calculations (snap detection, handle placement)
   - Note: General-purpose geometry utilities should go in `src/geometry/utils.ts` instead
 
-- **`mouseHandling.ts`**:
+- **`interaction.ts`**:
   - Paper.js Tool initialization and event handlers
   - Mouse/touch event processing (onMouseDown, onMouseDrag, onMouseUp, onMouseMove)
   - Mode-specific tool behavior (drawing vs editing)
@@ -635,7 +635,7 @@ This component is being developed in phases to minimize risk and validate the ar
 - ✅ Component structure in `src/ui/PathEditor/` directory with multi-file organization
   - `index.ts`: Component export and Mithril lifecycle
   - `geometry.ts`: Path conversion utilities (MoveTo/LineTo only)
-  - `mouseHandling.ts`: Basic mouse event handling
+  - `interaction.ts`: Basic mouse event handling
   - `constants.ts`: Types and constants
 - ✅ Render PathEditor component in TestPage
 - ✅ **Drawing mode**: Click to add multiple points with straight lines
@@ -882,7 +882,7 @@ This section tracks issues discovered during implementation that need further in
 - Result: Clean appearance with clear selection state
 
 **Related Files**:
-- `src/ui/PathEditor/mouseHandling.ts:127-142` (updated selection logic)
+- `src/ui/PathEditor/interaction.ts:127-142` (updated selection logic)
 - `src/ui/PathEditor/index.ts:101-112,141-155` (removed fullySelected initialization)
 
 ### Clear Canvas State Management ✅ (Resolved)
