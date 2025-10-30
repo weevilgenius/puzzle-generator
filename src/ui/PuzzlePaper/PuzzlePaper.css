@@ -1,0 +1,22 @@
+/**
+ * Scoped styles for PuzzlePaper component
+ */
+
+.puzzle-paper-stack {
+  position: relative;
+  display: inline-block;
+}
+
+.puzzle-paper-stack .background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.puzzle-paper-stack canvas.puzzle-paper {
+  position: relative;
+  border: 1px solid #ccc;
+  cursor: default;
+}
