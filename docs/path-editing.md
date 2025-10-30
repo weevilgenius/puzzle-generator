@@ -786,23 +786,45 @@ When implementing panning, we initially attempted to use `paper.view.translate()
 
 ---
 
-### Phase 5: Additional Core Interactions
+### Phase 5 ✅ (Complete): Additional Core Interactions
 
 **Objective**: Add remaining editing interactions and visual polish.
 
 **Deliverables**:
-- **Cursor feedback**: Appropriate cursors for different contexts (crosshair, move, pointer, grab)
-- **Keyboard shortcuts**:
-  - Delete/Backspace: Remove selected point
-  - Escape: Deselect all
-  - Shift: Modifiers (constrain movement, insert point)
-- **Close path**: Snap to first point when nearby, visual indicator
-- **Point insertion**: Shift+Click on segment to insert new point
-- **Point type toggle**: Double-click to toggle between line and curve segment (optional)
-- **Visual feedback**: Preview segment, highlight first point when close, larger hit areas
-- Component attributes: `darkMode`, `bounds`
+- ✅ **Cursor feedback**: Appropriate cursors for different contexts (crosshair, move, pointer, grab)
+  - Crosshair in draw mode and when Shift is held in edit mode (insert point mode)
+  - Move cursor over anchor points
+  - Pointer cursor over handles and path stroke
+  - Grab/grabbing cursor when spacebar is held for panning
+  - Copy cursor when near first point (snap to close)
+- ✅ **Keyboard shortcuts**:
+  - Delete/Backspace: Remove selected point (requires at least 3 segments in path)
+  - Shift: Enable insert point mode in edit mode
+- ✅ **Close path**: Snap to first point when nearby with visual indicator
+  - Green circle indicator appears around first point when within snap threshold (15px)
+  - Preview line shows connection to first point
+  - Click to close path and automatically switch to edit mode
+- ✅ **Point insertion**: Shift+Click on segment to insert new point
+  - Crosshair cursor when Shift is held in edit mode
+  - Click anywhere on path stroke to insert a new anchor point at that location
+  - Newly inserted point is automatically selected
+- ✅ **State tracking**: Added `isShiftPressed` and `isNearFirstPoint` state flags
 
-**Success Criteria**: Component feels responsive and intuitive, keyboard shortcuts work, closing paths is smooth, cursor changes provide clear feedback.
+**Explicitly Deferred**:
+- ❌ Escape: Deselect all
+- ❌ Shift+Drag: Constrain movement to axes
+- ❌ Point type toggle: Double-click to toggle between line and curve segment
+- ❌ Component attributes: `darkMode`, `bounds`
+- ❌ Curve-aware point insertion (inserting point on curve currently creates zero-length handles, which disrupts visual continuity)
+
+**Implementation Notes**:
+- Cursor management centralized in `updateCursor()` function with priority-based logic
+- Snap detection in `updatePreviewPath()` uses Paper.js `getDistance()` for accuracy
+- Point insertion uses Paper.js hit testing with `strokeHit.location` for precise placement
+- Selection state is now preserved across mouse up events (only cleared by explicit actions)
+- Snap indicator is a Paper.js Circle that is shown/hidden as needed
+
+**Status**: Complete. Core editing interactions are functional and intuitive. Advanced features deferred to future phases.
 
 ---
 

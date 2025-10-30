@@ -48,11 +48,27 @@ export function setupMouseHandling(
 ): paper.Tool {
   const tool = new paper.Tool();
 
-  // Set up keyboard event listeners for spacebar (pan mode)
+  // Set up keyboard event listeners for spacebar (pan mode), Shift (insert point mode), and Delete/Backspace
   keyDownHandler = (event: KeyboardEvent) => {
     if (event.code === 'Space' && !state.isSpacebarPressed) {
       state.isSpacebarPressed = true;
       updateCursor(state);
+      event.preventDefault();
+    } else if (event.key === 'Shift' && !state.isShiftPressed) {
+      state.isShiftPressed = true;
+      updateCursor(state);
+    } else if (event.code === 'Delete' || event.code === 'Backspace') {
+      // Delete selected point in edit mode
+      if (state.mode === 'edit' && state.selectedSegment && state.path) {
+        // Only allow deletion if path has more than 2 segments
+        // (need at least 2 points to make a path)
+        if (state.path.segments.length > 2) {
+          state.selectedSegment.remove();
+          state.selectedSegment = null;
+          state.selectedHandle = null;
+          onPathChanged();
+        }
+      }
       event.preventDefault();
     }
   };
@@ -62,6 +78,9 @@ export function setupMouseHandling(
       state.isSpacebarPressed = false;
       updateCursor(state);
       event.preventDefault();
+    } else if (event.key === 'Shift') {
+      state.isShiftPressed = false;
+      updateCursor(state);
     }
   };
 
@@ -207,9 +226,8 @@ export function setupMouseHandling(
       // Update cursor after changes
       updateCursor(state);
     } else {
-      // Clear selection state when mouse is released in edit mode
-      state.selectedSegment = null;
-      state.selectedHandle = null;
+      // Edit mode - just notify of changes, keep selection
+      // (selection is managed by handleEditModeDown)
       onPathChanged();
     }
   };
@@ -307,42 +325,50 @@ function updateCursor(state: PathEditorState, point?: paper.Point): void {
   }
 
   // Priority 3: Edit mode - check what's under the cursor
-  if (state.mode === 'edit' && point && state.path) {
-    // Check if hovering over a handle (only if something is selected)
-    const hasSelection = state.selectedSegment !== null || state.path.fullySelected;
+  if (state.mode === 'edit') {
+    // Shift held - insert point mode (takes priority)
+    if (state.isShiftPressed) {
+      state.canvas.style.cursor = 'crosshair';
+      return;
+    }
 
-    if (hasSelection) {
-      const handleHit = state.path.hitTest(point, {
-        handles: true,
+    if (point && state.path) {
+      // Check if hovering over a handle (only if something is selected)
+      const hasSelection = state.selectedSegment !== null || state.path.fullySelected;
+
+      if (hasSelection) {
+        const handleHit = state.path.hitTest(point, {
+          handles: true,
+          tolerance: HIT_TOLERANCE,
+        });
+
+        if (handleHit?.type === 'handle-in' || handleHit?.type === 'handle-out') {
+          state.canvas.style.cursor = 'pointer';
+          return;
+        }
+      }
+
+      // Check if hovering over an anchor point
+      const segmentHit = state.path.hitTest(point, {
+        segments: true,
         tolerance: HIT_TOLERANCE,
       });
 
-      if (handleHit?.type === 'handle-in' || handleHit?.type === 'handle-out') {
+      if (segmentHit?.segment) {
+        state.canvas.style.cursor = 'move';
+        return;
+      }
+
+      // Check if hovering over the path stroke
+      const strokeHit = state.path.hitTest(point, {
+        stroke: true,
+        tolerance: HIT_TOLERANCE,
+      });
+
+      if (strokeHit) {
         state.canvas.style.cursor = 'pointer';
         return;
       }
-    }
-
-    // Check if hovering over an anchor point
-    const segmentHit = state.path.hitTest(point, {
-      segments: true,
-      tolerance: HIT_TOLERANCE,
-    });
-
-    if (segmentHit?.segment) {
-      state.canvas.style.cursor = 'move';
-      return;
-    }
-
-    // Check if hovering over the path stroke
-    const strokeHit = state.path.hitTest(point, {
-      stroke: true,
-      tolerance: HIT_TOLERANCE,
-    });
-
-    if (strokeHit) {
-      state.canvas.style.cursor = 'pointer';
-      return;
     }
   }
 
@@ -569,7 +595,35 @@ function handleEditModeDown(
 ): void {
   if (!state.path) return;
 
-  // First priority: try to hit test for handles (control points)
+  // Priority 1: Shift+click to insert a new point on the path
+  if (state.isShiftPressed) {
+    const strokeHit = state.path.hitTest(event.point, {
+      stroke: true,
+      tolerance: HIT_TOLERANCE,
+    });
+
+    if (strokeHit?.location) {
+      const location = strokeHit.location;
+
+      // Insert a new segment at the clicked location on the path
+      const newSegment = state.path.insert(location.index + 1, location.point);
+
+      // Select the newly inserted segment
+      for (const segment of state.path.segments) {
+        segment.selected = false;
+      }
+      newSegment.selected = true;
+      state.selectedSegment = newSegment;
+      state.selectedHandle = null;
+      state.path.fullySelected = false;
+      return;
+    }
+
+    // If Shift is pressed but didn't click on the path, do nothing
+    return;
+  }
+
+  // Priority 2: try to hit test for handles (control points)
   // Only check for handles if something is selected (handles are visible)
   const hasSelection = state.selectedSegment !== null || state.path.fullySelected;
 
@@ -590,7 +644,7 @@ function handleEditModeDown(
     }
   }
 
-  // Second priority: hit test for segments (anchor points)
+  // Priority 3: hit test for segments (anchor points)
   const segmentHit = state.path.hitTest(event.point, {
     segments: true,
     tolerance: HIT_TOLERANCE,
@@ -607,7 +661,7 @@ function handleEditModeDown(
     return;
   }
 
-  // Third priority: hit test for the stroke (anywhere on the path)
+  // Priority 4: hit test for the stroke (anywhere on the path)
   const strokeHit = state.path.hitTest(event.point, {
     stroke: true,
     tolerance: HIT_TOLERANCE,

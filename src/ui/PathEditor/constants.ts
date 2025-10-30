@@ -31,6 +31,8 @@ export interface PathEditorState {
   zoom: number;
   /** Whether spacebar is currently pressed (for panning) */
   isSpacebarPressed: boolean;
+  /** Whether shift key is currently pressed (for insert point mode in edit) */
+  isShiftPressed: boolean;
   /** Pending point location during curve creation (draw mode) */
   pendingPoint: paper.Point | null;
   /** Whether user is currently dragging to create a curve */

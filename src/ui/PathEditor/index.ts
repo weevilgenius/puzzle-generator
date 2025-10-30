@@ -89,6 +89,7 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
     selectedHandle: null,
     zoom: DEFAULT_ZOOM,
     isSpacebarPressed: false,
+    isShiftPressed: false,
     pendingPoint: null,
     isDraggingCurve: false,
     isNearFirstPoint: false,
