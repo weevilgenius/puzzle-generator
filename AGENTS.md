@@ -7,7 +7,8 @@ in this repository.
 
 This is a procedural jigsaw puzzle generator tool that runs in the browser. It generates
 customizable puzzle designs and outputs SVG files suitable for laser cutters or CNC
-machines. The application is built with TypeScript, Vite, Mithril.js, and Web Awesome.
+machines. The application is built with TypeScript, Vite, Mithril.js, Web Awesome, and
+Paper.js.
 
 ## Development Commands
 
@@ -213,13 +214,19 @@ All generators follow a self-registration pattern:
 ### UI Layer
 
 The UI is built with Mithril.js. Pages are located in `src/pages/`, and reusable components in `src/ui/`:
-- `Puzzle.ts` - Canvas component that renders puzzle geometry with interactive vertex/seed point dragging
+- `PuzzleRenderer/` - Paper.js-based canvas component that renders puzzle geometry with interactive vertex/seed point dragging
 - `GeneratorPicker.ts` - Dynamic control panel for selecting and configuring generators
-- `DrawingControl/` - Interactive path drawing component for custom border shapes
+- `PathEditor/` - Interactive path drawing/editing component for custom shapes (also uses Paper.js)
 - `Navigation.ts` - Top navigation bar with routing links
 - Input controls in `src/ui/inputs/` - Reusable form components matching generator config types
 
 UI components read generator UI metadata from the registries to dynamically build configuration forms.
+
+**Paper.js Rendering**: The main puzzle renderer uses Paper.js for vector rendering, which provides:
+- Scene graph management for efficient rendering and updates
+- Built-in hit testing for interactive elements (vertices, seed points, pieces)
+- Support for transformations, layers, and groups
+- Foundation for future features like pan/zoom and piece selection
 
 ## Adding a New Generator
 

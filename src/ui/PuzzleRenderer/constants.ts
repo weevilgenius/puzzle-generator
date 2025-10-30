@@ -1,13 +1,38 @@
 /**
- * Types and constants for the PuzzlePaper component
+ * Types and constants for the PuzzleRenderer component
  */
 
-import type { PieceID, VertexID } from '../../geometry/types';
+import m from 'mithril';
+import type { PieceID, VertexID, PuzzleGeometry, Vec2 } from '../../geometry/types';
 
 /**
- * Internal component state for PuzzlePaper
+ * Component attributes for PuzzleRenderer
  */
-export interface PuzzlePaperState {
+export interface PuzzleRendererAttrs extends m.Attributes {
+  /** Width of rendered puzzle in pixels */
+  width: number;
+  /** Height of rendered puzzle in pixels */
+  height: number;
+  /** Color of pieces */
+  color: string;
+  /** Generated puzzle geometry */
+  puzzle: PuzzleGeometry,
+  /** If true, geometry is being regenerated */
+  isDirty: boolean;
+  /** If set, draw the seed points in this color */
+  pointColor?: string;
+  /** User uploaded image */
+  imageUrl?: string;
+  /** Callback indicating user modified the puzzle geometry */
+  onPuzzleChanged: (puzzle: PuzzleGeometry) => void;
+  /** Callback when user drags a seed point */
+  onSeedPointMoved?: (pieceId: PieceID, newPosition: Vec2) => void;
+}
+
+/**
+ * Internal component state for PuzzleRenderer
+ */
+export interface PuzzleRendererState {
   /** Canvas HTML element */
   canvas: HTMLCanvasElement | null;
   /** Is the user currently dragging something? */

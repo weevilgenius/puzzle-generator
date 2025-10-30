@@ -1,5 +1,5 @@
 /**
- * Rendering logic for PuzzlePaper component using Paper.js
+ * Rendering logic for PuzzleRenderer component using Paper.js
  */
 
 import paper from 'paper';
@@ -9,7 +9,7 @@ import {
   drawProblems,
 } from '../../geometry/PuzzleRenderer';
 import type { PuzzleGeometry } from '../../geometry/types';
-import type { PuzzlePaperState } from './constants';
+import type { PuzzleRendererState } from './constants';
 import { measureSync } from '../../utils/performance';
 
 /**
@@ -28,7 +28,7 @@ export function initializePaper(
  * Render the puzzle geometry using Paper.js
  */
 export function renderPuzzle(
-  state: PuzzlePaperState,
+  state: PuzzleRendererState,
   puzzle: PuzzleGeometry,
   color: string,
   pointColor?: string
@@ -63,7 +63,7 @@ export function renderPuzzle(
 /**
  * Create Paper.js groups for different visual layers
  */
-export function createPaperGroups(state: PuzzlePaperState): void {
+export function createPaperGroups(state: PuzzleRendererState): void {
   state.seedPointItems = new paper.Group();
   state.problemItems = new paper.Group();
   state.vertexItems = new paper.Group();
@@ -99,7 +99,7 @@ export function getBoundaryEdgeVertexIds(puzzle: PuzzleGeometry): Set<number> {
  */
 export function createVertexItems(
   puzzle: PuzzleGeometry,
-  state: PuzzlePaperState
+  state: PuzzleRendererState
 ): void {
   if (!state.vertexItems) return;
 
@@ -130,7 +130,7 @@ export function createVertexItems(
 /**
  * Clean up Paper.js resources
  */
-export function cleanupPaper(state: PuzzlePaperState): void {
+export function cleanupPaper(state: PuzzleRendererState): void {
   if (state.paperPath) {
     state.paperPath.remove();
     state.paperPath = null;

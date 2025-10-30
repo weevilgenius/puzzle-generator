@@ -1,13 +1,12 @@
 /**
- * Mouse/touch event handling and interaction logic for PuzzlePaper component
+ * Mouse/touch event handling and interaction logic for PuzzleRenderer component
  */
 
 import paper from 'paper';
 import { buildPuzzle } from '../../geometry/PuzzleMaker';
 import { moveVertex } from '../../geometry/modifiers';
 import { distanceSq } from '../../geometry/utils';
-import type { PuzzleAttrs } from '../Puzzle';
-import type { PuzzlePaperState } from './constants';
+import type { PuzzleRendererAttrs, PuzzleRendererState } from './constants';
 import { REGENERATION_THROTTLE_MS, HOVER_DISTANCE_SQ } from './constants';
 import type MithrilViewEvent from '../../utils/MithrilViewEvent';
 import type { Vec2, PieceID } from '../../geometry/types';
@@ -69,8 +68,8 @@ function pointToVec2(point: paper.Point): Vec2 {
  * Helper to regenerate puzzle without tabs for real-time preview
  */
 function regeneratePuzzleWithoutTabs(
-  attrs: PuzzleAttrs,
-  state: PuzzlePaperState,
+  attrs: PuzzleRendererAttrs,
+  state: PuzzleRendererState,
   pieceId: PieceID,
   newPosition: Vec2
 ): void {
@@ -112,8 +111,8 @@ function regeneratePuzzleWithoutTabs(
  */
 export function handleMouseMove(
   e: MouseEvent & MithrilViewEvent,
-  attrs: PuzzleAttrs,
-  state: PuzzlePaperState
+  attrs: PuzzleRendererAttrs,
+  state: PuzzleRendererState
 ): void {
   e.redraw = false;
 
@@ -196,8 +195,8 @@ export function handleMouseMove(
  */
 export function handleDragStart(
   e: (MouseEvent | TouchEvent) & MithrilViewEvent,
-  attrs: PuzzleAttrs,
-  state: PuzzlePaperState
+  attrs: PuzzleRendererAttrs,
+  state: PuzzleRendererState
 ): void {
   e.redraw = false;
 
@@ -290,8 +289,8 @@ export function handleDragStart(
  */
 export function handleDragMove(
   e: (MouseEvent | TouchEvent) & MithrilViewEvent,
-  attrs: PuzzleAttrs,
-  state: PuzzlePaperState
+  attrs: PuzzleRendererAttrs,
+  state: PuzzleRendererState
 ): void {
   e.redraw = false;
 
@@ -357,8 +356,8 @@ export function handleDragMove(
  */
 export function handleDragEnd(
   e: (MouseEvent | TouchEvent) & MithrilViewEvent,
-  attrs: PuzzleAttrs,
-  state: PuzzlePaperState
+  attrs: PuzzleRendererAttrs,
+  state: PuzzleRendererState
 ): void {
   e.redraw = false;
 

@@ -1,12 +1,12 @@
 /**
- * Scoped styles for PuzzlePaper component
+ * Scoped styles for PuzzleRenderer component
  */
 
-.puzzle-paper-stack {
+.puzzle-renderer-stack {
   position: relative;
 }
 
-.puzzle-paper-stack canvas.puzzle-paper {
+.puzzle-renderer-stack canvas.puzzle-renderer {
   /* canvas on top */
   position: absolute;
   top: 0;
@@ -16,7 +16,7 @@
   cursor: default;
 }
 
-.puzzle-paper-stack .background {
+.puzzle-renderer-stack .background {
   display: block;
   position: relative;
   z-index: 1; /* below canvas */

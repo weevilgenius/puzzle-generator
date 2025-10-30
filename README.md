@@ -23,10 +23,12 @@ Contributing
 ------------
 
 Contributions are welcome! The project is built with [Typescript] and [Vite] and
-uses [Mithril] and [Web Awesome] to create a responsive user interface. The puzzle
-generation process is broken into three stages (seed points, piece generation,
-tab generation), each of which can be extended with custom algorithms. To add a
-new point, piece or tab shape, see the
+uses [Mithril] and [Web Awesome] to create a responsive user interface. Vector
+rendering is powered by [Paper.js], which provides interactive canvas rendering
+with built-in support for hit testing, transformations, and scene graph management.
+The puzzle generation process is broken into three stages (seed points, piece
+generation, tab generation), each of which can be extended with custom algorithms.
+To add a new point, piece or tab shape, see the
 [generator documentation](./src/geometry/README.md).
 
 Building the project requires Node 20 or later and [pnpm].
@@ -55,6 +57,7 @@ online puzzle generators including those from [proceduraljigsaw] on GitHub.
 [pnpm]: https://pnpm.io/
 [Mithril]: https://mithril.js.org/
 [Web Awesome]: https://webawesome.com/
+[Paper.js]: http://paperjs.org/
 [Typescript]: https://www.typescriptlang.org/
 [Vite]: https://vitejs.dev/
 [proceduraljigsaw]: https://github.com/proceduraljigsaw

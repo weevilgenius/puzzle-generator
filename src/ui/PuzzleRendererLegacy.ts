@@ -1,4 +1,12 @@
-// The main puzzle generation UI component
+/**
+ * DEPRECATED: Legacy puzzle renderer using Canvas 2D API
+ *
+ * This component has been superseded by PuzzleRenderer (Paper.js-based renderer).
+ * The new Paper.js implementation provides better support for interactive features,
+ * hit testing, and future enhancements like pan/zoom and piece selection.
+ *
+ * This legacy code is retained for reference and potential fallback purposes.
+ */
 import m from 'mithril';
 import { buildPuzzle, drawPuzzle } from "../geometry/PuzzleMaker";
 import { moveVertex } from '../geometry/modifiers';
@@ -8,10 +16,10 @@ import type { PuzzleGeometry, Vec2 } from '../geometry/types';
 import type MithrilViewEvent from '../utils/MithrilViewEvent';
 
 // include our CSS
-import './Puzzle.css';
+import './PuzzleRendererLegacy.css';
 
 // component attributes
-export interface PuzzleAttrs extends m.Attributes {
+export interface PuzzleRendererLegacyAttrs extends m.Attributes {
   /** Width of rendered puzzle in pixels */
   width: number;
   /** Height of rendered puzzle in pixels */
@@ -40,7 +48,7 @@ const HOVER_DISTANCE = 5; // pixels
 const HOVER_DISTANCE_SQ = HOVER_DISTANCE * HOVER_DISTANCE;
 
 // Mithril component
-export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
+export const PuzzleRendererLegacy: m.ClosureComponent<PuzzleRendererLegacyAttrs> = () => {
 
   // component state
   const state = {
@@ -63,7 +71,7 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
   };
 
   // helper function to check if mouse is hovering near a draggable item
-  const isNearDraggableItem = (mousePos: Vec2, attrs: PuzzleAttrs): boolean => {
+  const isNearDraggableItem = (mousePos: Vec2, attrs: PuzzleRendererLegacyAttrs): boolean => {
     // Check seed points if visible
     if (attrs.pointColor) {
       for (const piece of attrs.puzzle.pieces.values()) {
@@ -102,7 +110,7 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
   };
 
   // helper function to determine what is being dragged
-  const getDragTarget = (clickPos: Vec2, attrs: PuzzleAttrs):
+  const getDragTarget = (clickPos: Vec2, attrs: PuzzleRendererLegacyAttrs):
     { type: 'vertex'; id: VertexID } |
     { type: 'seedPoint'; id: PieceID } |
     { type: 'none' } =>
@@ -125,7 +133,7 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
   };
 
   // handles mouse movement for cursor changes (not dragging)
-  const handleMouseMove = (e: MouseEvent & MithrilViewEvent, attrs: PuzzleAttrs) => {
+  const handleMouseMove = (e: MouseEvent & MithrilViewEvent, attrs: PuzzleRendererLegacyAttrs) => {
     e.redraw = false;
 
     // Don't change cursor while dragging
@@ -140,7 +148,7 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
   };
 
   // helper function to regenerate puzzle without tabs for real-time preview
-  const regeneratePuzzleWithoutTabs = (attrs: PuzzleAttrs, pieceId: PieceID, newPosition: Vec2) => {
+  const regeneratePuzzleWithoutTabs = (attrs: PuzzleRendererLegacyAttrs, pieceId: PieceID, newPosition: Vec2) => {
     // Update seed points array
     const updatedPoints = [...attrs.puzzle.seedPoints];
     let pointIndex = 0;
@@ -175,7 +183,7 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
   };
 
   // handles the start of a drag operation (mouse or mobile)
-  const handleDragStart = (e: (MouseEvent | TouchEvent) & MithrilViewEvent, attrs: PuzzleAttrs) => {
+  const handleDragStart = (e: (MouseEvent | TouchEvent) & MithrilViewEvent, attrs: PuzzleRendererLegacyAttrs) => {
     e.redraw = false;
 
     // for touch events, ignore multiple touches (like pinch zoom)
@@ -218,7 +226,7 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
   };
 
   // handles drag movement (mouse or mobile)
-  const handleDragMove = (e: (MouseEvent | TouchEvent) & MithrilViewEvent, attrs: PuzzleAttrs) => {
+  const handleDragMove = (e: (MouseEvent | TouchEvent) & MithrilViewEvent, attrs: PuzzleRendererLegacyAttrs) => {
     e.redraw = false;
 
     const coords = getEventCoords(e);
@@ -268,7 +276,7 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
   };
 
   // handles the end of a drag (mouse or mobile)
-  const handleDragEnd = (e: (MouseEvent | TouchEvent) & MithrilViewEvent, attrs: PuzzleAttrs) => {
+  const handleDragEnd = (e: (MouseEvent | TouchEvent) & MithrilViewEvent, attrs: PuzzleRendererLegacyAttrs) => {
     e.redraw = false;
 
     // Clear any pending regeneration
@@ -398,5 +406,5 @@ export const Puzzle: m.ClosureComponent<PuzzleAttrs> = () => {
 
   };
 };
-export default Puzzle;
+export default PuzzleRendererLegacy;
 

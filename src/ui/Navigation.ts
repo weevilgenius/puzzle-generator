@@ -32,11 +32,6 @@ export const Navigation: m.Component = {
 
           m('wa-radio', {
             appearance: 'button',
-            value: '/puzzle-paper',
-          }, "Puzzle (Paper.js)"),
-
-          m('wa-radio', {
-            appearance: 'button',
             value: '/test',
           }, "Test Harness"),
         ])

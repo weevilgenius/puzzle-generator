@@ -2,7 +2,7 @@
 import m from 'mithril';
 
 // UI parts
-import Puzzle from '../ui/Puzzle';
+import PuzzleRenderer from '../ui/PuzzleRenderer';
 import DownloadPuzzleButton from '../ui/DownloadPuzzleButton';
 import GeometryCheckIndicator from '../ui/GeometryCheckIndicator';
 import UploadImageButton from '../ui/UploadImageButton';
@@ -275,7 +275,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
           state.puzzle && m('.puzzle-stack', [
 
             // main puzzle display
-            m(Puzzle, {
+            m(PuzzleRenderer, {
               width: state.canvasWidth,
               height: state.canvasHeight,
               color: state.color,

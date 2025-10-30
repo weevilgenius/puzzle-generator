@@ -1,5 +1,5 @@
 /**
- * PuzzlePaper - Paper.js-based puzzle rendering component
+ * PuzzleRenderer - Paper.js-based puzzle rendering component
  *
  * This is a new implementation of the Puzzle component using Paper.js
  * for rendering instead of the raw Canvas 2D API. It follows the pattern
@@ -7,8 +7,7 @@
  */
 
 import m from 'mithril';
-import type { PuzzleAttrs } from '../Puzzle';
-import type { PuzzlePaperState } from './constants';
+import type { PuzzleRendererAttrs, PuzzleRendererState } from './constants';
 import type MithrilViewEvent from '../../utils/MithrilViewEvent';
 import { TRANSPARENT_PIXEL } from './constants';
 import {
@@ -25,14 +24,14 @@ import {
 } from './interaction';
 
 // Include  CSS
-import './PuzzlePaper.css';
+import './PuzzleRenderer.css';
 
 /**
- * PuzzlePaper - component that renders a puzzle using paper.js
+ * PuzzleRenderer - component that renders a puzzle using paper.js
  */
-export const PuzzlePaper: m.ClosureComponent<PuzzleAttrs> = () => {
+export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
   // Component state
-  const state: PuzzlePaperState = {
+  const state: PuzzleRendererState = {
     canvas: null,
     isDragging: false,
     draggedVertexId: -1,
@@ -56,9 +55,9 @@ export const PuzzlePaper: m.ClosureComponent<PuzzleAttrs> = () => {
   return {
     // Component lifecycle: called after DOM element is created and attached
     oncreate: ({ dom, attrs }) => {
-      state.canvas = dom.querySelector<HTMLCanvasElement>("canvas.puzzle-paper");
+      state.canvas = dom.querySelector<HTMLCanvasElement>("canvas.puzzle-renderer");
       if (!state.canvas) {
-        console.error('PuzzlePaper: couldn\'t get canvas element');
+        console.error('PuzzleRenderer: couldn\'t get canvas element');
         return;
       }
 
@@ -77,7 +76,7 @@ export const PuzzlePaper: m.ClosureComponent<PuzzleAttrs> = () => {
     // Component lifecycle: called when attributes change
     onupdate: ({ attrs }) => {
       if (!state.canvas) {
-        console.error('PuzzlePaper: couldn\'t get canvas element');
+        console.error('PuzzleRenderer: couldn\'t get canvas element');
         return;
       }
 
@@ -105,7 +104,7 @@ export const PuzzlePaper: m.ClosureComponent<PuzzleAttrs> = () => {
 
     // Component lifecycle: render our output
     view: ({ attrs }) => {
-      return m('.puzzle-paper-stack', [
+      return m('.puzzle-renderer-stack', [
         // User uploaded image
         m('img.background', {
           width: attrs.width,
@@ -114,7 +113,7 @@ export const PuzzlePaper: m.ClosureComponent<PuzzleAttrs> = () => {
         }),
 
         // Canvas for rendering the puzzle with Paper.js
-        m('canvas.puzzle-paper', {
+        m('canvas.puzzle-renderer', {
           width: attrs.width,
           height: attrs.height,
           style: {
@@ -142,4 +141,4 @@ export const PuzzlePaper: m.ClosureComponent<PuzzleAttrs> = () => {
   };
 };
 
-export default PuzzlePaper;
+export default PuzzleRenderer;
