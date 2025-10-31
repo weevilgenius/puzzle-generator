@@ -828,18 +828,45 @@ When implementing panning, we initially attempted to use `paper.view.translate()
 
 ---
 
-### Phase 6: SVG Import
+### Phase 6 ✅ (Complete): SVG Import
 
 **Objective**: Enable loading existing SVG paths for editing.
 
 **Deliverables**:
-- Parse SVG path `d` attribute (M, L, C, Q, A commands)
-- Convert arc commands to bezier approximations
-- File picker or drag-and-drop UI
-- Scale/translate imported paths to fit canvas
-- Error handling for malformed SVG
+- ✅ **Parse SVG path `d` attribute**: Full support for M/m, L/l, H/h, V/v, C/c, S/s, Q/q, T/t commands
+  - Handles both absolute and relative coordinates
+  - Converts quadratic bezier (Q/q, T/t) to cubic bezier for PathCommand[] format
+  - Implicit command repetition (e.g., multiple coordinates after M become L)
+- ✅ **Arc commands**: Parsed but converted to straight lines with warning (A/a)
+  - Full arc-to-bezier conversion deferred to future enhancement
+- ✅ **File picker UI**: "Import SVG" button in TestPage following UploadImageButton pattern
+  - Hidden file input with `.svg` and `image/svg+xml` accept types
+  - Visual feedback with status messages (success/error)
+- ✅ **Scale/translate to fit canvas**: `fitPathToCanvas()` function
+  - Calculates bounding box of imported path
+  - Scales proportionally to fit within canvas bounds with padding
+  - Centers the path within available space
+- ✅ **Error handling**: Comprehensive error handling for malformed SVG
+  - XML parsing errors
+  - Missing path elements or `d` attribute
+  - File reading errors
+  - User-friendly error messages displayed in UI
 
-**Success Criteria**: Can import simple SVG paths, paths are editable, coordinates are correctly transformed.
+**Implementation Details**:
+- Created `src/ui/PathEditor/svgParser.ts` with `parseSVGFile()` and `parseSVGPath()` functions
+- Parser uses DOMParser for robust XML parsing
+- Tokenization handles commas, whitespace, and compact SVG notation
+- State tracking for implicit commands and smooth curve reflection
+- Close path (Z/z) command adds final line segment if needed
+
+**Explicitly Deferred**:
+- ❌ Drag-and-drop file upload
+- ❌ Multiple path support (currently imports first path element only)
+- ❌ Full arc-to-bezier conversion (arcs currently converted to straight lines)
+- ❌ SVG transformations (scale, rotate, translate attributes)
+- ❌ Import preview before accepting
+
+**Status**: Complete. SVG import functional for paths with lines and bezier curves. Paths are automatically scaled to fit canvas and ready for editing.
 
 ---
 
