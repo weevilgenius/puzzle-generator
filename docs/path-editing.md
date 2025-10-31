@@ -970,8 +970,6 @@ This separation prevented circular updates, and the `bothEmptyButDifferent` chec
 
 ## References
 
-- **path-editing-libraries.md** - Initial exploration of library options for path editing. Discussion of capabilities of paper.js
-- **path-editing-phase1-findings.md** - Result of initial paper.js exploration in Phase 1
 - **src/geometry/types.ts** - PathCommand type definitions
 - **AGENTS.md** - Project conventions and coding standards
 - **Paper.js Documentation** - http://paperjs.org/
