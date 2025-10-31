@@ -64,9 +64,52 @@ export function renderPuzzle(
  * Create Paper.js groups for different visual layers
  */
 export function createPaperGroups(state: PuzzleRendererState): void {
+  state.backgroundRaster = null;
   state.seedPointItems = new paper.Group();
   state.problemItems = new paper.Group();
   state.vertexItems = new paper.Group();
+}
+
+/**
+ * Update the background image raster
+ * @param state - The PuzzleRenderer state
+ * @param imageUrl - The image URL to display, or undefined to remove
+ * @param width - The canvas width
+ * @param height - The canvas height
+ */
+export function updateBackgroundImage(
+  state: PuzzleRendererState,
+  imageUrl: string | undefined,
+  width: number,
+  height: number
+): void {
+  // Remove existing background raster
+  if (state.backgroundRaster) {
+    state.backgroundRaster.remove();
+    state.backgroundRaster = null;
+  }
+
+  // Create new background raster if imageUrl is provided
+  if (imageUrl) {
+    const raster = new paper.Raster(imageUrl);
+
+    // Position at center of view
+    raster.position = new paper.Point(width / 2, height / 2);
+
+    // Scale to fit the canvas size
+    raster.onLoad = () => {
+      if (raster.width && raster.height) {
+        const scaleX = width / raster.width;
+        const scaleY = height / raster.height;
+        raster.scale(scaleX, scaleY);
+      }
+    };
+
+    // Send to back (bottom layer)
+    raster.sendToBack();
+
+    state.backgroundRaster = raster;
+  }
 }
 
 /**
@@ -131,6 +174,10 @@ export function createVertexItems(
  * Clean up Paper.js resources
  */
 export function cleanupPaper(state: PuzzleRendererState): void {
+  if (state.backgroundRaster) {
+    state.backgroundRaster.remove();
+    state.backgroundRaster = null;
+  }
   if (state.paperPath) {
     state.paperPath.remove();
     state.paperPath = null;

@@ -27,6 +27,8 @@ export interface PuzzleRendererAttrs extends m.Attributes {
   onPuzzleChanged: (puzzle: PuzzleGeometry) => void;
   /** Callback when user drags a seed point */
   onSeedPointMoved?: (pieceId: PieceID, newPosition: Vec2) => void;
+  /** Callback when zoom level changes */
+  onZoomChanged?: (zoom: number) => void;
 }
 
 /**
@@ -51,6 +53,8 @@ export interface PuzzleRendererState {
   documentMouseUp: ((e: MouseEvent) => void) | null;
 
   // Paper.js items
+  /** Background image raster */
+  backgroundRaster: paper.Raster | null;
   /** Main puzzle group containing border and all piece paths */
   paperPath: paper.Group | null;
   /** Group for seed point circles */
@@ -65,6 +69,12 @@ export interface PuzzleRendererState {
   hoveredVertexId: VertexID;
   /** Currently selected piece ID (for future features) */
   selectedPieceId: PieceID;
+
+  // Pan and zoom state
+  /** Current zoom level (1.0 = 100%) */
+  zoom: number;
+  /** Whether spacebar is currently pressed (for panning) */
+  isSpacebarPressed: boolean;
 }
 
 // Throttling constant for real-time regeneration during drag
@@ -76,3 +86,25 @@ export const HOVER_DISTANCE_SQ = HOVER_DISTANCE * HOVER_DISTANCE;
 
 // Used for the background image when there is none
 export const TRANSPARENT_PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+/* ========================================================= *\
+ *  Zoom and Pan Constants                                   *
+\* ========================================================= */
+
+/** Minimum zoom level (10%) */
+export const MIN_ZOOM = 0.1;
+
+/** Maximum zoom level (1000%) */
+export const MAX_ZOOM = 10;
+
+/** Default zoom level (100%) */
+export const DEFAULT_ZOOM = 1;
+
+/** Zoom step for mouse wheel (2.5% per wheel event) */
+export const ZOOM_STEP = 0.025;
+
+/** Preset zoom levels for dropdown */
+export const PRESET_ZOOM_LEVELS = [0.25, 0.5, 1, 2, 4];
+
+/** Preset zoom labels for dropdown */
+export const PRESET_ZOOM_LABELS = ['25%', '50%', '100%', '200%', '400%'];

@@ -2,24 +2,21 @@
  * Scoped styles for PuzzleRenderer component
  */
 
-.puzzle-renderer-stack {
-  position: relative;
+.puzzle-renderer-wrapper {
+  display: flex;
+  flex-direction: column;
 }
 
-.puzzle-renderer-stack canvas.puzzle-renderer {
-  /* canvas on top */
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 2; /* above image */
+.puzzle-renderer-wrapper canvas.puzzle-renderer {
+  display: block;
   border: 1px solid #ccc;
   cursor: default;
 }
 
-.puzzle-renderer-stack .background {
-  display: block;
-  position: relative;
-  z-index: 1; /* below canvas */
-  pointer-events: none;
-  user-select: none;
+/* Controls row below canvas */
+.puzzle-renderer-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
 }

@@ -1,30 +1,38 @@
 /**
- * PuzzleRenderer - Paper.js-based puzzle rendering component
- *
- * This is a new implementation of the Puzzle component using Paper.js
- * for rendering instead of the raw Canvas 2D API. It follows the pattern
- * established by the PathEditor component.
+ * PuzzleRenderer - Responsible for rendering the generated puzzle. Uses paper.js
  */
 
 import m from 'mithril';
+import paper from 'paper';
 import type { PuzzleRendererAttrs, PuzzleRendererState } from './constants';
 import type MithrilViewEvent from '../../utils/MithrilViewEvent';
-import { TRANSPARENT_PIXEL } from './constants';
+import { DEFAULT_ZOOM, PRESET_ZOOM_LEVELS, PRESET_ZOOM_LABELS } from './constants';
 import {
   initializePaper,
   renderPuzzle,
   createPaperGroups,
   cleanupPaper,
+  updateBackgroundImage,
 } from './rendering';
 import {
   handleMouseMove,
   handleDragStart,
   handleDragMove,
   handleDragEnd,
+  setupPanZoomHandling,
+  cleanupPanZoomHandling,
 } from './interaction';
 
 // Include  CSS
 import './PuzzleRenderer.css';
+
+// Web Awesome components
+import '@awesome.me/webawesome/dist/components/button/button.js';
+import '@awesome.me/webawesome/dist/components/dropdown/dropdown.js';
+import '@awesome.me/webawesome/dist/components/dropdown-item/dropdown-item.js';
+import type WaDropdownItem from '@awesome.me/webawesome/dist/components/dropdown-item/dropdown-item.js';
+import '@awesome.me/webawesome/dist/components/icon/icon.js';
+import '@awesome.me/webawesome/dist/components/tooltip/tooltip.js';
 
 /**
  * PuzzleRenderer - component that renders a puzzle using paper.js
@@ -42,6 +50,7 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
     documentMouseUp: null,
 
     // Paper.js items
+    backgroundRaster: null,
     paperPath: null,
     seedPointItems: null,
     problemItems: null,
@@ -50,7 +59,56 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
     // Hover and selection state
     hoveredVertexId: -1,
     selectedPieceId: -1,
+
+    // Pan and zoom state
+    zoom: DEFAULT_ZOOM,
+    isSpacebarPressed: false,
   };
+
+  /**
+   * Set zoom level programmatically (from dropdown selection)
+   */
+  const setZoom = (newZoom: number, attrs?: PuzzleRendererAttrs) => {
+    if (newZoom === state.zoom) return;
+
+    const zoomFactor = newZoom / state.zoom;
+    paper.view.scale(zoomFactor, paper.view.center);
+    state.zoom = newZoom;
+
+    // Notify parent of zoom change if callback provided
+    if (attrs?.onZoomChanged) {
+      attrs.onZoomChanged(newZoom);
+    }
+
+    m.redraw();
+  };
+
+  /**
+   * Reset zoom to 100% and center the view
+   */
+  const recenter = () => {
+    // Reset zoom to 100%
+    const zoomFactor = DEFAULT_ZOOM / state.zoom;
+    paper.view.scale(zoomFactor, paper.view.center);
+    state.zoom = DEFAULT_ZOOM;
+
+    // Pan to the middle of the view
+    paper.view.center = new paper.Point(
+      paper.view.viewSize.width / 2,
+      paper.view.viewSize.height / 2
+    );
+    m.redraw();
+  };
+
+  /**
+   * Get the current zoom as a percentage string
+   */
+  const getZoomPercentage = (): string => {
+    return `${Math.round(state.zoom * 100)}%`;
+  };
+
+  // Track previous imageUrl to detect changes
+  let previousImageUrl: string | undefined = undefined;
 
   return {
     // Component lifecycle: called after DOM element is created and attached
@@ -67,6 +125,13 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
       // Create Paper.js groups for different layers
       createPaperGroups(state);
 
+      // Set up pan and zoom event handlers
+      setupPanZoomHandling(state, attrs.onZoomChanged);
+
+      // Load background image if present
+      updateBackgroundImage(state, attrs.imageUrl, attrs.width, attrs.height);
+      previousImageUrl = attrs.imageUrl;
+
       // Initial render
       if (!attrs.isDirty) {
         renderPuzzle(state, attrs.puzzle, attrs.color, attrs.pointColor);
@@ -78,6 +143,12 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
       if (!state.canvas) {
         console.error('PuzzleRenderer: couldn\'t get canvas element');
         return;
+      }
+
+      // Update background image if it changed
+      if (attrs.imageUrl !== previousImageUrl) {
+        updateBackgroundImage(state, attrs.imageUrl, attrs.width, attrs.height);
+        previousImageUrl = attrs.imageUrl;
       }
 
       // Re-render if puzzle is not being regenerated
@@ -98,21 +169,20 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
         state.documentMouseUp = null;
       }
 
+      // Clean up pan and zoom event handlers
+      cleanupPanZoomHandling(state.canvas);
+
       // Clean up Paper.js resources
       cleanupPaper(state);
     },
 
     // Component lifecycle: render our output
     view: ({ attrs }) => {
-      return m('.puzzle-renderer-stack', [
-        // User uploaded image
-        m('img.background', {
-          width: attrs.width,
-          height: attrs.height,
-          src: attrs.imageUrl ?? TRANSPARENT_PIXEL,
-        }),
+      // Get current zoom as percentage string
+      const currentZoomStr = getZoomPercentage();
 
-        // Canvas for rendering the puzzle with Paper.js
+      return m('.puzzle-renderer-wrapper', [
+        // Canvas for rendering the puzzle with Paper.js (background image is now inside Paper.js)
         m('canvas.puzzle-renderer', {
           width: attrs.width,
           height: attrs.height,
@@ -136,6 +206,52 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
           ontouchend: (e: TouchEvent & MithrilViewEvent) => handleDragEnd(e, attrs, state),
           ontouchcancel: (e: TouchEvent & MithrilViewEvent) => handleDragEnd(e, attrs, state),
         }),
+
+        // Controls row
+        m('.puzzle-renderer-controls', [
+          // Zoom control
+          m('wa-dropdown.zoom-control', {
+            'onwa-select': (e: CustomEvent<{ item: WaDropdownItem }> & MithrilViewEvent) => {
+              e.redraw = false;
+              const selectedValue = e.detail.item.value;
+
+              if (selectedValue && typeof selectedValue === 'string') {
+                const newZoom = parseFloat(selectedValue);
+                if (!isNaN(newZoom)) {
+                  setZoom(newZoom, attrs);
+                }
+              }
+            },
+          }, [
+            m('wa-button', {
+              slot: 'trigger',
+              'with-caret': true,
+              size: 'small',
+              value: state.zoom,
+            }, currentZoomStr),
+            ...PRESET_ZOOM_LEVELS.map((level, index) =>
+              m('wa-dropdown-item', {
+                type: 'checkbox',
+                checked: state.zoom == level ? true : undefined,
+                value: level.toString(),
+              }, PRESET_ZOOM_LABELS[index])
+            ),
+          ]),
+
+          // Recenter button
+          m('wa-tooltip', { for: "recenter-button" }, "Recenter view"),
+          m('wa-button#recenter-button', {
+            appearance: 'plain',
+            size: 'large',
+            onclick: () => {
+              recenter();
+            },
+          }, m('wa-icon', {
+            library: 'material',
+            name: 'recenter',
+            label: 'Recenter view',
+          })),
+        ]),
       ]);
     },
   };

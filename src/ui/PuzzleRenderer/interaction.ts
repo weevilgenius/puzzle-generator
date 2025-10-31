@@ -2,15 +2,211 @@
  * Mouse/touch event handling and interaction logic for PuzzleRenderer component
  */
 
+import m from 'mithril';
 import paper from 'paper';
 import { buildPuzzle } from '../../geometry/PuzzleMaker';
 import { moveVertex } from '../../geometry/modifiers';
 import { distanceSq } from '../../geometry/utils';
 import type { PuzzleRendererAttrs, PuzzleRendererState } from './constants';
-import { REGENERATION_THROTTLE_MS, HOVER_DISTANCE_SQ } from './constants';
+import { REGENERATION_THROTTLE_MS, HOVER_DISTANCE_SQ, MIN_ZOOM, MAX_ZOOM, ZOOM_STEP } from './constants';
 import type MithrilViewEvent from '../../utils/MithrilViewEvent';
 import type { Vec2, PieceID } from '../../geometry/types';
 import { renderPuzzle, getBoundaryEdgeVertexIds } from './rendering';
+
+/* ========================================================= *\
+ *  Pan and Zoom Event Handlers                              *
+\* ========================================================= */
+
+// Store event handler references for cleanup
+let keyDownHandler: ((event: KeyboardEvent) => void) | null = null;
+let keyUpHandler: ((event: KeyboardEvent) => void) | null = null;
+let wheelHandler: ((event: WheelEvent) => void) | null = null;
+let panMouseDownHandler: ((event: MouseEvent) => void) | null = null;
+let panMouseMoveHandler: ((event: MouseEvent) => void) | null = null;
+let panMouseUpHandler: ((event: MouseEvent) => void) | null = null;
+
+// Track panning state for raw mouse events
+let isPanningWithRawEvents = false;
+let lastPanPoint: { x: number; y: number } | null = null;
+
+/**
+ * Set up pan and zoom event handlers for keyboard and wheel
+ *
+ * @param state - The PuzzleRenderer state object
+ * @param onZoomChanged - Optional callback when zoom changes
+ */
+export function setupPanZoomHandling(
+  state: PuzzleRendererState,
+  onZoomChanged?: (zoom: number) => void,
+): void {
+  // Set up keyboard event listeners for spacebar (pan mode)
+  keyDownHandler = (event: KeyboardEvent) => {
+    if (event.code === 'Space') {
+      // Always prevent default to stop page scrolling (even on repeated keydown events)
+      event.preventDefault();
+
+      if (!state.isSpacebarPressed) {
+        state.isSpacebarPressed = true;
+        updateCursor(state);
+      }
+    }
+  };
+
+  keyUpHandler = (event: KeyboardEvent) => {
+    if (event.code === 'Space') {
+      state.isSpacebarPressed = false;
+      updateCursor(state);
+      event.preventDefault();
+    }
+  };
+
+  // Set up wheel event listener for zooming
+  wheelHandler = (event: WheelEvent) => {
+    event.preventDefault();
+
+    // Calculate zoom delta (negative deltaY means zoom in)
+    const delta = -Math.sign(event.deltaY) * ZOOM_STEP;
+    const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, state.zoom + delta));
+
+    if (newZoom !== state.zoom) {
+      // Get mouse position in view coordinates
+      const mousePos = new paper.Point(event.offsetX, event.offsetY);
+
+      // Zoom centered on mouse position
+      const viewPos = paper.view.viewToProject(mousePos);
+      const zoomFactor = newZoom / state.zoom;
+
+      paper.view.scale(zoomFactor, viewPos);
+      state.zoom = newZoom;
+
+      // Notify parent of zoom change
+      if (onZoomChanged) {
+        onZoomChanged(newZoom);
+      }
+
+      // Trigger redraw to update zoom display
+      m.redraw();
+    }
+  };
+
+  // Set up raw mouse event listeners for panning (to avoid Paper.js coordinate feedback)
+  panMouseDownHandler = (event: MouseEvent) => {
+    if (state.isSpacebarPressed) {
+      isPanningWithRawEvents = true;
+      lastPanPoint = { x: event.clientX, y: event.clientY };
+      updateCursor(state);
+      event.preventDefault();
+    }
+  };
+
+  panMouseMoveHandler = (event: MouseEvent) => {
+    // Prevent default scroll behavior whenever spacebar is pressed
+    if (state.isSpacebarPressed) {
+      event.preventDefault();
+    }
+
+    if (isPanningWithRawEvents && lastPanPoint) {
+      const dx = event.clientX - lastPanPoint.x;
+      const dy = event.clientY - lastPanPoint.y;
+
+      // Scale delta by inverse of zoom to maintain 1:1 mouse tracking
+      // Paper.js translate() expects project coordinates, not view coordinates
+      const scaledDx = dx / state.zoom;
+      const scaledDy = dy / state.zoom;
+
+      // Pan by translating the view (move content with the mouse)
+      paper.view.translate(new paper.Point(scaledDx, scaledDy));
+
+      lastPanPoint = { x: event.clientX, y: event.clientY };
+    }
+  };
+
+  panMouseUpHandler = () => {
+    if (isPanningWithRawEvents) {
+      isPanningWithRawEvents = false;
+      lastPanPoint = null;
+      updateCursor(state);
+    }
+  };
+
+  // Add event listeners
+  window.addEventListener('keydown', keyDownHandler);
+  window.addEventListener('keyup', keyUpHandler);
+  if (state.canvas) {
+    state.canvas.addEventListener('wheel', wheelHandler, { passive: false });
+    state.canvas.addEventListener('mousedown', panMouseDownHandler);
+    state.canvas.addEventListener('mousemove', panMouseMoveHandler);
+    state.canvas.addEventListener('mouseup', panMouseUpHandler);
+    // Also handle mouse leaving canvas while panning
+    state.canvas.addEventListener('mouseleave', panMouseUpHandler);
+  }
+}
+
+/**
+ * Clean up pan and zoom event listeners
+ */
+export function cleanupPanZoomHandling(canvas: HTMLCanvasElement | null): void {
+  // Remove event listeners
+  if (keyDownHandler) {
+    window.removeEventListener('keydown', keyDownHandler);
+    keyDownHandler = null;
+  }
+  if (keyUpHandler) {
+    window.removeEventListener('keyup', keyUpHandler);
+    keyUpHandler = null;
+  }
+  if (canvas) {
+    if (wheelHandler) {
+      canvas.removeEventListener('wheel', wheelHandler);
+      wheelHandler = null;
+    }
+    if (panMouseDownHandler) {
+      canvas.removeEventListener('mousedown', panMouseDownHandler);
+      panMouseDownHandler = null;
+    }
+    if (panMouseMoveHandler) {
+      canvas.removeEventListener('mousemove', panMouseMoveHandler);
+      panMouseMoveHandler = null;
+    }
+    if (panMouseUpHandler) {
+      canvas.removeEventListener('mouseup', panMouseUpHandler);
+      canvas.removeEventListener('mouseleave', panMouseUpHandler);
+      panMouseUpHandler = null;
+    }
+  }
+
+  // Reset panning state
+  isPanningWithRawEvents = false;
+  lastPanPoint = null;
+}
+
+/**
+ * Update the cursor based on the current state
+ *
+ * @param state - The PuzzleRenderer state object
+ */
+function updateCursor(state: PuzzleRendererState): void {
+  if (!state.canvas) return;
+
+  // Priority 1: Panning with spacebar
+  if (state.isSpacebarPressed) {
+    state.canvas.style.cursor = isPanningWithRawEvents ? 'grabbing' : 'grab';
+    return;
+  }
+
+  // Priority 2: Dragging (set by handleDragMove)
+  if (state.isDragging) {
+    state.canvas.style.cursor = 'grabbing';
+    return;
+  }
+
+  // Default cursor (will be updated by handleMouseMove)
+  state.canvas.style.cursor = 'default';
+}
+
+/* ========================================================= *\
+ *  Helper Functions                                         *
+\* ========================================================= */
 
 /**
  * Helper to find a vertex circle by vertex ID
@@ -116,8 +312,8 @@ export function handleMouseMove(
 ): void {
   e.redraw = false;
 
-  // Don't change cursor while dragging
-  if (state.isDragging || !state.canvas) return;
+  // Don't change cursor while dragging or panning
+  if (state.isDragging || state.isSpacebarPressed || !state.canvas) return;
 
   const viewPoint = getViewPoint(e, state.canvas);
   if (!viewPoint) return;
@@ -201,6 +397,9 @@ export function handleDragStart(
   e.redraw = false;
 
   if (!state.canvas) return;
+
+  // Skip when panning with spacebar
+  if (state.isSpacebarPressed) return;
 
   // For touch events, ignore multiple touches (like pinch zoom)
   if (e instanceof TouchEvent) {
