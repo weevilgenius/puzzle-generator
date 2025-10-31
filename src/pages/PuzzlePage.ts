@@ -14,7 +14,7 @@ import ColorPicker from '../ui/ColorPicker';
 import BorderShapePicker, { type BorderShapeType } from '../ui/BorderShapePicker';
 
 // geometry parts
-import type { PuzzleGeometry } from '../geometry/types';
+import type { CustomPiece, PuzzleGeometry } from '../geometry/types';
 import type { GeneratorConfig, GeneratorName, GeneratorRegistry } from '../geometry/generators/Generator';
 import { PointGeneratorRegistry, PieceGeneratorRegistry, TabPlacementStrategyRegistry, TabGeneratorRegistry } from '../geometry/generators/Generator';
 import { Name as PoissonGeneratorName } from '../geometry/generators/point/PoissonPointGenerator';
@@ -101,6 +101,8 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     backgroundImageUrl?: string;
     /** Name of uploaded image */
     backgroundImageName: string;
+    /** Custom pieces defined for this puzzle */
+    customPieces: CustomPiece[];
   };
 
   // component state
@@ -154,6 +156,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     puzzle: undefined,
     backgroundImageUrl: undefined,
     backgroundImageName: '',
+    customPieces: [],
   };
 
   // utility to create border based on selected shape
@@ -216,6 +219,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
         placementConfig: state.generators.placement.config,
         tabConfig: state.generators.tab.config,
         seed: state.seed,
+        customPieces: state.customPieces,
       }).then((puzzle) => {
         state.puzzle = puzzle;
         m.redraw();
@@ -243,6 +247,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
           placementConfig: state.generators.placement.config,
           tabConfig: state.generators.tab.config,
           seed: state.seed,
+          customPieces: state.customPieces,
         }).then((puzzle) => {
           state.geometryProblems.problems = undefined;
           state.geometryProblems.progress = undefined;

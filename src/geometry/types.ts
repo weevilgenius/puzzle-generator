@@ -5,7 +5,7 @@ import type { GeneratorConfig } from "./generators/Generator";
 \* ========================================================= */
 
 /** Alias for string which indicates this field holds a date/time value */
-type DateString = string;
+export type DateString = string;
 
 /** 2-D point in puzzle-space units (pixels, millimetres, etc.). */
 export type Vec2 = [number, number];
@@ -172,6 +172,46 @@ export interface Piece {
 }
 
 /* ========================================================= *\
+ *  Custom Pieces                                            *
+\* ========================================================= */
+
+/**
+ * Spatial transformation for positioning a custom piece on the puzzle.
+ */
+export interface CustomPieceTransform {
+  /** Position of the piece's center point */
+  position: Vec2;
+
+  /** Rotation angle in radians */
+  rotation: number;
+
+  /** Scale factors for x and y axes */
+  scale: Vec2;
+}
+
+/**
+ * A puzzle piece defined by the user. Unlike procedurally generated pieces,
+ * custom pieces have explicit geometry and transformations that persist across
+ * puzzle regenerations.
+ */
+export interface CustomPiece {
+  /** Unique identifier for this custom piece */
+  id: string;
+
+  /** Optional user-friendly name */
+  name?: string;
+
+  /** The path defining the piece shape (must be closed and non-self-intersecting) */
+  path: PathCommand[];
+
+  /** Spatial transformation applied to the piece */
+  transform: CustomPieceTransform;
+
+  /** Creation timestamp */
+  created: DateString;
+}
+
+/* ========================================================= *\
  *  High-level containers                                    *
 \* ========================================================= */
 
@@ -218,5 +258,7 @@ export interface PuzzleGeometry extends PuzzleTopology {
   seedPoints: Vec2[];
   /** Coordinates where the puzzle has problems, such as pieces intersecting */
   problems?: Vec2[];
+  /** Custom pieces defined for this puzzle */
+  customPieces?: CustomPiece[];
 }
 

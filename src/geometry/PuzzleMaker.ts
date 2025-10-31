@@ -1,4 +1,4 @@
-import type { PathCommand, PieceID, PuzzleGeometry, Vec2 } from "./types";
+import type { CustomPiece, PathCommand, PieceID, PuzzleGeometry, Vec2 } from "./types";
 import {
   PointGeneratorRegistry,
   PieceGeneratorRegistry,
@@ -33,6 +33,8 @@ export interface PuzzleGenerationOptions {
   tabConfig: GeneratorConfig;
   /** Boundary path of the puzzle border */
   border: PathCommand[];
+  /** Custom pieces defined for this puzzle */
+  customPieces?: CustomPiece[];
   /** Optional pre-generated seed points. If provided, point generation is skipped. */
   seedPoints?: Vec2[];
   /** If true, skip tab placement and generation (for real-time preview) */
@@ -67,7 +69,13 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
     console.log(`${options.seedPoints ? 'Using' : 'Generated'} ${points.length} points`);
 
     // 2. Convert points to a puzzle topology (pieces and edges)
-    const topology = pieceGenerator.generatePieces(points, { random, pieceSize, border, bounds });
+    const topology = pieceGenerator.generatePieces(points, {
+      random,
+      pieceSize,
+      border,
+      bounds,
+      customPieces: options.customPieces,
+    });
     console.log(`Generated ${topology.pieces.size} pieces`);
 
     // 3. Place tabs on internal edges (skip if requested)
@@ -103,6 +111,7 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
       pieces: topology.pieces,
       edges: topology.edges,
       halfEdges: topology.halfEdges,
+      customPieces: options.customPieces,
     };
 
     return Promise.resolve(puzzle);
@@ -148,6 +157,7 @@ export async function rebuildPuzzleWithUpdatedSeedPoint(
     tabConfig: originalPuzzle.tabConfig,
     seed: originalPuzzle.seed,
     seedPoints: updatedPoints,
+    customPieces: originalPuzzle.customPieces,
     skipTabs: false, // Include tabs in final version
   });
 }
