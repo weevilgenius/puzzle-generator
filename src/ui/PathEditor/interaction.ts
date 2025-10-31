@@ -122,8 +122,13 @@ export function setupMouseHandling(
       const dx = event.clientX - lastPanPoint.x;
       const dy = event.clientY - lastPanPoint.y;
 
+      // Scale delta by inverse of zoom to maintain 1:1 mouse tracking
+      // Paper.js translate() expects project coordinates, not view coordinates
+      const scaledDx = dx / state.zoom;
+      const scaledDy = dy / state.zoom;
+
       // Pan by translating the view (move content with the mouse)
-      paper.view.translate(new paper.Point(dx, dy));
+      paper.view.translate(new paper.Point(scaledDx, scaledDy));
 
       lastPanPoint = { x: event.clientX, y: event.clientY };
       event.preventDefault();
