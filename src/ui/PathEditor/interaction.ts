@@ -50,10 +50,14 @@ export function setupMouseHandling(
 
   // Set up keyboard event listeners for spacebar (pan mode), Shift (insert point mode), and Delete/Backspace
   keyDownHandler = (event: KeyboardEvent) => {
-    if (event.code === 'Space' && !state.isSpacebarPressed) {
-      state.isSpacebarPressed = true;
-      updateCursor(state);
+    if (event.code === 'Space') {
+      // Always prevent default to stop page scrolling (even on repeated keydown events)
       event.preventDefault();
+
+      if (!state.isSpacebarPressed) {
+        state.isSpacebarPressed = true;
+        updateCursor(state);
+      }
     } else if (event.key === 'Shift' && !state.isShiftPressed) {
       state.isShiftPressed = true;
       updateCursor(state);
@@ -118,6 +122,11 @@ export function setupMouseHandling(
   };
 
   mouseMoveHandler = (event: MouseEvent) => {
+    // Prevent default scroll behavior whenever spacebar is pressed
+    if (state.isSpacebarPressed) {
+      event.preventDefault();
+    }
+
     if (isPanningWithRawEvents && lastPanPoint) {
       const dx = event.clientX - lastPanPoint.x;
       const dy = event.clientY - lastPanPoint.y;
@@ -131,7 +140,6 @@ export function setupMouseHandling(
       paper.view.translate(new paper.Point(scaledDx, scaledDy));
 
       lastPanPoint = { x: event.clientX, y: event.clientY };
-      event.preventDefault();
     }
   };
 

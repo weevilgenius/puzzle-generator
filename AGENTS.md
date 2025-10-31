@@ -253,6 +253,10 @@ All generator logic and metadata should be self-contained in a single file.
 - Geometry validation runs in a Web Worker (`src/workers/CheckGeometryWorker.ts`)
   to avoid blocking the UI
 
+### Validation Philosophy
+
+The application follows a **permissive validation approach**: users can perform most actions (placing vertices outside puzzle bounds, creating self-intersecting pieces, overlapping custom pieces, etc.) without being blocked. Potential issues are flagged visually (typically via the problem checker) rather than prevented. This design assumes users know what they're doing and accommodates the fact that procedural algorithms occasionally produce invalid geometry. When implementing validation, provide clear visual feedback (highlights, warnings) but avoid hard constraints that prevent user actions.
+
 ## Custom Border Shapes
 
 The puzzle generator supports non-rectangular borders via the `PathCommand` system:
