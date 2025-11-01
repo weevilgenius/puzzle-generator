@@ -2,6 +2,7 @@ import eslint from "@eslint/js";
 import tseslint from "typescript-eslint";
 import stylistic from '@stylistic/eslint-plugin';
 import unusedImports from "eslint-plugin-unused-imports";
+import paperSafety from "./eslint/paper-safety/index.mjs";
 import globals from "globals";
 
 // this configures ESLint using their new flat config system
@@ -24,6 +25,7 @@ export default tseslint.config(
       "@typescript-eslint": tseslint.plugin,
       "stylistic": stylistic,
       "unused-imports": unusedImports,
+      "paper-safety": paperSafety,
     },
 
     // required for linting with type information
@@ -129,6 +131,11 @@ export default tseslint.config(
 
       // complain about using a computed key with a constant
       "no-useless-computed-key": "warn",
+
+      // Paper.js safety (for this project only)
+      "paper-safety/no-paper-global": "error",
+      "paper-safety/require-scope-qualified-news": "error",
+      "paper-safety/no-paper-destructure": "warn",
 
       // ==================================================
       // Style/formatting rules

@@ -57,6 +57,9 @@ importers:
       '@types/svg-arc-to-cubic-bezier':
         specifier: ^3.2.3
         version: 3.2.3
+      '@typescript-eslint/utils':
+        specifier: ^8.46.2
+        version: 8.46.2(eslint@9.39.0)(typescript@5.9.3)
       eslint:
         specifier: ^9.39.0
         version: 9.39.0

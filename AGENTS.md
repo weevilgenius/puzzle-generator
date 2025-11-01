@@ -129,6 +129,19 @@ Ensure the project compiles and lint checks pass when making changes:
   Custom event names such as `wa-tab-show` can be attached using Mithril's convenience `on` prefix like this: `'onwa-tab-show': (e: WaTabShowEvent) => { ... }`
 - **Documentation**: Consult component usage, properties, and events at https://webawesome.com/docs/components/
 
+#### Paper.js Scope Management
+
+**CRITICAL**: This project uses **isolated Paper.js scopes** with **explicit scope activation** to prevent conflicts between multiple Paper.js instances (e.g., PuzzleRenderer and PathEditor).
+
+##### Core Principles
+
+- **NEVER use global `paper.*` classes or methods** - Always use classes from the component's isolated scope (enforced by lint rule)
+- **Each component has its own scope**: Create via `createPaperContext()` from `src/utils/paperScope.ts`
+- **Store only the scope**: `PaperContext` interface contains only `scope: paper.PaperScope`
+- **Access classes through scope**: Use `paperScope.Path`, `paperScope.Point`, `paperScope.Color`, etc.
+- **NEVER destructure classes**: Destructuring detaches classes from their scope binding
+- **Activate scope before creating objects**: Call `paperCtx.scope.activate()` before creating any Paper.js objects. `withPaper()` convenience method wraps this logic.
+
 ### General Style
 
 - **Avoid emoji** in code (comments, strings, etc.) unless explicitly required by the domain

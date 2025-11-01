@@ -26,6 +26,7 @@
     "@types/mithril": "^2.2.7",
     "@types/poisson-disk-sampling": "^2.2.4",
     "@types/svg-arc-to-cubic-bezier": "^3.2.3",
+    "@typescript-eslint/utils": "^8.46.2",
     "eslint": "^9.39.0",
     "eslint-plugin-unused-imports": "^4.3.0",
     "gh-pages": "^6.3.0",
