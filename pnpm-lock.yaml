@@ -72,6 +72,9 @@ importers:
       globals:
         specifier: ^16.4.0
         version: 16.4.0
+      lit:
+        specifier: ^3.3.1
+        version: 3.3.1
       rollup-plugin-visualizer:
         specifier: ^6.0.5
         version: 6.0.5(rollup@4.52.5)

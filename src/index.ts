@@ -16,6 +16,15 @@ import "@awesome.me/webawesome/dist/styles/themes/default.css";
 // CSS for this component
 import './index.css';
 
+// Lit (used by Web Awesome components) generates spurious update warnings in development mode only
+// this does not affect production builds
+if (import.meta.env.DEV) {
+  console.log('silencing lit update warnings');
+  const { LitElement } = await import('lit');
+  LitElement.disableWarning?.('change-in-update');
+}
+
+
 // detect light/dark mode
 function configureDarkLightTheme() {
   const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
