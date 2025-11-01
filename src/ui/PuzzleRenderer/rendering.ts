@@ -2,7 +2,7 @@
  * Rendering logic for PuzzleRenderer component using Paper.js
  */
 
-import paper from 'paper';
+import { createPaperContext, assertPaperReady, withPaper } from '../../utils/paperScope';
 import {
   drawPuzzleWithPaper,
   drawSeedPoints,
@@ -13,15 +13,21 @@ import type { PuzzleRendererState } from './constants';
 import { measureSync } from '../../utils/performance';
 
 /**
- * Initialize Paper.js on a canvas element
+ * Initialize Paper.js on a canvas element with an isolated scope
  */
 export function initializePaper(
   canvas: HTMLCanvasElement,
   width: number,
-  height: number
+  height: number,
+  state: PuzzleRendererState
 ): void {
-  paper.setup(canvas);
-  paper.view.viewSize = new paper.Size(width, height);
+  // Create an isolated Paper.js scope for this renderer
+  state.paperCtx = createPaperContext(canvas, width, height);
+
+  // Verify context was created successfully
+  if (!state.paperCtx) {
+    console.error('PuzzleRenderer: Failed to create Paper.js context');
+  }
 }
 
 /**
@@ -33,30 +39,47 @@ export function renderPuzzle(
   color: string,
   pointColor?: string
 ): void {
+  // Use this renderer's isolated Paper.js scope
+  if (!state.paperCtx) {
+    console.error('PuzzleRenderer: Cannot render - Paper.js context not initialized');
+    return;
+  }
+
   measureSync('Paper.js Rendering', () => {
-    // Remove existing path if present
-    if (state.paperPath) {
-      state.paperPath.remove();
-      state.paperPath = null;
-    }
+    withPaper(state.paperCtx!, 'PuzzleRenderer:renderPuzzle', () => {
+      const paperScope = state.paperCtx!.scope;
 
-    // Draw the puzzle edges
-    state.paperPath = drawPuzzleWithPaper(puzzle, color);
+      // Check if Paper.js is ready before creating objects
+      if (!assertPaperReady(paperScope, 'PuzzleRenderer:renderPuzzle')) {
+        console.error('PuzzleRenderer: Paper.js not ready - canvas may have been replaced');
+        return;
+      }
 
-    // Create/update vertex circles
-    createVertexItems(puzzle, state);
+      // Remove existing path if present
+      if (state.paperPath) {
+        state.paperPath.remove();
+        state.paperPath = null;
+      }
 
-    // Draw seed points if enabled
-    if (state.seedPointItems) {
-      drawSeedPoints(puzzle, state.seedPointItems, pointColor);
-    }
+      // Draw the puzzle edges using this scope's context
+      state.paperPath = drawPuzzleWithPaper(puzzle, color, state.paperCtx!);
 
-    // Draw problem indicators if present
-    if (state.problemItems) {
-      drawProblems(puzzle, state.problemItems);
-    }
+      // Create/update vertex circles
+      createVertexItems(puzzle, state);
 
-    // Paper.js will automatically render on next frame
+      // Draw seed points if enabled
+      if (state.seedPointItems && state.paperCtx) {
+        drawSeedPoints(puzzle, state.seedPointItems, pointColor, state.paperCtx);
+      }
+
+      // Draw problem indicators if present
+      if (state.problemItems && state.paperCtx) {
+        drawProblems(puzzle, state.problemItems, state.paperCtx);
+      }
+
+      // Explicitly trigger an update on the isolated scope's view
+      paperScope.view.update();
+    });
   });
 }
 
@@ -64,10 +87,26 @@ export function renderPuzzle(
  * Create Paper.js groups for different visual layers
  */
 export function createPaperGroups(state: PuzzleRendererState): void {
-  state.backgroundRaster = null;
-  state.seedPointItems = new paper.Group();
-  state.problemItems = new paper.Group();
-  state.vertexItems = new paper.Group();
+  // Use this renderer's isolated Paper.js scope
+  if (!state.paperCtx) {
+    console.error('PuzzleRenderer: Cannot create groups - Paper.js context not initialized');
+    return;
+  }
+
+  withPaper(state.paperCtx, 'PuzzleRenderer:createPaperGroups', () => {
+    const paperScope = state.paperCtx!.scope;
+
+    // Check if Paper.js is ready before creating objects
+    if (!assertPaperReady(paperScope, 'PuzzleRenderer:createPaperGroups')) {
+      console.error('PuzzleRenderer: Paper.js not ready - canvas may have been replaced');
+      return;
+    }
+
+    state.backgroundRaster = null;
+    state.seedPointItems = new paperScope.Group();
+    state.problemItems = new paperScope.Group();
+    state.vertexItems = new paperScope.Group();
+  });
 }
 
 /**
@@ -83,33 +122,43 @@ export function updateBackgroundImage(
   width: number,
   height: number
 ): void {
-  // Remove existing background raster
-  if (state.backgroundRaster) {
-    state.backgroundRaster.remove();
-    state.backgroundRaster = null;
+  // Use this renderer's isolated Paper.js scope
+  if (!state.paperCtx) {
+    console.error('PuzzleRenderer: Cannot update background - Paper.js context not initialized');
+    return;
   }
 
-  // Create new background raster if imageUrl is provided
-  if (imageUrl) {
-    const raster = new paper.Raster(imageUrl);
+  withPaper(state.paperCtx, 'PuzzleRenderer:updateBackgroundImage', () => {
+    const paperScope = state.paperCtx!.scope;
 
-    // Position at center of view
-    raster.position = new paper.Point(width / 2, height / 2);
+    // Remove existing background raster
+    if (state.backgroundRaster) {
+      state.backgroundRaster.remove();
+      state.backgroundRaster = null;
+    }
 
-    // Scale to fit the canvas size
-    raster.onLoad = () => {
-      if (raster.width && raster.height) {
-        const scaleX = width / raster.width;
-        const scaleY = height / raster.height;
-        raster.scale(scaleX, scaleY);
-      }
-    };
+    // Create new background raster if imageUrl is provided
+    if (imageUrl) {
+      const raster = new paperScope.Raster(imageUrl);
 
-    // Send to back (bottom layer)
-    raster.sendToBack();
+      // Position at center of view
+      raster.position = new paperScope.Point(width / 2, height / 2);
 
-    state.backgroundRaster = raster;
-  }
+      // Scale to fit the canvas size
+      raster.onLoad = () => {
+        if (raster.width && raster.height) {
+          const scaleX = width / raster.width;
+          const scaleY = height / raster.height;
+          raster.scale(scaleX, scaleY);
+        }
+      };
+
+      // Send to back (bottom layer)
+      raster.sendToBack();
+
+      state.backgroundRaster = raster;
+    }
+  });
 }
 
 /**
@@ -144,7 +193,10 @@ export function createVertexItems(
   puzzle: PuzzleGeometry,
   state: PuzzleRendererState
 ): void {
-  if (!state.vertexItems) return;
+  if (!state.vertexItems || !state.paperCtx) return;
+
+  // Scope is already activated by caller (renderPuzzle via withPaper)
+  const paperScope = state.paperCtx.scope;
 
   // Clear existing vertex items
   state.vertexItems.removeChildren();
@@ -158,9 +210,9 @@ export function createVertexItems(
     if (boundaryVertexIds.has(i)) continue;
 
     const [x, y] = puzzle.vertices[i];
-    const circle = new paper.Path.Circle(new paper.Point(x, y), 4);
-    circle.fillColor = new paper.Color('#4363d8');
-    circle.strokeColor = new paper.Color('#ffffff');
+    const circle = new paperScope.Path.Circle(new paperScope.Point(x, y), 4);
+    circle.fillColor = new paperScope.Color('#4363d8');
+    circle.strokeColor = new paperScope.Color('#ffffff');
     circle.strokeWidth = 1;
     circle.visible = false; // Hidden by default, shown on hover
     // Store vertex ID in data for hit testing
@@ -196,7 +248,7 @@ export function cleanupPaper(state: PuzzleRendererState): void {
   }
 
   // Remove the Paper.js project
-  if (paper.project) {
-    paper.project.remove();
+  if (state.paperCtx) {
+    state.paperCtx.scope.project.remove();
   }
 }

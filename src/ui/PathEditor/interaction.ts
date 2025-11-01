@@ -16,6 +16,7 @@ import {
   SNAP_INDICATOR_COLOR,
   SNAP_INDICATOR_WIDTH,
 } from './constants';
+import { withPaper } from '../../utils/paperScope';
 
 /* ========================================================= *\
  *  Tool Setup                                               *
@@ -46,7 +47,15 @@ export function setupMouseHandling(
   onPathChanged: () => void,
   onZoomChanged: () => void,
 ): paper.Tool {
-  const tool = new paper.Tool();
+  if (!state.paperCtx) {
+    throw new Error('PathEditor: Cannot setup mouse handling - Paper.js context not initialized');
+  }
+
+  // Create tool with activated scope
+  const tool = withPaper(state.paperCtx, 'PathEditor:setupTool', () => {
+    const paperScope = state.paperCtx!.scope;
+    return new paperScope.Tool();
+  })!;
 
   // Set up keyboard event listeners for spacebar (pan mode), Shift (insert point mode), and Delete/Backspace
   keyDownHandler = (event: KeyboardEvent) => {
@@ -63,14 +72,18 @@ export function setupMouseHandling(
       updateCursor(state);
     } else if (event.code === 'Delete' || event.code === 'Backspace') {
       // Delete selected point in edit mode
-      if (state.mode === 'edit' && state.selectedSegment && state.path) {
+      if (state.mode === 'edit' && state.selectedSegment && state.path && state.paperCtx) {
         // Only allow deletion if path has more than 2 segments
         // (need at least 2 points to make a path)
         if (state.path.segments.length > 2) {
           state.selectedSegment.remove();
           state.selectedSegment = null;
           state.selectedHandle = null;
-          onPathChanged();
+
+          // Activate scope before calling onPathChanged
+          withPaper(state.paperCtx, 'PathEditor:deleteSegment', () => {
+            onPathChanged();
+          });
         }
       }
       event.preventDefault();
@@ -92,19 +105,23 @@ export function setupMouseHandling(
   wheelHandler = (event: WheelEvent) => {
     event.preventDefault();
 
+    if (!state.paperCtx) return;
+
+    const paperScope = state.paperCtx.scope;
+
     // Calculate zoom delta (negative deltaY means zoom in)
     const delta = -Math.sign(event.deltaY) * ZOOM_STEP;
     const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, state.zoom + delta));
 
     if (newZoom !== state.zoom) {
       // Get mouse position in view coordinates
-      const mousePos = new paper.Point(event.offsetX, event.offsetY);
+      const mousePos = new paperScope.Point(event.offsetX, event.offsetY);
 
       // Zoom centered on mouse position
-      const viewPos = paper.view.viewToProject(mousePos);
+      const viewPos = paperScope.view.viewToProject(mousePos);
       const zoomFactor = newZoom / state.zoom;
 
-      paper.view.scale(zoomFactor, viewPos);
+      paperScope.view.scale(zoomFactor, viewPos);
       state.zoom = newZoom;
 
       onZoomChanged();
@@ -128,6 +145,10 @@ export function setupMouseHandling(
     }
 
     if (isPanningWithRawEvents && lastPanPoint) {
+      if (!state.paperCtx) return;
+
+      const paperScope = state.paperCtx.scope;
+
       const dx = event.clientX - lastPanPoint.x;
       const dy = event.clientY - lastPanPoint.y;
 
@@ -137,7 +158,7 @@ export function setupMouseHandling(
       const scaledDy = dy / state.zoom;
 
       // Pan by translating the view (move content with the mouse)
-      paper.view.translate(new paper.Point(scaledDx, scaledDy));
+      paperScope.view.translate(new paperScope.Point(scaledDx, scaledDy));
 
       lastPanPoint = { x: event.clientX, y: event.clientY };
     }
@@ -171,7 +192,7 @@ export function setupMouseHandling(
     }
 
     if (state.mode === 'draw') {
-      handleDrawModeDown(state, event);
+      handleDrawModeDown(state, event, onPathChanged);
     } else {
       handleEditModeDown(state, event);
     }
@@ -200,48 +221,56 @@ export function setupMouseHandling(
 
     if (state.mode === 'draw') {
       // Finalize the pending point by adding it to the main path
-      if (state.pendingPoint && state.path) {
-        if (state.isDraggingCurve && state.previewPath && state.previewPath.segments.length > 0) {
-          // User dragged - add the curve segment with handles from preview
-          const previewSegment = state.previewPath.lastSegment;
-          const newSegment = new paper.Segment(
-            state.pendingPoint,
-            previewSegment.handleIn,
-            previewSegment.handleOut
-          );
-          state.path.add(newSegment);
+      if (state.pendingPoint && state.path && state.paperCtx) {
+        withPaper(state.paperCtx, 'PathEditor:onMouseUp', () => {
+          const paperScope = state.paperCtx!.scope;
 
-          // Apply the handleOut from preview to the previous segment (if exists)
-          if (state.path.segments.length > 1 && state.previewPath.segments.length > 1) {
-            const prevSegment = state.path.segments[state.path.segments.length - 2];
-            const previewPrevSegment = state.previewPath.segments[0];
-            prevSegment.handleOut = previewPrevSegment.handleOut;
+          if (state.isDraggingCurve && state.previewPath && state.previewPath.segments.length > 0) {
+            // User dragged - add the curve segment with handles from preview
+            const previewSegment = state.previewPath.lastSegment;
+            const newSegment = new paperScope.Segment(
+              state.pendingPoint!,
+              previewSegment.handleIn,
+              previewSegment.handleOut
+            );
+            state.path!.add(newSegment);
+
+            // Apply the handleOut from preview to the previous segment (if exists)
+            if (state.path!.segments.length > 1 && state.previewPath.segments.length > 1) {
+              const prevSegment = state.path!.segments[state.path!.segments.length - 2];
+              const previewPrevSegment = state.previewPath.segments[0];
+              prevSegment.handleOut = previewPrevSegment.handleOut;
+            }
+          } else {
+            // User just clicked (no drag) - add a straight line segment
+            state.path!.add(state.pendingPoint!);
           }
-        } else {
-          // User just clicked (no drag) - add a straight line segment
-          state.path.add(state.pendingPoint);
-        }
 
-        // Clear pending state
-        state.pendingPoint = null;
-        state.isDraggingCurve = false;
+          // Clear pending state
+          state.pendingPoint = null;
+          state.isDraggingCurve = false;
 
-        // Hide preview path
-        if (state.previewPath) {
-          state.previewPath.removeSegments();
-          state.previewPath.visible = false;
-        }
+          // Hide preview path
+          if (state.previewPath) {
+            state.previewPath.removeSegments();
+            state.previewPath.visible = false;
+          }
+
+          // Notify of changes (within scope activation)
+          onPathChanged();
+        });
+
+        // Update cursor after changes
+        updateCursor(state);
       }
-
-      // Notify of changes
-      onPathChanged();
-
-      // Update cursor after changes
-      updateCursor(state);
     } else {
       // Edit mode - just notify of changes, keep selection
       // (selection is managed by handleEditModeDown)
-      onPathChanged();
+      if (state.paperCtx) {
+        withPaper(state.paperCtx, 'PathEditor:onMouseUp-editMode', () => {
+          onPathChanged();
+        });
+      }
     }
   };
 
@@ -399,8 +428,9 @@ function updateCursor(state: PathEditorState, point?: paper.Point): void {
 function handleDrawModeDown(
   state: PathEditorState,
   event: paper.ToolEvent,
+  onPathChanged: () => void,
 ): void {
-  if (!state.path) return;
+  if (!state.path || !state.paperCtx) return;
 
   // Check if we're snapping to the first point to close the path
   if (state.isNearFirstPoint && state.path.segments.length >= 2) {
@@ -422,6 +452,11 @@ function handleDrawModeDown(
       state.previewPath.visible = false;
     }
 
+    // Notify parent that the path was closed
+    withPaper(state.paperCtx, 'PathEditor:closePathBySnapping', () => {
+      onPathChanged();
+    });
+
     return;
   }
 
@@ -429,10 +464,13 @@ function handleDrawModeDown(
   // clear it temporarily. If the user drags, onMouseDrag will set it again.
   // If the user just clicks (no drag), this ensures a straight line.
   if (state.path.segments.length > 0) {
-    const lastSegment = state.path.lastSegment;
-    if (lastSegment.handleOut && lastSegment.handleOut.length > 0) {
-      lastSegment.handleOut = new paper.Point(0, 0);
-    }
+    withPaper(state.paperCtx, 'PathEditor:handleDrawModeDown', () => {
+      const paperScope = state.paperCtx!.scope;
+      const lastSegment = state.path!.lastSegment;
+      if (lastSegment.handleOut && lastSegment.handleOut.length > 0) {
+        lastSegment.handleOut = new paperScope.Point(0, 0);
+      }
+    });
   }
 
   // Store the pending point (don't add to main path yet)
@@ -460,75 +498,79 @@ function handleDrawModeDrag(
   state: PathEditorState,
   event: paper.ToolEvent,
 ): void {
-  if (!state.path || !state.previewPath || !state.pendingPoint) return;
+  if (!state.path || !state.previewPath || !state.pendingPoint || !state.paperCtx) return;
 
-  state.isDraggingCurve = true;
+  withPaper(state.paperCtx, 'PathEditor:handleDrawModeDrag', () => {
+    const paperScope = state.paperCtx!.scope;
 
-  // C: The pending point (at mouse down position)
-  const pointC = state.pendingPoint;
+    state.isDraggingCurve = true;
 
-  // Vector from C to D (drag direction)
-  const vectorCD = event.point.subtract(pointC);
+    // C: The pending point (at mouse down position)
+    const pointC = state.pendingPoint!;
 
-  // Calculate C's handles parallel to drag direction (C→D)
-  const handleCOut = vectorCD.multiply(DRAG_HANDLE_MULTIPLIER);
-  const handleCIn = vectorCD.multiply(-DRAG_HANDLE_MULTIPLIER);
+    // Vector from C to D (drag direction)
+    const vectorCD = event.point.subtract(pointC);
 
-  // Calculate B's handleOut based on the existing path
-  let handleBOut = new paper.Point(0, 0);
+    // Calculate C's handles parallel to drag direction (C→D)
+    const handleCOut = vectorCD.multiply(DRAG_HANDLE_MULTIPLIER);
+    const handleCIn = vectorCD.multiply(-DRAG_HANDLE_MULTIPLIER);
 
-  if (state.path.segments.length > 0) {
-    // B: The last segment in the main path
-    const segmentB = state.path.lastSegment;
+    // Calculate B's handleOut based on the existing path
+    let handleBOut = new paperScope.Point(0, 0);
 
-    // Vector from B to C
-    const vectorBC = pointC.subtract(segmentB.point);
+    if (state.path!.segments.length > 0) {
+      // B: The last segment in the main path
+      const segmentB = state.path!.lastSegment;
 
-    if (state.path.segments.length > 1) {
-      // Check if segment before B (A→B) was a line or curve
-      const ABwasCurve = (segmentB.handleIn && segmentB.handleIn.length > 0);
+      // Vector from B to C
+      const vectorBC = pointC.subtract(segmentB.point);
 
-      if (ABwasCurve) {
-        // A→B was a curve: Set B.handleOut tangent to B.handleIn for smooth flow
-        // Make them colinear (opposite directions) with length based on B→C distance
-        const tangentDir = segmentB.handleIn.normalize();
-        const handleOutLength = vectorBC.length;
-        handleBOut = tangentDir.multiply(-handleOutLength);
-      } else {
-        // A→B was a line: Set B.handleOut parallel to the line direction (A→B)
-        if (state.path.segments.length > 1) {
-          // A: The segment before B
-          const segmentA = state.path.segments[state.path.segments.length - 2];
-          // Vector from A to B (the line direction)
-          const vectorAB = segmentB.point.subtract(segmentA.point);
-          handleBOut = vectorAB.multiply(0.33);
+      if (state.path!.segments.length > 1) {
+        // Check if segment before B (A→B) was a line or curve
+        const ABwasCurve = (segmentB.handleIn && segmentB.handleIn.length > 0);
+
+        if (ABwasCurve) {
+          // A→B was a curve: Set B.handleOut tangent to B.handleIn for smooth flow
+          // Make them colinear (opposite directions) with length based on B→C distance
+          const tangentDir = segmentB.handleIn.normalize();
+          const handleOutLength = vectorBC.length;
+          handleBOut = tangentDir.multiply(-handleOutLength);
         } else {
-          // No A exists (B is first point), use B→C direction
-          handleBOut = vectorBC.multiply(0.33);
+          // A→B was a line: Set B.handleOut parallel to the line direction (A→B)
+          if (state.path!.segments.length > 1) {
+            // A: The segment before B
+            const segmentA = state.path!.segments[state.path!.segments.length - 2];
+            // Vector from A to B (the line direction)
+            const vectorAB = segmentB.point.subtract(segmentA.point);
+            handleBOut = vectorAB.multiply(0.33);
+          } else {
+            // No A exists (B is first point), use B→C direction
+            handleBOut = vectorBC.multiply(0.33);
+          }
         }
       }
+
+      // Render the curve in the preview path
+      state.previewPath!.removeSegments();
+
+      // Add first segment at B with its handleOut
+      const firstSeg = new paperScope.Segment(segmentB.point, new paperScope.Point(0, 0), handleBOut);
+      state.previewPath!.add(firstSeg);
+
+      // Add curve from B to C with calculated handles
+      const curveSegment = new paperScope.Segment(pointC, handleCIn, handleCOut);
+      state.previewPath!.add(curveSegment);
+
+      state.previewPath!.visible = true;
+    } else {
+      // First segment - just show the curve with symmetric handles
+      state.previewPath!.removeSegments();
+      const firstSegment = new paperScope.Segment(pointC, handleCIn, handleCOut);
+      state.previewPath!.add(firstSegment);
+      state.previewPath!.visible = true;
     }
-
-    // Render the curve in the preview path
-    state.previewPath.removeSegments();
-
-    // Add first segment at B with its handleOut
-    const firstSeg = new paper.Segment(segmentB.point, new paper.Point(0, 0), handleBOut);
-    state.previewPath.add(firstSeg);
-
-    // Add curve from B to C with calculated handles
-    const curveSegment = new paper.Segment(pointC, handleCIn, handleCOut);
-    state.previewPath.add(curveSegment);
-
-    state.previewPath.visible = true;
-  } else {
-    // First segment - just show the curve with symmetric handles
-    state.previewPath.removeSegments();
-    const firstSegment = new paper.Segment(pointC, handleCIn, handleCOut);
-    state.previewPath.add(firstSegment);
-    state.previewPath.visible = true;
-  }
-  // Note: If this is the first segment (no B), C's handles are already set above
+    // Note: If this is the first segment (no B), C's handles are already set above
+  });
 }
 
 /**
@@ -538,61 +580,65 @@ function updatePreviewPath(
   state: PathEditorState,
   point: paper.Point,
 ): void {
-  if (!state.previewPath || !state.path) return;
+  if (!state.previewPath || !state.path || !state.paperCtx) return;
 
-  // Clear previous preview
-  state.previewPath.removeSegments();
+  withPaper(state.paperCtx, 'PathEditor:updatePreviewPath', () => {
+    const paperScope = state.paperCtx!.scope;
 
-  // Reset snap state and hide indicator
-  state.isNearFirstPoint = false;
-  if (state.snapIndicator) {
-    state.snapIndicator.visible = false;
-  }
+    // Clear previous preview
+    state.previewPath!.removeSegments();
 
-  // Only show preview if there's at least one point in the path
-  if (state.path.segments.length > 0) {
-    const lastPoint = state.path.lastSegment.point;
-
-    // Check for snap to first point (need at least 2 points to close)
-    if (state.path.segments.length >= 2) {
-      const firstPoint = state.path.firstSegment.point;
-      const distance = point.getDistance(firstPoint);
-
-      if (distance < SNAP_THRESHOLD) {
-        // Snap to first point - show closed loop preview
-        state.isNearFirstPoint = true;
-        state.previewPath.moveTo(lastPoint);
-        state.previewPath.lineTo(firstPoint);
-        state.previewPath.visible = true;
-
-        // Show snap indicator around first point
-        if (!state.snapIndicator) {
-          state.snapIndicator = new paper.Path.Circle({
-            center: firstPoint,
-            radius: SNAP_INDICATOR_RADIUS,
-            strokeColor: new paper.Color(SNAP_INDICATOR_COLOR),
-            strokeWidth: SNAP_INDICATOR_WIDTH,
-            fillColor: null,
-          });
-        } else {
-          state.snapIndicator.position = firstPoint;
-          state.snapIndicator.visible = true;
-        }
-
-        updateCursor(state);
-        return;
-      }
+    // Reset snap state and hide indicator
+    state.isNearFirstPoint = false;
+    if (state.snapIndicator) {
+      state.snapIndicator.visible = false;
     }
 
-    // Normal preview (not snapping)
-    state.previewPath.moveTo(lastPoint);
-    state.previewPath.lineTo(point);
-    state.previewPath.visible = true;
-    updateCursor(state);
-  } else {
-    state.previewPath.visible = false;
-    updateCursor(state);
-  }
+    // Only show preview if there's at least one point in the path
+    if (state.path!.segments.length > 0) {
+      const lastPoint = state.path!.lastSegment.point;
+
+      // Check for snap to first point (need at least 2 points to close)
+      if (state.path!.segments.length >= 2) {
+        const firstPoint = state.path!.firstSegment.point;
+        const distance = point.getDistance(firstPoint);
+
+        if (distance < SNAP_THRESHOLD) {
+          // Snap to first point - show closed loop preview
+          state.isNearFirstPoint = true;
+          state.previewPath!.moveTo(lastPoint);
+          state.previewPath!.lineTo(firstPoint);
+          state.previewPath!.visible = true;
+
+          // Show snap indicator around first point
+          if (!state.snapIndicator) {
+            state.snapIndicator = new paperScope.Path.Circle({
+              center: firstPoint,
+              radius: SNAP_INDICATOR_RADIUS,
+              strokeColor: new paperScope.Color(SNAP_INDICATOR_COLOR),
+              strokeWidth: SNAP_INDICATOR_WIDTH,
+              fillColor: null,
+            });
+          } else {
+            state.snapIndicator.position = firstPoint;
+            state.snapIndicator.visible = true;
+          }
+
+          updateCursor(state);
+          return;
+        }
+      }
+
+      // Normal preview (not snapping)
+      state.previewPath!.moveTo(lastPoint);
+      state.previewPath!.lineTo(point);
+      state.previewPath!.visible = true;
+      updateCursor(state);
+    } else {
+      state.previewPath!.visible = false;
+      updateCursor(state);
+    }
+  });
 }
 
 /* ========================================================= *\

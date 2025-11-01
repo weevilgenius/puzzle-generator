@@ -5,6 +5,7 @@
 
 import paper from 'paper';
 import type { PathCommand, MoveTo, LineTo, CurveTo } from './types';
+import type { PaperContext } from '../utils/paperScope';
 
 /* ========================================================= *\
  *  Paper.js to PathCommand conversion                      *
@@ -69,6 +70,42 @@ export function paperPathToPathCommands(path: paper.Path): PathCommand[] {
     }
   }
 
+  // If the path is closed, add a final segment back to the first point
+  if (path.closed && path.segments.length >= 2) {
+    const lastSegment = path.segments[path.segments.length - 1];
+    const firstSegment = path.segments[0];
+
+    // Check if the closing segment has curve handles
+    const hasHandles = (lastSegment.handleOut && lastSegment.handleOut.length > 0)
+      || (firstSegment.handleIn && firstSegment.handleIn.length > 0);
+
+    if (hasHandles) {
+      // Create a CurveTo command to close the path
+      const p1 = lastSegment.handleOut
+        ? [lastSegment.point.x + lastSegment.handleOut.x, lastSegment.point.y + lastSegment.handleOut.y]
+        : [lastSegment.point.x, lastSegment.point.y];
+
+      const p2 = firstSegment.handleIn
+        ? [firstSegment.point.x + firstSegment.handleIn.x, firstSegment.point.y + firstSegment.handleIn.y]
+        : [firstSegment.point.x, firstSegment.point.y];
+
+      const curveTo: CurveTo = {
+        type: 'bezier',
+        p1: p1 as [number, number],
+        p2: p2 as [number, number],
+        p3: [firstSegment.point.x, firstSegment.point.y],
+      };
+      commands.push(curveTo);
+    } else {
+      // Create a LineTo command to close the path
+      const lineTo: LineTo = {
+        type: 'line',
+        p: [firstSegment.point.x, firstSegment.point.y],
+      };
+      commands.push(lineTo);
+    }
+  }
+
   return commands;
 }
 
@@ -81,10 +118,16 @@ export function paperPathToPathCommands(path: paper.Path): PathCommand[] {
  * Supports MoveTo, LineTo, and CurveTo (bezier) commands.
  *
  * @param commands - Array of PathCommand objects
+ * @param ctx - Paper.js context with isolated scope
  * @returns A new Paper.js path representing the commands
  */
-export function pathCommandsToPaperPath(commands: PathCommand[]): paper.Path {
-  const path = new paper.Path();
+export function pathCommandsToPaperPath(
+  commands: PathCommand[],
+  ctx: PaperContext
+): paper.Path {
+  // Scope is already activated by caller
+  const paperScope = ctx.scope;
+  const path = new paperScope.Path();
 
   if (commands.length === 0) {
     return path;
@@ -96,13 +139,13 @@ export function pathCommandsToPaperPath(commands: PathCommand[]): paper.Path {
     switch (command.type) {
     case 'move': {
       const [x, y] = command.p;
-      currentPoint = new paper.Point(x, y);
+      currentPoint = new paperScope.Point(x, y);
       path.moveTo(currentPoint);
       break;
     }
     case 'line': {
       const [x, y] = command.p;
-      currentPoint = new paper.Point(x, y);
+      currentPoint = new paperScope.Point(x, y);
       path.lineTo(currentPoint);
       break;
     }
@@ -117,9 +160,9 @@ export function pathCommandsToPaperPath(commands: PathCommand[]): paper.Path {
       const [cp2x, cp2y] = command.p2;
       const [x, y] = command.p3;
 
-      const endPoint = new paper.Point(x, y);
-      const cp1 = new paper.Point(cp1x, cp1y);
-      const cp2 = new paper.Point(cp2x, cp2y);
+      const endPoint = new paperScope.Point(x, y);
+      const cp1 = new paperScope.Point(cp1x, cp1y);
+      const cp2 = new paperScope.Point(cp2x, cp2y);
 
       // Add the new segment
       path.add(endPoint);

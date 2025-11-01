@@ -64,19 +64,26 @@ export function setupPanZoomHandling(
   wheelHandler = (event: WheelEvent) => {
     event.preventDefault();
 
+    // Use this renderer's isolated Paper.js scope
+    if (!state.paperCtx) {
+      return;
+    }
+
+    const paperScope = state.paperCtx.scope;
+
     // Calculate zoom delta (negative deltaY means zoom in)
     const delta = -Math.sign(event.deltaY) * ZOOM_STEP;
     const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, state.zoom + delta));
 
     if (newZoom !== state.zoom) {
       // Get mouse position in view coordinates
-      const mousePos = new paper.Point(event.offsetX, event.offsetY);
+      const mousePos = new paperScope.Point(event.offsetX, event.offsetY);
 
       // Zoom centered on mouse position
-      const viewPos = paper.view.viewToProject(mousePos);
+      const viewPos = paperScope.view.viewToProject(mousePos);
       const zoomFactor = newZoom / state.zoom;
 
-      paper.view.scale(zoomFactor, viewPos);
+      paperScope.view.scale(zoomFactor, viewPos);
       state.zoom = newZoom;
 
       // Notify parent of zoom change
@@ -106,6 +113,13 @@ export function setupPanZoomHandling(
     }
 
     if (isPanningWithRawEvents && lastPanPoint) {
+      // Use this renderer's isolated Paper.js scope
+      if (!state.paperCtx) {
+        return;
+      }
+
+      const paperScope = state.paperCtx.scope;
+
       const dx = event.clientX - lastPanPoint.x;
       const dy = event.clientY - lastPanPoint.y;
 
@@ -115,7 +129,7 @@ export function setupPanZoomHandling(
       const scaledDy = dy / state.zoom;
 
       // Pan by translating the view (move content with the mouse)
-      paper.view.translate(new paper.Point(scaledDx, scaledDy));
+      paperScope.view.translate(new paperScope.Point(scaledDx, scaledDy));
 
       lastPanPoint = { x: event.clientX, y: event.clientY };
     }
@@ -230,8 +244,16 @@ function findVertexCircle(
  */
 function getViewPoint(
   e: MouseEvent | TouchEvent,
-  canvas: HTMLCanvasElement
+  canvas: HTMLCanvasElement,
+  state: PuzzleRendererState
 ): paper.Point | null {
+  // Use this renderer's isolated Paper.js scope
+  if (!state.paperCtx) {
+    return null;
+  }
+
+  const paperScope = state.paperCtx.scope;
+
   const rect = canvas.getBoundingClientRect();
   let clientX: number;
   let clientY: number;
@@ -246,11 +268,11 @@ function getViewPoint(
     clientY = e.clientY;
   }
 
-  const point = new paper.Point(
+  const point = new paperScope.Point(
     clientX - rect.left,
     clientY - rect.top
   );
-  return paper.view.viewToProject(point);
+  return paperScope.view.viewToProject(point);
 }
 
 /**
@@ -315,7 +337,7 @@ export function handleMouseMove(
   // Don't change cursor while dragging or panning
   if (state.isDragging || state.isSpacebarPressed || !state.canvas) return;
 
-  const viewPoint = getViewPoint(e, state.canvas);
+  const viewPoint = getViewPoint(e, state.canvas, state);
   if (!viewPoint) return;
 
   let isNearItem = false;
@@ -414,7 +436,7 @@ export function handleDragStart(
   // For mouse events, only handle the primary button
   if (e instanceof MouseEvent && e.button !== 0) return;
 
-  const viewPoint = getViewPoint(e, state.canvas);
+  const viewPoint = getViewPoint(e, state.canvas, state);
   if (!viewPoint) return;
 
   // Priority 1: Seed points (if visible)
@@ -495,7 +517,7 @@ export function handleDragMove(
 
   if (!state.canvas) return;
 
-  const viewPoint = getViewPoint(e, state.canvas);
+  const viewPoint = getViewPoint(e, state.canvas, state);
   if (!viewPoint) return;
 
   // Handle vertex dragging
@@ -580,7 +602,7 @@ export function handleDragEnd(
     e.preventDefault();
     // Trigger final regeneration with FULL geometry including tabs
     const pieceId = state.draggedSeedPointId;
-    const viewPoint = getViewPoint(e, state.canvas);
+    const viewPoint = getViewPoint(e, state.canvas, state);
     if (viewPoint && attrs.onSeedPointMoved) {
       const finalPosition = pointToVec2(viewPoint);
       attrs.onSeedPointMoved(pieceId, finalPosition);

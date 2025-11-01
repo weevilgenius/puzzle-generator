@@ -19,6 +19,7 @@ import {
 import { paperPathToPathCommands, pathCommandsToPaperPath } from './geometry';
 import { setupMouseHandling, cleanupMouseHandling } from './interaction';
 import type MithrilViewEvent from '../../utils/MithrilViewEvent';
+import { createPaperContext, assertPaperReady, withPaper } from '../../utils/paperScope';
 
 // component level CSS
 import './PathEditor.css';
@@ -82,6 +83,7 @@ export interface PathEditorAttrs extends m.Attributes {
 export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
   const state: PathEditorState = {
     canvas: null,
+    paperCtx: null,
     path: null,
     previewPath: null,
     mode: 'draw',
@@ -103,51 +105,64 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
    * Initialize Paper.js and set up the drawing environment
    */
   const initializePaper = (canvas: HTMLCanvasElement, attrs: PathEditorAttrs) => {
-    paper.setup(canvas);
+    // Create isolated Paper.js scope for this editor
+    state.paperCtx = createPaperContext(canvas, attrs.width, attrs.height);
     state.canvas = canvas;
 
-    // Ensure Paper.js view matches the canvas CSS size
-    paper.view.viewSize = new paper.Size(attrs.width, attrs.height);
-
-    // Configure Paper.js settings for better visibility
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    paper.settings.handleSize = 8;
-
-    // Determine initial mode based on whether we have an initial path
-    const hasInitialPath = attrs.initialPath && attrs.initialPath.length > 0;
-    state.mode = hasInitialPath ? 'edit' : 'draw';
-
-    // Create the main path
-    state.path = new paper.Path();
-    state.path.strokeColor = new paper.Color(attrs.strokeColor ?? DEFAULT_STROKE_COLOR);
-    state.path.strokeWidth = DEFAULT_STROKE_WIDTH;
-
-    // Load initial path if provided
-    if (hasInitialPath && attrs.initialPath) {
-      const loadedPath = pathCommandsToPaperPath(attrs.initialPath);
-      state.path.segments = loadedPath.segments;
-      state.path.strokeColor = new paper.Color(attrs.strokeColor ?? DEFAULT_STROKE_COLOR);
-      state.path.strokeWidth = DEFAULT_STROKE_WIDTH;
+    if (!state.paperCtx) {
+      console.error('PathEditor: Failed to create Paper.js context');
+      return;
     }
 
-    // Create preview path for draw mode
-    state.previewPath = new paper.Path();
-    state.previewPath.strokeColor = new paper.Color(PREVIEW_STROKE_COLOR);
-    state.previewPath.strokeWidth = PREVIEW_STROKE_WIDTH;
-    state.previewPath.dashArray = PREVIEW_DASH_ARRAY;
-    state.previewPath.visible = false;
+    withPaper(state.paperCtx, 'PathEditor:initializePaper', () => {
+      const paperScope = state.paperCtx!.scope;
 
-    // Set up mouse handling
-    tool = setupMouseHandling(
-      state,
-      () => {
-        notifyPathChanged(attrs);
-      },
-      () => {
-        // Zoom changed - trigger redraw to update zoom display
-        m.redraw();
-      },
-    );
+      // Check if Paper.js is ready before creating objects
+      if (!assertPaperReady(paperScope, 'PathEditor:initializePaper')) {
+        console.error('PathEditor: Paper.js not ready - canvas may have been replaced');
+        return;
+      }
+
+      // Configure Paper.js settings for better visibility
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      paperScope.settings.handleSize = 8;
+
+      // Determine initial mode based on whether we have an initial path
+      const hasInitialPath = attrs.initialPath && attrs.initialPath.length > 0;
+      state.mode = hasInitialPath ? 'edit' : 'draw';
+
+      // Create the main path
+      state.path = new paperScope.Path();
+      state.path.strokeColor = new paperScope.Color(attrs.strokeColor ?? DEFAULT_STROKE_COLOR);
+      state.path.strokeWidth = DEFAULT_STROKE_WIDTH;
+
+      // Load initial path if provided
+      if (hasInitialPath && attrs.initialPath) {
+        const loadedPath = pathCommandsToPaperPath(attrs.initialPath, state.paperCtx!);
+        state.path.segments = loadedPath.segments;
+        state.path.strokeColor = new paperScope.Color(attrs.strokeColor ?? DEFAULT_STROKE_COLOR);
+        state.path.strokeWidth = DEFAULT_STROKE_WIDTH;
+      }
+
+      // Create preview path for draw mode
+      state.previewPath = new paperScope.Path();
+      state.previewPath.strokeColor = new paperScope.Color(PREVIEW_STROKE_COLOR);
+      state.previewPath.strokeWidth = PREVIEW_STROKE_WIDTH;
+      state.previewPath.dashArray = PREVIEW_DASH_ARRAY;
+      state.previewPath.visible = false;
+
+      // Set up mouse handling
+      tool = setupMouseHandling(
+        state,
+        () => {
+          notifyPathChanged(attrs);
+        },
+        () => {
+          // Zoom changed - trigger redraw to update zoom display
+          m.redraw();
+        },
+      );
+    });
   };
 
   /**
@@ -164,7 +179,7 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
   /**
    * End drawing mode and switch to edit mode
    */
-  const endDrawing = () => {
+  const endDrawing = (attrs: PathEditorAttrs) => {
     if (state.mode === 'draw') {
       state.mode = 'edit';
 
@@ -187,7 +202,8 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
         state.snapIndicator.visible = false;
       }
 
-      m.redraw();
+      // Notify parent so validation can run
+      notifyPathChanged(attrs);
     }
   };
 
@@ -201,10 +217,11 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
     }
     // Clean up event listeners
     cleanupMouseHandling(state.canvas);
-    if (paper.project) {
-      paper.project.remove();
+    if (state.paperCtx) {
+      state.paperCtx.scope.project.remove();
     }
     state.canvas = null;
+    state.paperCtx = null;
     state.path = null;
     state.previewPath = null;
     state.snapIndicator = null;
@@ -216,10 +233,11 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
    * Set zoom level programmatically (from dropdown selection)
    */
   const setZoom = (newZoom: number) => {
-    if (newZoom === state.zoom) return;
+    if (newZoom === state.zoom || !state.paperCtx) return;
 
+    const paperScope = state.paperCtx.scope;
     const zoomFactor = newZoom / state.zoom;
-    paper.view.scale(zoomFactor, paper.view.center);
+    paperScope.view.scale(zoomFactor, paperScope.view.center);
     state.zoom = newZoom;
     m.redraw();
   };
@@ -241,12 +259,16 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
       }
     },
 
+    onremove: () => {
+      cleanup();
+    },
+
     onupdate: ({ attrs }) => {
-      if (!state.path) return;
+      if (!state.path || !state.paperCtx) return;
 
       // Handle stroke color changes
       if (attrs.strokeColor) {
-        state.path.strokeColor = new paper.Color(attrs.strokeColor);
+        state.path.strokeColor = new state.paperCtx.scope.Color(attrs.strokeColor);
       }
 
       // Only handle initialPath changes if it actually changed
@@ -261,12 +283,8 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
       // Update tracking
       previousInitialPath = attrs.initialPath;
 
-      // Only act if the length changed OR both are empty but with different references
-      // (the latter handles Clear Canvas after drawing)
-      const lengthChanged = prevLength !== currLength;
-      const bothEmptyButDifferent = prevLength === 0 && currLength === 0;
-
-      if (!lengthChanged && !bothEmptyButDifferent) {
+      // Only act if the length actually changed
+      if (prevLength === currLength) {
         return;
       }
 
@@ -287,32 +305,39 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
         m.redraw();
       }
       // If initialPath has data, reload it
-      else if (attrs.initialPath) {
-        // Clear existing path
-        state.path.removeSegments();
+      else if (attrs.initialPath && state.paperCtx) {
+        withPaper(state.paperCtx, 'PathEditor:onupdate-loadPath', () => {
+          const paperScope = state.paperCtx!.scope;
 
-        // Load new path
-        const loadedPath = pathCommandsToPaperPath(attrs.initialPath);
-        state.path.segments = loadedPath.segments;
-        state.path.strokeColor = new paper.Color(attrs.strokeColor ?? DEFAULT_STROKE_COLOR);
+          // Check if Paper.js is ready before creating objects
+          if (!assertPaperReady(paperScope, 'PathEditor:onupdate-loadPath')) {
+            console.error('PathEditor: Paper.js not ready during path reload - canvas may have been replaced');
+            return;
+          }
 
-        // Switch to edit mode
-        state.mode = 'edit';
-        state.selectedSegment = null;
-        state.selectedHandle = null;
-        state.pendingPoint = null;
-        state.isDraggingCurve = false;
-        state.isNearFirstPoint = false;
-        if (state.snapIndicator) {
-          state.snapIndicator.visible = false;
-        }
-        m.redraw();
+          // Clear existing path
+          state.path!.removeSegments();
+
+          // Load new path
+          const loadedPath = pathCommandsToPaperPath(attrs.initialPath!, state.paperCtx!);
+          state.path!.segments = loadedPath.segments;
+          state.path!.strokeColor = new paperScope.Color(attrs.strokeColor ?? DEFAULT_STROKE_COLOR);
+
+          // Switch to edit mode
+          state.mode = 'edit';
+          state.selectedSegment = null;
+          state.selectedHandle = null;
+          state.pendingPoint = null;
+          state.isDraggingCurve = false;
+          state.isNearFirstPoint = false;
+          if (state.snapIndicator) {
+            state.snapIndicator.visible = false;
+          }
+          m.redraw();
+        });
       }
     },
 
-    onremove: () => {
-      cleanup();
-    },
 
     view: ({ attrs }) => {
       // Get current zoom as percentage string
@@ -320,11 +345,19 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
 
       return m('.path-editor', [
         m('canvas', {
-          style: `width: ${attrs.width}px; height: ${attrs.height}px;`,
+          key: 'path-editor-canvas', // Stable key to prevent Mithril from replacing the canvas
+          width: attrs.width,
+          height: attrs.height,
+          style: {
+            width: `${attrs.width}px`,
+            height: `${attrs.height}px`,
+          },
         }),
 
         // Controls row
-        m('.path-editor-controls', [
+        m('.path-editor-controls', {
+          key: 'path-editor-controls', // Add key to all siblings
+        }, [
 
           // Mode indicator
           m('.mode-indicator', `Mode: ${state.mode === 'draw' ? 'Drawing' : 'Editing'}`),
@@ -332,7 +365,7 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
           state.mode === 'draw' && m('wa-button.end-drawing-button', {
             variant: 'success',
             size: 'small',
-            onclick: endDrawing,
+            onclick: () => endDrawing(attrs),
           }, 'End Drawing'),
 
           // Zoom control
@@ -370,16 +403,22 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
             appearance: 'plain',
             size: 'large',
             onclick: () => {
-              // reset zoom to 100%
-              const zoomFactor = DEFAULT_ZOOM / state.zoom;
-              paper.view.scale(zoomFactor, paper.view.center);
-              state.zoom = DEFAULT_ZOOM;
+              if (!state.paperCtx) return;
 
-              // pan to the middle of the view
-              paper.view.center = new paper.Point(
-                paper.view.viewSize.width / 2,
-                paper.view.viewSize.height / 2
-              );
+              withPaper(state.paperCtx, 'PathEditor:recenter', () => {
+                const paperScope = state.paperCtx!.scope;
+
+                // reset zoom to 100%
+                const zoomFactor = DEFAULT_ZOOM / state.zoom;
+                paperScope.view.scale(zoomFactor, paperScope.view.center);
+                state.zoom = DEFAULT_ZOOM;
+
+                // pan to the middle of the view
+                paperScope.view.center = new paperScope.Point(
+                  paperScope.view.viewSize.width / 2,
+                  paperScope.view.viewSize.height / 2
+                );
+              });
             },
           }, m('wa-icon', {
             library: 'material',

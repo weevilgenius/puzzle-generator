@@ -261,24 +261,23 @@ function generateCustomPieceThumbnail(
 ## Implementation Phases
 
 ### Phase 1: Foundation & Data Structures
-- [ ] Define CustomPiece and related types in `src/geometry/types.ts`
-- [ ] Create `src/geometry/customPieces.ts` with helper functions
-- [ ] Extend PuzzleGenerationOptions and PuzzleGeometry
-- [ ] Add customPieces to PuzzlePage state
+- ✅ Define CustomPiece and related types in `src/geometry/types.ts`
+- ✅ Create `src/geometry/customPieces.ts` with helper functions
+- ✅ Extend PuzzleGenerationOptions and PuzzleGeometry
+- ✅ Add customPieces to PuzzlePage state
 
 ### Phase 2: Validation
-- [ ] Implement `src/utils/pathValidation.ts`:
+- ✅ Implement `src/utils/pathValidation.ts`:
   - `isPathClosed(path: PathCommand[]): boolean`
   - `findSelfIntersections(path: PathCommand[]): Vec2[]`
   - `validateCustomPiece(path: PathCommand[]): ValidationResult`
-- [ ] Add unit tests for validation functions
 
 ### Phase 3: UI - Custom Piece Editor
-- [ ] Create `src/ui/CustomPieceEditor.ts` modal component
-- [ ] Integrate PathEditor with validation feedback
-- [ ] Implement SVG import functionality
-- [ ] Add name input and save/cancel actions
-- [ ] Connect to PuzzlePage state (add/edit callbacks)
+- ✅ Create `src/ui/CustomPieceEditor.ts` modal component
+- ✅ Integrate PathEditor with validation feedback
+- ✅ Implement SVG import functionality
+- ✅ Add name input and save/cancel actions
+- ✅ Connect to PuzzlePage state (add/edit callbacks)
 
 ### Phase 4: UI - Custom Piece Manager
 - [ ] Create `src/ui/CustomPieceManager.ts` component

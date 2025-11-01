@@ -2,6 +2,8 @@
  * Constants and types for the PathEditor component
  */
 
+import type { PaperContext } from '../../utils/paperScope';
+
 /* ========================================================= *\
  *  Types                                                    *
 \* ========================================================= */
@@ -17,6 +19,8 @@ export type EditorMode = 'draw' | 'edit';
 export interface PathEditorState {
   /** The canvas element */
   canvas: HTMLCanvasElement | null;
+  /** Paper.js context with isolated scope for this editor */
+  paperCtx: PaperContext | null;
   /** The Paper.js path being edited */
   path: paper.Path | null;
   /** The preview path showing next segment in draw mode */

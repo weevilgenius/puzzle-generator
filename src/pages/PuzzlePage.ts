@@ -12,9 +12,10 @@ import BooleanInputControl from '../ui/inputs/BooleanInputControl';
 import AspectRatioPicker from '../ui/AspectRatioPicker';
 import ColorPicker from '../ui/ColorPicker';
 import BorderShapePicker, { type BorderShapeType } from '../ui/BorderShapePicker';
+import WhimseyEditor from '../ui/WhimseyEditor';
 
 // geometry parts
-import type { CustomPiece, PuzzleGeometry } from '../geometry/types';
+import type { CustomPiece, PuzzleGeometry, PathCommand } from '../geometry/types';
 import type { GeneratorConfig, GeneratorName, GeneratorRegistry } from '../geometry/generators/Generator';
 import { PointGeneratorRegistry, PieceGeneratorRegistry, TabPlacementStrategyRegistry, TabGeneratorRegistry } from '../geometry/generators/Generator';
 import { Name as PoissonGeneratorName } from '../geometry/generators/point/PoissonPointGenerator';
@@ -34,6 +35,9 @@ import "../geometry/generators/tab_placement/SimpleTabPlacementStrategy";
 import "../geometry/generators/tab/NullTabGenerator";
 import "../geometry/generators/tab/TriangleTabGenerator";
 import "../geometry/generators/tab/TraditionalTabGenerator";
+
+// Web Awesome components
+import '@awesome.me/webawesome/dist/components/button/button.js';
 
 
 // detect light/dark mode
@@ -103,6 +107,10 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     backgroundImageName: string;
     /** Custom pieces defined for this puzzle */
     customPieces: CustomPiece[];
+    /** Whether the custom piece editor is currently open */
+    customPieceEditorOpen: boolean;
+    /** ID of the custom piece being edited, or undefined if creating new */
+    editingCustomPieceId?: string;
   };
 
   // component state
@@ -157,6 +165,8 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     backgroundImageUrl: undefined,
     backgroundImageName: '',
     customPieces: [],
+    customPieceEditorOpen: false,
+    editingCustomPieceId: undefined,
   };
 
   // utility to create border based on selected shape
@@ -176,6 +186,42 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     default:
       return createRectangleBorder(canvasWidth, canvasHeight);
     }
+  }
+
+  // utility to open the custom piece editor
+  function handleOpenCustomPieceEditor() {
+    state.customPieceEditorOpen = true;
+    state.editingCustomPieceId = undefined;
+    m.redraw();
+  }
+
+  // utility to handle saving a custom piece
+  function handleSaveCustomPiece(path: PathCommand[], name?: string) {
+    const now = new Date().toISOString();
+    const newPiece: CustomPiece = {
+      id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name,
+      path,
+      transform: {
+        position: [state.canvasWidth / 2, state.canvasHeight / 2],
+        rotation: 0,
+        scale: [1, 1],
+      },
+      created: now,
+    };
+
+    state.customPieces = [...state.customPieces, newPiece];
+    state.customPieceEditorOpen = false;
+    state.editingCustomPieceId = undefined;
+    state.dirty = true;
+    m.redraw();
+  }
+
+  // utility to handle canceling custom piece editor
+  function handleCancelCustomPieceEditor() {
+    state.customPieceEditorOpen = false;
+    state.editingCustomPieceId = undefined;
+    m.redraw();
   }
 
   // utility to invoke the geometry checks
@@ -485,6 +531,16 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
               }),
             ]),
 
+            // Whimsies section
+            m('.custom-pieces-section', [
+              m('label', 'Whimsies:'),
+              m('wa-button', {
+                variant: 'default',
+                size: 'small',
+                onclick: handleOpenCustomPieceEditor,
+              }, 'Add Whimsey'),
+            ]),
+
             // render a generator picker for each type of generator
             ...Object.entries(state.generators).map(([type, generator]) => {
               return m("label", [
@@ -516,6 +572,13 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
           ]), // .controls
 
         ]), // .container
+
+        // Custom Piece Editor Modal
+        m(WhimseyEditor, {
+          open: state.customPieceEditorOpen,
+          onSave: handleSaveCustomPiece,
+          onCancel: handleCancelCustomPieceEditor,
+        }),
 
       ]);
     }, // view()

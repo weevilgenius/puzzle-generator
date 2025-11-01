@@ -4,6 +4,7 @@
 
 import m from 'mithril';
 import type { PieceID, VertexID, PuzzleGeometry, Vec2 } from '../../geometry/types';
+import type { PaperContext } from '../../utils/paperScope';
 
 /**
  * Component attributes for PuzzleRenderer
@@ -53,6 +54,8 @@ export interface PuzzleRendererState {
   documentMouseUp: ((e: MouseEvent) => void) | null;
 
   // Paper.js items
+  /** Paper.js context with isolated scope for this renderer */
+  paperCtx: PaperContext | null;
   /** Background image raster */
   backgroundRaster: paper.Raster | null;
   /** Main puzzle group containing border and all piece paths */

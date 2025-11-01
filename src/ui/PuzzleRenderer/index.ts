@@ -3,7 +3,6 @@
  */
 
 import m from 'mithril';
-import paper from 'paper';
 import type { PuzzleRendererAttrs, PuzzleRendererState } from './constants';
 import type MithrilViewEvent from '../../utils/MithrilViewEvent';
 import { DEFAULT_ZOOM, PRESET_ZOOM_LEVELS, PRESET_ZOOM_LABELS } from './constants';
@@ -50,6 +49,7 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
     documentMouseUp: null,
 
     // Paper.js items
+    paperCtx: null,
     backgroundRaster: null,
     paperPath: null,
     seedPointItems: null,
@@ -69,10 +69,11 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
    * Set zoom level programmatically (from dropdown selection)
    */
   const setZoom = (newZoom: number, attrs?: PuzzleRendererAttrs) => {
-    if (newZoom === state.zoom) return;
+    if (newZoom === state.zoom || !state.paperCtx) return;
 
+    const paperScope = state.paperCtx.scope;
     const zoomFactor = newZoom / state.zoom;
-    paper.view.scale(zoomFactor, paper.view.center);
+    paperScope.view.scale(zoomFactor, paperScope.view.center);
     state.zoom = newZoom;
 
     // Notify parent of zoom change if callback provided
@@ -87,15 +88,19 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
    * Reset zoom to 100% and center the view
    */
   const recenter = () => {
+    if (!state.paperCtx) return;
+
+    const paperScope = state.paperCtx.scope;
+
     // Reset zoom to 100%
     const zoomFactor = DEFAULT_ZOOM / state.zoom;
-    paper.view.scale(zoomFactor, paper.view.center);
+    paperScope.view.scale(zoomFactor, paperScope.view.center);
     state.zoom = DEFAULT_ZOOM;
 
     // Pan to the middle of the view
-    paper.view.center = new paper.Point(
-      paper.view.viewSize.width / 2,
-      paper.view.viewSize.height / 2
+    paperScope.view.center = new paperScope.Point(
+      paperScope.view.viewSize.width / 2,
+      paperScope.view.viewSize.height / 2
     );
     m.redraw();
   };
@@ -120,7 +125,7 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
       }
 
       // Initialize Paper.js
-      initializePaper(state.canvas, attrs.width, attrs.height);
+      initializePaper(state.canvas, attrs.width, attrs.height, state);
 
       // Create Paper.js groups for different layers
       createPaperGroups(state);
@@ -184,6 +189,7 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
       return m('.puzzle-renderer-wrapper', [
         // Canvas for rendering the puzzle with Paper.js (background image is now inside Paper.js)
         m('canvas.puzzle-renderer', {
+          key: 'puzzle-renderer-canvas', // Stable key to prevent Mithril from replacing the canvas
           width: attrs.width,
           height: attrs.height,
           style: {
@@ -208,7 +214,9 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
         }),
 
         // Controls row
-        m('.puzzle-renderer-controls', [
+        m('.puzzle-renderer-controls', {
+          key: 'puzzle-renderer-controls', // Add key to all siblings
+        }, [
           // Zoom control
           m('wa-dropdown.zoom-control', {
             'onwa-select': (e: CustomEvent<{ item: WaDropdownItem }> & MithrilViewEvent) => {
