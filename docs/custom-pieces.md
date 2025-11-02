@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines the design and implementation plan for adding custom pieces (sometimes called "whimsies") to the puzzle generator. Custom pieces are user-designed shapes that appear exactly once in the puzzle, with procedurally generated pieces flowing around them.
+This document outlines the design and implementation plan for adding custom pieces (called "whimsies" or "whimsy pieces") to the puzzle generator. Custom pieces are user-designed shapes that appear exactly once in the puzzle, with procedurally generated pieces flowing around them.
 
 ## Requirements Summary
 
@@ -94,7 +94,7 @@ export interface PuzzleGeometry extends PuzzleTopology {
 **Rationale**:
 - Easier to modify transformations without recalculating geometry
 - Cleaner separation between shape definition and placement
-- Supports future "virtual whimsey" concept for piece editing
+- Supports future "virtual whimsy" concept for piece editing
 - Simplifies caching of transformed polygons
 - Better matches standard graphics transform patterns
 
@@ -142,7 +142,7 @@ Each piece generator must handle custom pieces according to its algorithm:
 
 ## UI Components
 
-### 1. Custom Piece Manager (`src/ui/CustomPieceManager.ts`)
+### 1. Whimsy Manager (`src/ui/WhimsyManager.ts`)
 
 A section in the main puzzle controls showing all custom pieces.
 
@@ -168,7 +168,7 @@ interface CustomPieceManagerState {
 }
 ```
 
-### 2. Custom Piece Editor (`src/ui/CustomPieceEditor.ts`)
+### 2. Whimsy Editor (`src/ui/WhimsyEditor.ts`)
 
 A modal or dedicated page for creating/editing custom pieces.
 
@@ -185,7 +185,7 @@ A modal or dedicated page for creating/editing custom pieces.
 - Red X with message: "Path must be closed" or "Path cannot intersect itself"
 - Highlight self-intersection points on the canvas
 
-### 3. Custom Piece Positioning (integrated into PuzzleRenderer)
+### 3. Whimsy Positioning (integrated into PuzzleRenderer)
 
 Custom piece positioning is integrated directly into the PuzzleRenderer component using Paper.js layers.
 
@@ -272,15 +272,15 @@ function generateCustomPieceThumbnail(
   - `findSelfIntersections(path: PathCommand[]): Vec2[]`
   - `validateCustomPiece(path: PathCommand[]): ValidationResult`
 
-### Phase 3: UI - Custom Piece Editor
-- ✅ Create `src/ui/CustomPieceEditor.ts` modal component
+### Phase 3: UI - Whimsy Editor
+- ✅ Create `src/ui/WhimsyEditor.ts` modal component
 - ✅ Integrate PathEditor with validation feedback
 - ✅ Implement SVG import functionality
 - ✅ Add name input and save/cancel actions
 - ✅ Connect to PuzzlePage state (add/edit callbacks)
 
-### Phase 4: UI - Custom Piece Manager
-- [ ] Create `src/ui/CustomPieceManager.ts` component
+### Phase 4: UI - Whimsy Manager
+- [ ] Create `src/ui/WhimsyManager.ts` component
 - [ ] Implement thumbnail generation (`src/utils/thumbnails.ts`)
 - [ ] Build tile view
 - [ ] Add piece selection state management
@@ -550,7 +550,7 @@ const layerLifecycle = {
 - User sees edited piece persist when changing seed/algorithm
 - Virtual custom pieces can be promoted to real custom pieces (saved to library)
 
-### 2. Custom Piece Library
+### 2. Whimsy Library
 
 **Features**:
 - Save custom pieces to SVG, browser storage or export as JSON
@@ -609,7 +609,7 @@ const layerLifecycle = {
 
 ---
 
-### Q3: Custom Piece Positioning Workflow
+### Q3: Whimsy Positioning Workflow
 
 **Question**: Should custom pieces be positioned before or after generation? On a separate canvas or overlay?
 
@@ -641,7 +641,7 @@ const layerLifecycle = {
 
 ---
 
-### Q4: Multiple Custom Pieces Overlapping
+### Q4: Multiple Whimsies Overlapping
 
 **Question**: What if user positions two custom pieces overlapping each other?
 
@@ -655,7 +655,7 @@ const layerLifecycle = {
 
 ---
 
-### Q5: Custom Piece Size Limits
+### Q5: Whimsy Size Limits
 
 **Question**: Should there be min/max size constraints on custom pieces?
 
@@ -663,7 +663,7 @@ const layerLifecycle = {
 
 ---
 
-### Q6: Undo/Redo for Custom Pieces
+### Q6: Undo/Redo for Whimsys
 
 **Question**: Should custom piece operations (add, edit, delete, transform) support undo/redo?
 
@@ -720,6 +720,6 @@ The custom pieces feature represents a significant enhancement to the puzzle gen
 - Leveraging existing components (PathEditor, Paper.js rendering)
 - Using proven patterns (half-edge topology, generator pipeline)
 - Separating concerns (validation, transformation, rendering)
-- Planning for future extensions (virtual whimseys, piece editing)
+- Planning for future extensions (virtual whimsies, piece editing)
 
 The phased implementation approach allows for incremental progress and testing, reducing risk while building toward a feature-complete solution.

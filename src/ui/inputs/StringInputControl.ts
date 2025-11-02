@@ -1,10 +1,11 @@
 // UI component to take string input
 import m from 'mithril';
 import type { StringUIControl } from '../../geometry/ui_types';
+import MithrilViewEvent from '../../utils/MithrilViewEvent';
 
 // Webawesome components
 import '@awesome.me/webawesome/dist/components/input/input.js';
-import WaInput from '@awesome.me/webawesome/dist/components/input/input.js';
+import type WaInput from '@awesome.me/webawesome/dist/components/input/input.js';
 
 // component attributes
 export interface StringInputControlAttr extends m.Attributes {
@@ -30,13 +31,14 @@ export const StringInputControl: m.ClosureComponent<StringInputControlAttr> = ()
         label: attrs.config.label,
         hint: attrs.config.helpText,
         type: "text",
-        inputmode: "text",
         size: "small",
         disabled: attrs.disabled,
         value: attrs.value,
-        onchange: (e: Event) => {
+        oninput: (e: Event & MithrilViewEvent) => {
+          e.redraw = false;
           const input = e.target as WaInput;
           const newValue = input.value ?? '';
+          // let parent decide whether to redraw
           attrs.onChange(newValue.length > 0 ? newValue : undefined);
         },
       });

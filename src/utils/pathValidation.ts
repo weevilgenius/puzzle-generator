@@ -116,6 +116,45 @@ function segmentIntersection(
 }
 
 /**
+ * Checks if two points are within a given tolerance.
+ *
+ * @param p1 - First point
+ * @param p2 - Second point
+ * @param tolerance - Maximum distance to consider points equal
+ * @returns true if points are within tolerance, false otherwise
+ */
+function arePointsClose(p1: Vec2, p2: Vec2, tolerance: number): boolean {
+  const dx = p1[0] - p2[0];
+  const dy = p1[1] - p2[1];
+  return Math.sqrt(dx * dx + dy * dy) <= tolerance;
+}
+
+/**
+ * Checks if two segments share an endpoint.
+ *
+ * @param p1 - Start of first segment
+ * @param p2 - End of first segment
+ * @param p3 - Start of second segment
+ * @param p4 - End of second segment
+ * @param tolerance - Maximum distance to consider points equal
+ * @returns true if segments share an endpoint, false otherwise
+ */
+function segmentsShareEndpoint(
+  p1: Vec2,
+  p2: Vec2,
+  p3: Vec2,
+  p4: Vec2,
+  tolerance: number
+): boolean {
+  return (
+    arePointsClose(p1, p3, tolerance) ||
+    arePointsClose(p1, p4, tolerance) ||
+    arePointsClose(p2, p3, tolerance) ||
+    arePointsClose(p2, p4, tolerance)
+  );
+}
+
+/**
  * Finds all self-intersections in a path.
  *
  * @param path - The path to check for self-intersections
@@ -131,25 +170,22 @@ export function findSelfIntersections(path: PathCommand[]): Vec2[] {
   }
 
   const intersections: Vec2[] = [];
+  // Use a tolerance that's slightly larger than the closing tolerance
+  // to account for floating point precision in flattened paths
+  const endpointTolerance = 1.0;
 
   // Check all pairs of non-adjacent segments
   for (let i = 0; i < points.length - 1; i++) {
     for (let j = i + 2; j < points.length - 1; j++) {
-      // Skip adjacent segments (they share an endpoint)
-      if (j === i + 1) {
-        continue;
-      }
-
-      // Also skip if we're at the last segment and checking against the first
-      // (they share an endpoint if the path is closed)
-      if (i === 0 && j === points.length - 2) {
-        continue;
-      }
-
       const p1 = points[i];
       const p2 = points[i + 1];
       const p3 = points[j];
       const p4 = points[j + 1];
+
+      // Skip segments that share an endpoint (including closing segments)
+      if (segmentsShareEndpoint(p1, p2, p3, p4, endpointTolerance)) {
+        continue;
+      }
 
       const intersection = segmentIntersection(p1, p2, p3, p4);
       if (intersection) {

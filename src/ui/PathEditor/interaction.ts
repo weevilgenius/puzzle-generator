@@ -59,6 +59,12 @@ export function setupMouseHandling(
 
   // Set up keyboard event listeners for spacebar (pan mode), Shift (insert point mode), and Delete/Backspace
   keyDownHandler = (event: KeyboardEvent) => {
+    // Don't intercept keyboard events if user is typing in an input field
+    const target = event.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'WA-INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      return;
+    }
+
     if (event.code === 'Space') {
       // Always prevent default to stop page scrolling (even on repeated keydown events)
       event.preventDefault();
@@ -91,6 +97,12 @@ export function setupMouseHandling(
   };
 
   keyUpHandler = (event: KeyboardEvent) => {
+    // Don't intercept keyboard events if user is typing in an input field
+    const target = event.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'WA-INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      return;
+    }
+
     if (event.code === 'Space') {
       state.isSpacebarPressed = false;
       updateCursor(state);

@@ -1,5 +1,5 @@
 /**
- * WhimseyEditor - Modal component for creating and editing whimsies (custom puzzle pieces)
+ * WhimsyEditor - Modal component for creating and editing whimsies (custom puzzle pieces)
  */
 
 import m from 'mithril';
@@ -7,26 +7,25 @@ import type { PathCommand, CustomPiece } from '../geometry/types';
 import { PathEditor } from './PathEditor';
 import { validateCustomPiece, isPathClosed, type ValidationResult } from '../utils/pathValidation';
 import { parseSVGFile, fitPathToCanvas } from './PathEditor/svgParser';
+import Dialog from './Dialog';
+import StringInputControl from './inputs/StringInputControl';
 import type MithrilViewEvent from '../utils/MithrilViewEvent';
 
 // Web Awesome components
-import '@awesome.me/webawesome/dist/components/dialog/dialog.js';
 import '@awesome.me/webawesome/dist/components/button/button.js';
-import '@awesome.me/webawesome/dist/components/input/input.js';
-import type WaInput from '@awesome.me/webawesome/dist/components/input/input.js';
 import '@awesome.me/webawesome/dist/components/icon/icon.js';
 
 // include our CSS
-import './WhimseyEditor.css';
+import './WhimsyEditor.css';
 
 /* ========================================================= *\
  *  Component Interface                                      *
 \* ========================================================= */
 
 /**
- * Attributes for the WhimseyEditor component.
+ * Attributes for the WhimsyEditor component.
  */
-export interface WhimseyEditorAttrs extends m.Attributes {
+export interface WhimsyEditorAttrs extends m.Attributes {
   /**
    * Whether the editor dialog is currently open.
    */
@@ -68,7 +67,7 @@ export interface WhimseyEditorAttrs extends m.Attributes {
  *  Component State                                          *
 \* ========================================================= */
 
-interface WhimseyEditorState {
+interface WhimsyEditorState {
   /** Initial path passed to PathEditor (only set on dialog open) */
   initialPath: PathCommand[];
   /** Current path being edited (for validation) */
@@ -88,10 +87,10 @@ interface WhimseyEditorState {
 \* ========================================================= */
 
 /**
- * WhimseyEditor - A modal dialog for creating/editing custom pieces
+ * WhimsyEditor - A modal dialog for creating/editing custom pieces
  */
-export const WhimseyEditor: m.ClosureComponent<WhimseyEditorAttrs> = () => {
-  const state: WhimseyEditorState = {
+export const WhimsyEditor: m.ClosureComponent<WhimsyEditorAttrs> = () => {
+  const state: WhimsyEditorState = {
     initialPath: [],
     path: [],
     name: '',
@@ -106,7 +105,7 @@ export const WhimseyEditor: m.ClosureComponent<WhimseyEditorAttrs> = () => {
   /**
    * Initialize state from attrs when dialog opens
    */
-  const initializeState = (attrs: WhimseyEditorAttrs) => {
+  const initializeState = (attrs: WhimsyEditorAttrs) => {
     if (attrs.piece) {
       // Editing existing piece
       state.initialPath = attrs.piece.path;
@@ -155,7 +154,7 @@ export const WhimseyEditor: m.ClosureComponent<WhimseyEditorAttrs> = () => {
   /**
    * Handle save button click
    */
-  const handleSave = (attrs: WhimseyEditorAttrs) => {
+  const handleSave = (attrs: WhimsyEditorAttrs) => {
     if (!state.validation.isValid) {
       return;
     }
@@ -205,6 +204,10 @@ export const WhimseyEditor: m.ClosureComponent<WhimseyEditorAttrs> = () => {
             const nameWithoutExtension = file.name.replace(/\.svg$/i, '');
             handleNameChanged(nameWithoutExtension);
           }
+
+          // Trigger redraw to show imported path
+          // This is safe here because it's a user-initiated action (file upload)
+          m.redraw();
         } else {
           console.error('Failed to parse SVG file');
         }
@@ -236,31 +239,46 @@ export const WhimseyEditor: m.ClosureComponent<WhimseyEditorAttrs> = () => {
       const editorWidth = attrs.editorWidth ?? 600;
       const editorHeight = attrs.editorHeight ?? 600;
 
-      return m('wa-dialog.custom-piece-editor', {
+      return m(Dialog, {
         open: attrs.open,
-        label: attrs.piece ? 'Edit Whimsey' : 'Create Whimsey',
-        'onwa-request-close': (e: CustomEvent & MithrilViewEvent) => {
-          e.redraw = false;
-          attrs.onCancel();
+        title: attrs.piece ? 'Edit Whimsy' : 'Create Whimsy',
+        className: 'custom-piece-editor',
+        width: '50vw',
+        onStateChanged: (open) => {
+          if (!open) {
+            attrs.onCancel();
+          }
         },
       }, [
         // Dialog content
         m('.editor-content', [
           // Name input
-          m('.name-field', [
-            m('wa-input', {
+          m(StringInputControl, {
+            config: {
+              type: 'string',
+              name: 'name',
               label: 'Piece Name (optional)',
-              type: 'text',
-              size: 'small',
-              value: state.name,
-              placeholder: 'Enter a name for this piece',
-              onchange: (e: Event & MithrilViewEvent) => {
-                e.redraw = false;
-                const input = e.target as WaInput;
-                handleNameChanged(input.value ?? '');
-              },
-            }),
-          ]),
+              optional: true,
+            },
+            value: state.name,
+            onChange: (newName: string | undefined) => {
+              state.name = newName ?? '';
+              m.redraw();
+            },
+
+          }),
+          // m('wa-input.name-field', {
+          //   label: 'Piece Name (optional)',
+          //   type: 'text',
+          //   size: 'small',
+          //   value: state.name,
+          //   placeholder: 'Enter a name for this piece',
+          //   oninput: (e: Event & MithrilViewEvent) => {
+          //     e.redraw = false;
+          //     const input = e.target as WaInput;
+          //     state.name = input.value ?? '';
+          //   },
+          // }),
 
           // Validation status
           // Show valid message only when path is closed and valid
@@ -274,7 +292,7 @@ export const WhimseyEditor: m.ClosureComponent<WhimseyEditorAttrs> = () => {
                     name: 'check_circle',
                     style: 'color: green;',
                   }),
-                  m('span', 'Valid whimsey'),
+                  m('span', 'Valid piece'),
                 ]),
               ]))
               : (state.validation.errors.length > 0 && m('.validation-status', [
@@ -354,4 +372,4 @@ export const WhimseyEditor: m.ClosureComponent<WhimseyEditorAttrs> = () => {
   };
 };
 
-export default WhimseyEditor;
+export default WhimsyEditor;

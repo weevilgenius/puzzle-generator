@@ -41,6 +41,12 @@ export function setupPanZoomHandling(
 ): void {
   // Set up keyboard event listeners for spacebar (pan mode)
   keyDownHandler = (event: KeyboardEvent) => {
+    // Don't intercept keyboard events if user is typing in an input field
+    const target = event.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'WA-INPUT' ||target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      return;
+    }
+
     if (event.code === 'Space') {
       // Always prevent default to stop page scrolling (even on repeated keydown events)
       event.preventDefault();
@@ -53,6 +59,12 @@ export function setupPanZoomHandling(
   };
 
   keyUpHandler = (event: KeyboardEvent) => {
+    // Don't intercept keyboard events if user is typing in an input field
+    const target = event.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'WA-INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      return;
+    }
+
     if (event.code === 'Space') {
       state.isSpacebarPressed = false;
       updateCursor(state);

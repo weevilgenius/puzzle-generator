@@ -12,7 +12,8 @@ import BooleanInputControl from '../ui/inputs/BooleanInputControl';
 import AspectRatioPicker from '../ui/AspectRatioPicker';
 import ColorPicker from '../ui/ColorPicker';
 import BorderShapePicker, { type BorderShapeType } from '../ui/BorderShapePicker';
-import WhimseyEditor from '../ui/WhimseyEditor';
+import WhimsyEditor from '../ui/WhimsyEditor';
+import WhimsyManager from '../ui/WhimsyManager';
 
 // geometry parts
 import type { CustomPiece, PuzzleGeometry, PathCommand } from '../geometry/types';
@@ -107,6 +108,8 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     backgroundImageName: string;
     /** Custom pieces defined for this puzzle */
     customPieces: CustomPiece[];
+    /** ID of the currently selected custom piece in the manager */
+    selectedCustomPieceId?: string | null;
     /** Whether the custom piece editor is currently open */
     customPieceEditorOpen: boolean;
     /** ID of the custom piece being edited, or undefined if creating new */
@@ -165,6 +168,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     backgroundImageUrl: undefined,
     backgroundImageName: '',
     customPieces: [],
+    selectedCustomPieceId: null,
     customPieceEditorOpen: false,
     editingCustomPieceId: undefined,
   };
@@ -198,19 +202,37 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
   // utility to handle saving a custom piece
   function handleSaveCustomPiece(path: PathCommand[], name?: string) {
     const now = new Date().toISOString();
-    const newPiece: CustomPiece = {
-      id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      name,
-      path,
-      transform: {
-        position: [state.canvasWidth / 2, state.canvasHeight / 2],
-        rotation: 0,
-        scale: [1, 1],
-      },
-      created: now,
-    };
 
-    state.customPieces = [...state.customPieces, newPiece];
+    // Check if we're editing an existing piece
+    if (state.editingCustomPieceId) {
+      // Update existing piece
+      state.customPieces = state.customPieces.map((piece) => {
+        if (piece.id === state.editingCustomPieceId) {
+          return {
+            ...piece,
+            name,
+            path,
+          };
+        }
+        return piece;
+      });
+    } else {
+      // Create new piece
+      const newPiece: CustomPiece = {
+        id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name,
+        path,
+        transform: {
+          position: [state.canvasWidth / 2, state.canvasHeight / 2],
+          rotation: 0,
+          scale: [1, 1],
+        },
+        created: now,
+      };
+
+      state.customPieces = [...state.customPieces, newPiece];
+    }
+
     state.customPieceEditorOpen = false;
     state.editingCustomPieceId = undefined;
     state.dirty = true;
@@ -222,6 +244,75 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     state.customPieceEditorOpen = false;
     state.editingCustomPieceId = undefined;
     m.redraw();
+  }
+
+  // WhimseyManager callbacks
+  function handleSelectCustomPiece(id: string | null) {
+    state.selectedCustomPieceId = id;
+    m.redraw();
+  }
+
+  function handleEditCustomPiece(id: string) {
+    const piece = state.customPieces.find((p) => p.id === id);
+    if (piece) {
+      state.editingCustomPieceId = id;
+      state.customPieceEditorOpen = true;
+      m.redraw();
+    }
+  }
+
+  function handleDuplicateCustomPiece(id: string) {
+    const piece = state.customPieces.find((p) => p.id === id);
+    if (piece) {
+      const now = new Date().toISOString();
+      const duplicateName = piece.name
+        ? ((): string => {
+          // If name already ends with " (N)", increment N
+          const copyPattern = /^(.*?)\s*\((\d+)\)$/;
+          const match = piece.name.match(copyPattern);
+          if (match) {
+            const baseName = match[1];
+            const number = parseInt(match[2], 10);
+            return `${baseName} (${number + 1})`;
+          }
+          // Otherwise, add " (2)"
+          return `${piece.name} (2)`;
+        })()
+        : undefined;
+
+      const duplicatedPiece: CustomPiece = {
+        id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name: duplicateName,
+        path: [...piece.path],
+        transform: {
+          position: [piece.transform.position[0] + 20, piece.transform.position[1] + 20],
+          rotation: piece.transform.rotation,
+          scale: [...piece.transform.scale],
+        },
+        created: now,
+      };
+
+      state.customPieces = [...state.customPieces, duplicatedPiece];
+      state.selectedCustomPieceId = duplicatedPiece.id;
+      state.dirty = true;
+      m.redraw();
+    }
+  }
+
+  function handleDeleteCustomPiece(id: string) {
+    state.customPieces = state.customPieces.filter((p) => p.id !== id);
+    if (state.selectedCustomPieceId === id) {
+      state.selectedCustomPieceId = null;
+    }
+    state.dirty = true;
+    m.redraw();
+  }
+
+  function handlePositionCustomPiece(id: string) {
+    // TODO: This will be implemented in Phase 5
+    // For now, just show a message
+    console.log(`Position custom piece: ${id}`);
+    alert('Whimsy positioning functionality will be available in Phase 5');
   }
 
   // utility to invoke the geometry checks
@@ -532,14 +623,17 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
             ]),
 
             // Whimsies section
-            m('.custom-pieces-section', [
-              m('label', 'Whimsies:'),
-              m('wa-button', {
-                variant: 'default',
-                size: 'small',
-                onclick: handleOpenCustomPieceEditor,
-              }, 'Add Whimsey'),
-            ]),
+            m(WhimsyManager, {
+              pieces: state.customPieces,
+              selectedPieceId: state.selectedCustomPieceId,
+              pieceColor: state.color,
+              onAdd: handleOpenCustomPieceEditor,
+              onSelect: handleSelectCustomPiece,
+              onEdit: handleEditCustomPiece,
+              onDuplicate: handleDuplicateCustomPiece,
+              onDelete: handleDeleteCustomPiece,
+              onPosition: handlePositionCustomPiece,
+            }),
 
             // render a generator picker for each type of generator
             ...Object.entries(state.generators).map(([type, generator]) => {
@@ -574,8 +668,11 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
         ]), // .container
 
         // Custom Piece Editor Modal
-        m(WhimseyEditor, {
+        m(WhimsyEditor, {
           open: state.customPieceEditorOpen,
+          piece: state.editingCustomPieceId
+            ? state.customPieces.find((p) => p.id === state.editingCustomPieceId)
+            : undefined,
           onSave: handleSaveCustomPiece,
           onCancel: handleCancelCustomPieceEditor,
         }),
