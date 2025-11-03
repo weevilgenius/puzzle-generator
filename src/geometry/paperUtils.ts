@@ -3,7 +3,6 @@
  * Used by both PathEditor and PuzzlePaper components.
  */
 
-import paper from 'paper';
 import type { PathCommand, MoveTo, LineTo, CurveTo } from './types';
 import type { PaperContext } from '../utils/paperScope';
 

@@ -51,6 +51,9 @@ importers:
       '@types/mithril':
         specifier: ^2.2.7
         version: 2.2.7
+      '@types/node':
+        specifier: 22.18.12
+        version: 22.18.12
       '@types/poisson-disk-sampling':
         specifier: ^2.2.4
         version: 2.2.4
@@ -86,7 +89,7 @@ importers:
         version: 8.46.2(eslint@9.39.0)(typescript@5.9.3)
       vite:
         specifier: ^7.1.12
-        version: 7.1.12
+        version: 7.1.12(@types/node@22.18.12)
 
 packages:
 
@@ -479,6 +482,9 @@ packages:
 
   '@types/mithril@2.2.7':
     resolution: {integrity: sha512-uetxoYizBMHPELl6DSZUfO6Q/aOm+h0NUCv9bVAX2iAxfrdBSOvU9KKFl+McTtxR13F+BReYLY814pJsZvnSxg==}
+
+  '@types/node@22.18.12':
+    resolution: {integrity: sha512-BICHQ67iqxQGFSzfCFTT7MRQ5XcBjG5aeKh5Ok38UBbPe5fxTyE+aHFxwVrGyr8GNlqFMLKD1D3P2K/1ks8tog==}
 
   '@types/poisson-disk-sampling@2.2.4':
     resolution: {integrity: sha512-S91hu3CW2P9Aib0uN0VO3VnL6BqlDFcmduHbcxW+I6/DwZjPkzgQM7zQaIscqxNg7aIm+QhXIFe4RSN2xFjL6g==}
@@ -1194,6 +1200,9 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
+  undici-types@6.21.0:
+    resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
+
   universalify@2.0.1:
     resolution: {integrity: sha512-gptHNQghINnc/vTGIk0SOFGFNXw7JVrlRUtConJRlvaw6DuX0wO5Jeko9sWrMBhh+PsYAZ7oXAiOnf/UKogyiw==}
     engines: {node: '>= 10.0.0'}
@@ -1548,6 +1557,10 @@ snapshots:
   '@types/json-schema@7.0.15': {}
 
   '@types/mithril@2.2.7': {}
+
+  '@types/node@22.18.12':
+    dependencies:
+      undici-types: 6.21.0
 
   '@types/poisson-disk-sampling@2.2.4': {}
 
@@ -2288,13 +2301,15 @@ snapshots:
 
   typescript@5.9.3: {}
 
+  undici-types@6.21.0: {}
+
   universalify@2.0.1: {}
 
   uri-js@4.4.1:
     dependencies:
       punycode: 2.3.1
 
-  vite@7.1.12:
+  vite@7.1.12(@types/node@22.18.12):
     dependencies:
       esbuild: 0.25.11
       fdir: 6.5.0(picomatch@4.0.3)
@@ -2303,6 +2318,7 @@ snapshots:
       rollup: 4.52.5
       tinyglobby: 0.2.15
     optionalDependencies:
+      '@types/node': 22.18.12
       fsevents: 2.3.3
 
   which@2.0.2:

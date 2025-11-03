@@ -3,7 +3,6 @@
  */
 
 import m from 'mithril';
-import paper from 'paper';
 import { buildPuzzle } from '../../geometry/PuzzleMaker';
 import { moveVertex } from '../../geometry/modifiers';
 import { distanceSq } from '../../geometry/utils';

@@ -3,7 +3,6 @@
  */
 
 import m from 'mithril';
-import paper from 'paper';
 import type { PathCommand } from '../../geometry/types';
 import type { PathEditorState } from './constants';
 import {

@@ -3,7 +3,8 @@
  * This ensures multiple Paper.js instances don't interfere with each other.
  */
 
-import paper from 'paper';
+// 'paper-core' is smaller and omits things we don't need like PaperScript, acorn etc
+import PaperCore from 'paper/dist/paper-core';
 
 /**
  * Debug helper to check if a Paper.js scope is ready for rendering.
@@ -88,9 +89,7 @@ export function createPaperContext(
   width: number,
   height: number
 ): PaperContext {
-  // This is the scope factory, so this use of paper.js globals is valid
-  // eslint-disable-next-line paper-safety/no-paper-global
-  const scope = new paper.PaperScope();
+  const scope = new PaperCore.PaperScope();
   scope.setup(canvas);
   scope.view.viewSize = new scope.Size(width, height);
 

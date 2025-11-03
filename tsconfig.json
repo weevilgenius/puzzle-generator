@@ -6,6 +6,9 @@
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "useDefineForClassFields": true,
     "noEmit": true,
+    "types": [
+      "paper" // include global paper.js types even though we only import paper-core
+    ],
 
     /* Vite-specific Best Practices */
     "moduleResolution": "bundler",

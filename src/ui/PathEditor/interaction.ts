@@ -3,7 +3,6 @@
  * Manages mouse/touch events, keyboard shortcuts, and cursor feedback
  */
 
-import paper from 'paper';
 import type { PathEditorState } from './constants';
 import {
   HIT_TOLERANCE,
