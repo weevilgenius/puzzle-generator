@@ -212,6 +212,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
             ...piece,
             name,
             path,
+            modified: now,
           };
         }
         return piece;

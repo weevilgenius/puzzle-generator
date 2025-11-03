@@ -209,6 +209,9 @@ export interface CustomPiece {
 
   /** Creation timestamp */
   created: DateString;
+
+  /** Last modification timestamp (optional for backward compatibility) */
+  modified?: DateString;
 }
 
 /* ========================================================= *\

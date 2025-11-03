@@ -78,8 +78,12 @@ interface WhimsyEditorState {
   validation: ValidationResult;
   /** Whether SVG import dialog is open */
   importDialogOpen: boolean;
-  /** Track previous open state to detect transitions */
-  wasOpen: boolean;
+  /** Track previous open state from last view render */
+  prevOpen: boolean;
+  /** ID of the piece from last view render */
+  prevPieceId: string | null;
+  /** Unique key for the current editing session - forces content remount when changed */
+  contentKey: string;
 }
 
 /* ========================================================= *\
@@ -96,25 +100,29 @@ export const WhimsyEditor: m.ClosureComponent<WhimsyEditorAttrs> = () => {
     name: '',
     validation: { isValid: false, errors: [] },
     importDialogOpen: false,
-    wasOpen: false,
+    prevOpen: false,
+    prevPieceId: null,
+    contentKey: 'initial',
   };
 
   // Reference to the file input element
   let fileInputRef: HTMLInputElement | null = null;
 
   /**
-   * Initialize state from attrs when dialog opens
+   * Initialize state from attrs when dialog opens or piece changes
    */
   const initializeState = (attrs: WhimsyEditorAttrs) => {
     if (attrs.piece) {
-      // Editing existing piece
+      // Editing existing piece - use piece ID as content key
+      state.contentKey = attrs.piece.id;
       state.initialPath = attrs.piece.path;
       state.path = attrs.piece.path;
       state.name = attrs.piece.name ?? '';
       // Validate existing piece
       state.validation = validateCustomPiece(state.path);
     } else {
-      // Creating new piece - start with empty state
+      // Creating new piece - use timestamp as content key to force fresh remount
+      state.contentKey = `new-${Date.now()}`;
       state.initialPath = [];
       state.path = [];
       state.name = '';
@@ -217,25 +225,21 @@ export const WhimsyEditor: m.ClosureComponent<WhimsyEditorAttrs> = () => {
   };
 
   return {
-    oncreate: ({ attrs }) => {
-      if (attrs.open) {
-        initializeState(attrs);
-        state.wasOpen = true;
-      }
-    },
-
-    onupdate: ({ attrs }) => {
-      // Detect dialog opening (transition from closed to open)
-      if (attrs.open && !state.wasOpen) {
-        initializeState(attrs);
-        state.wasOpen = true;
-      } else if (!attrs.open && state.wasOpen) {
-        // Dialog closed
-        state.wasOpen = false;
-      }
-    },
-
     view: ({ attrs }) => {
+      // Detect if dialog just opened or piece changed
+      const currentPieceId = attrs.piece?.id ?? null;
+      const dialogJustOpened = attrs.open && !state.prevOpen;
+      const pieceChanged = currentPieceId !== state.prevPieceId;
+
+      if (attrs.open && (dialogJustOpened || pieceChanged)) {
+        // Dialog opened or piece changed - reinitialize state immediately before rendering
+        initializeState(attrs);
+      }
+
+      // Update tracked state for next render
+      state.prevOpen = attrs.open;
+      state.prevPieceId = currentPieceId;
+
       const editorWidth = attrs.editorWidth ?? 600;
       const editorHeight = attrs.editorHeight ?? 600;
 
@@ -244,6 +248,7 @@ export const WhimsyEditor: m.ClosureComponent<WhimsyEditorAttrs> = () => {
         title: attrs.piece ? 'Edit Whimsy' : 'Create Whimsy',
         className: 'custom-piece-editor',
         width: '50vw',
+        contentKey: state.contentKey,
         onStateChanged: (open) => {
           if (!open) {
             attrs.onCancel();

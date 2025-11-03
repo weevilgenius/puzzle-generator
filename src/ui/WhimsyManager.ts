@@ -92,8 +92,10 @@ export const WhimsyManager: m.ClosureComponent<WhimsyManagerAttrs> = () => {
    * Gets or generates a thumbnail for a custom piece.
    */
   const getThumbnail = (piece: CustomPiece, color: string): string => {
-    // Use piece ID + path length + color as cache key
-    const cacheKey = `${piece.id}-${piece.path.length}-${color}`;
+    // Use piece ID + timestamp + color as cache key
+    // Use modified timestamp if available (for edited pieces), otherwise use created
+    const timestamp = piece.modified ?? piece.created;
+    const cacheKey = `${piece.id}-${timestamp}-${color}`;
 
     if (!thumbnailCache.has(cacheKey)) {
       const thumbnail = generateCustomPieceThumbnail(piece.path, 100, 100, color);
