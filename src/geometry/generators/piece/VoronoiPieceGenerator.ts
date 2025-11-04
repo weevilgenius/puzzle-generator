@@ -21,6 +21,11 @@ import {
   clipCellToBoundary,
   type BoundaryContext,
 } from "./PieceGeneratorHelpers";
+import {
+  checkCustomPieceOverlap,
+  subtractCustomPieces,
+  createPieceFromCustom,
+} from '../../customPieces';
 
 
 // Name of this generator, uniquely identifies it from all other PieceGenerators
@@ -131,7 +136,7 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
      * @returns A `PuzzleTopology` data structure.
      */
     generatePieces(points: Vec2[], runtimeOpts: PieceGeneratorRuntimeOptions): PuzzleTopology {
-      const { border } = runtimeOpts;
+      const { border, customPieces = [] } = runtimeOpts;
 
       // Note: Lloyd's relaxation could be performed here to create more uniform
       // piece shapes. This would involve creating the Voronoi diagram, calculating
@@ -172,12 +177,85 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
           continue;
         }
 
-        // Create the piece from the (possibly clipped) polygon
-        const pieceId = pieceIdCounter++;
-        const piece = createPieceFromPolygon(pieceId, clippedVertices, topology);
+        // Check if this cell overlaps with any custom pieces
+        const overlappingCustomPieces = checkCustomPieceOverlap(clippedVertices, customPieces);
 
-        // Override the site to use the original seed point instead of centroid
-        piece.site = site;
+        if (overlappingCustomPieces.length > 0) {
+          // Subtract the custom pieces from this cell
+          const remainingPolygons = subtractCustomPieces(clippedVertices, overlappingCustomPieces);
+
+          if (!remainingPolygons || remainingPolygons.length === 0) {
+            // Cell is fully contained in custom pieces, skip it
+            continue;
+          }
+
+          // The cell may have been split into multiple polygons
+          // Create a piece for each resulting polygon
+          for (const polygon of remainingPolygons) {
+            if (polygon.length < 3) continue; // Skip degenerate polygons
+
+            const pieceId = pieceIdCounter++;
+            const piece = createPieceFromPolygon(pieceId, polygon, topology);
+
+            // Override the site to use the original seed point instead of centroid
+            piece.site = site;
+
+            topology.pieces.set(pieceId, piece);
+
+            // Collect the half-edges for this piece to link them with neighbors
+            const pieceHalfEdges: HalfEdge[] = [];
+            let currentHeId = piece.halfEdge;
+            if (currentHeId !== -1) {
+              const startHeId = currentHeId;
+              do {
+                const he = topology.halfEdges.get(currentHeId)!;
+                pieceHalfEdges.push(he);
+                currentHeId = he.next;
+              } while (currentHeId !== startHeId);
+            }
+
+            // Link edges to neighbors or mark them as part of the boundary
+            linkAndCreateEdges(pieceHalfEdges, topology, halfEdgeTwinMap, (p1, p2) => {
+              const onBoundary = isPointNearBoundary(p1, boundaryContext) &&
+                isPointNearBoundary(p2, boundaryContext);
+              return onBoundary;
+            });
+          }
+        } else {
+          // No overlap with custom pieces, create piece normally
+          const pieceId = pieceIdCounter++;
+          const piece = createPieceFromPolygon(pieceId, clippedVertices, topology);
+
+          // Override the site to use the original seed point instead of centroid
+          piece.site = site;
+
+          topology.pieces.set(pieceId, piece);
+
+          // Collect the half-edges for this piece to link them with neighbors
+          const pieceHalfEdges: HalfEdge[] = [];
+          let currentHeId = piece.halfEdge;
+          if (currentHeId !== -1) {
+            const startHeId = currentHeId;
+            do {
+              const he = topology.halfEdges.get(currentHeId)!;
+              pieceHalfEdges.push(he);
+              currentHeId = he.next;
+            } while (currentHeId !== startHeId);
+          }
+
+          // Link edges to neighbors or mark them as part of the boundary
+          linkAndCreateEdges(pieceHalfEdges, topology, halfEdgeTwinMap, (p1, p2) => {
+            const onBoundary = isPointNearBoundary(p1, boundaryContext) &&
+              isPointNearBoundary(p2, boundaryContext);
+            return onBoundary;
+          });
+        }
+      }
+
+      // 4. Add custom pieces as their own pieces in the topology
+      for (const customPiece of customPieces) {
+        const pieceId = pieceIdCounter++;
+        const piece = createPieceFromCustom(customPiece, pieceId, topology);
 
         topology.pieces.set(pieceId, piece);
 
@@ -194,27 +272,17 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
         }
 
         // Link edges to neighbors or mark them as part of the boundary
-        // For Voronoi, we determine boundary edges by checking if both vertices
-        // lie on the puzzle's outer boundary
+        // Custom piece edges that touch procedural pieces should link to them
+        // Custom piece edges that don't touch anything are treated as boundary edges
         linkAndCreateEdges(pieceHalfEdges, topology, halfEdgeTwinMap, (p1, p2) => {
-          // An edge is on the puzzle boundary if it was created by clipping
-          // We can detect this by checking if the edge lies on the rectangular bounds
-          // (for rectangular puzzles) or by checking against the boundary polygon
-
-          // For now, use a simple heuristic: if the edge has no twin after all pieces
-          // are processed, it's a boundary edge. This is handled by linkAndCreateEdges.
-
-          // Since we need to know if it's on the *custom* boundary (not just the rect),
-          // we check if both points are on the flattened boundary polygon.
-          // This is a simplified check - a full implementation would verify the edge
-          // lies on the boundary path itself.
+          // Check if this edge is on the puzzle boundary
           const onBoundary = isPointNearBoundary(p1, boundaryContext) &&
             isPointNearBoundary(p2, boundaryContext);
           return onBoundary;
         });
       }
 
-      // 4. Final step: Collect all unique vertices.
+      // 5. Final step: Collect all unique vertices.
       const vertexSet = new Map<string, Vec2>();
       for (const he of topology.halfEdges.values()) {
         const key = pointToKey(he.origin);

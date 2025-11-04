@@ -1,31 +1,45 @@
 import type { CustomPiece, CustomPieceTransform, Vec2, PathCommand, PuzzleTopology, Piece } from "./types";
+import { polygonBounds, isPointInPolygon, doAABBsIntersect, createHalfEdgeLoop } from "./utils";
+import * as martinez from 'martinez-polygon-clipping';
 
 /* ========================================================= *\
  *  Custom Piece Helper Functions                           *
 \* ========================================================= */
 
 /**
- * Applies a transform to a point.
+ * Applies a transform to a point relative to a center point.
+ *
+ * The transform is applied in the same way as Paper.js:
+ * 1. Translate point relative to center (center becomes origin)
+ * 2. Apply scale around origin
+ * 3. Apply rotation around origin
+ * 4. Translate to final position (position is absolute, not offset)
  *
  * @param point - The point to transform
+ * @param center - The center point for scale and rotation
  * @param transform - The transformation to apply
  * @returns The transformed point
  */
-function applyTransformToPoint(point: Vec2, transform: CustomPieceTransform): Vec2 {
+function applyTransformToPoint(point: Vec2, center: Vec2, transform: CustomPieceTransform): Vec2 {
   const [x, y] = point;
   const { position, rotation, scale } = transform;
 
-  // Apply scale
-  const scaledX = x * scale[0];
-  const scaledY = y * scale[1];
+  // 1. Translate to origin (relative to center)
+  const centeredX = x - center[0];
+  const centeredY = y - center[1];
 
-  // Apply rotation
+  // 2. Apply scale around origin
+  const scaledX = centeredX * scale[0];
+  const scaledY = centeredY * scale[1];
+
+  // 3. Apply rotation around origin
   const cos = Math.cos(rotation);
   const sin = Math.sin(rotation);
   const rotatedX = scaledX * cos - scaledY * sin;
   const rotatedY = scaledX * sin + scaledY * cos;
 
-  // Apply translation
+  // 4. Translate to final absolute position
+  // Note: position is the absolute final position of the center, not an offset
   const translatedX = rotatedX + position[0];
   const translatedY = rotatedY + position[1];
 
@@ -123,9 +137,21 @@ export function customPieceToPolygon(piece: CustomPiece): Vec2[] {
   // First, flatten the path to get the base polygon
   const basePolygon = flattenPath(piece.path);
 
-  // Then apply the transform to each point
+  if (basePolygon.length === 0) {
+    return [];
+  }
+
+  // Calculate the center of the bounding box (same as Paper.js path.position)
+  // This matches how the rendering code applies transforms in PuzzleRenderer
+  const bounds = polygonBounds(basePolygon);
+  const center: Vec2 = [
+    (bounds[0] + bounds[2]) / 2,
+    (bounds[1] + bounds[3]) / 2,
+  ];
+
+  // Apply the transform to each point, using the bounding box center as the transform origin
   const transformedPolygon = basePolygon.map((point) =>
-    applyTransformToPoint(point, piece.transform)
+    applyTransformToPoint(point, center, piece.transform)
   );
 
   return transformedPolygon;
@@ -134,54 +160,156 @@ export function customPieceToPolygon(piece: CustomPiece): Vec2[] {
 /**
  * Checks if a cell (polygon) overlaps with any custom pieces.
  *
- * @param _cell - The cell polygon to check
- * @param _customPieces - Array of custom pieces to check against
+ * @param cell - The cell polygon to check
+ * @param customPieces - Array of custom pieces to check against
  * @returns Array of custom pieces that overlap with the cell
  */
 export function checkCustomPieceOverlap(
-  _cell: Vec2[],
-  _customPieces: CustomPiece[]
+  cell: Vec2[],
+  customPieces: CustomPiece[]
 ): CustomPiece[] {
-  // TODO: Implement overlap detection
-  // This will be implemented in Phase 6 when integrating with piece generators
-  // For now, return empty array
-  return [];
+  const overlapping: CustomPiece[] = [];
+  const cellBounds = polygonBounds(cell);
+
+  for (const customPiece of customPieces) {
+    const customPolygon = customPieceToPolygon(customPiece);
+    const customBounds = polygonBounds(customPolygon);
+
+    // Fast rejection: check if bounding boxes overlap
+    if (!doAABBsIntersect(cellBounds, customBounds)) {
+      continue;
+    }
+
+    // Check if any vertex of the cell is inside the custom piece
+    let hasOverlap = false;
+    for (const point of cell) {
+      if (isPointInPolygon(point, customPolygon)) {
+        hasOverlap = true;
+        break;
+      }
+    }
+
+    // If no cell vertices are inside, check if any custom piece vertices are inside the cell
+    if (!hasOverlap) {
+      for (const point of customPolygon) {
+        if (isPointInPolygon(point, cell)) {
+          hasOverlap = true;
+          break;
+        }
+      }
+    }
+
+    if (hasOverlap) {
+      overlapping.push(customPiece);
+    }
+  }
+
+  return overlapping;
 }
 
 /**
  * Subtracts custom pieces from a cell polygon using polygon clipping.
  *
  * @param cell - The cell polygon to clip
- * @param _customPieces - Array of custom pieces to subtract from the cell
+ * @param customPieces - Array of custom pieces to subtract from the cell
  * @returns Array of resulting polygons after subtraction, or null if the cell is fully contained
  */
 export function subtractCustomPieces(
   cell: Vec2[],
-  _customPieces: CustomPiece[]
+  customPieces: CustomPiece[]
 ): Vec2[][] | null {
-  // TODO: Implement polygon clipping using the polygon-clipping library
-  // This will be implemented in Phase 6/7 when integrating with piece generators
-  // For now, return the original cell unchanged
-  return [cell];
+  // Start with the original cell
+  let result: martinez.Polygon | martinez.MultiPolygon = [cell.map((p) => [p[0], p[1]])];
+
+  // Subtract each custom piece from the result
+  for (const customPiece of customPieces) {
+    const customPolygon = customPieceToPolygon(customPiece);
+    const customMartinez: martinez.Polygon = [customPolygon.map((p) => [p[0], p[1]])];
+
+    // Perform difference operation: result - customPiece
+    const clipped = martinez.diff(result, customMartinez);
+
+    if (!clipped || clipped.length === 0) {
+      // Cell is fully contained in custom pieces
+      return null;
+    }
+
+    result = clipped;
+  }
+
+  // Convert back to Vec2[][] format
+  if (Array.isArray(result) && result.length > 0) {
+    // Martinez returns a MultiPolygon format: [[[x,y], ...], [[x,y], ...], ...]
+    // where each inner array is a polygon with its outer ring first
+    const polygons: Vec2[][] = [];
+
+    for (const polygon of result) {
+      if (Array.isArray(polygon) && polygon.length > 0) {
+        // Each polygon has rings (first is outer, rest are holes)
+        // We only take the outer ring (polygon[0])
+        const outerRing = polygon[0];
+        if (Array.isArray(outerRing)) {
+          const vertices: Vec2[] = outerRing.map((p) => {
+            // p should be [number, number] but TypeScript needs help
+            if (Array.isArray(p) && p.length >= 2) {
+              return [p[0], p[1]] as Vec2;
+            }
+            // Fallback for unexpected format
+            return [0, 0] as Vec2;
+          });
+          polygons.push(vertices);
+        }
+      }
+    }
+
+    return polygons.length > 0 ? polygons : null;
+  }
+
+  return null;
 }
 
 /**
  * Creates a Piece from a custom piece definition.
  * This converts the custom piece into the internal half-edge topology.
  *
- * @param _custom - The custom piece to convert
- * @param _topology - The puzzle topology to add the piece to
+ * @param custom - The custom piece to convert
+ * @param pieceId - The unique identifier for this piece
+ * @param topology - The puzzle topology to add the piece to
  * @returns The created Piece
  */
 export function createPieceFromCustom(
-  _custom: CustomPiece,
-  _topology: PuzzleTopology
+  custom: CustomPiece,
+  pieceId: number,
+  topology: PuzzleTopology
 ): Piece {
-  // TODO: Implement custom piece to Piece conversion
-  // This will be implemented in Phase 6/7 when integrating with piece generators
-  // This is a complex function that needs to create the half-edge topology
-  // For now, throw an error as a placeholder
-  throw new Error("createPieceFromCustom not yet implemented");
+  // Convert the custom piece to a polygon with transforms applied
+  const vertices = customPieceToPolygon(custom);
+
+  // Calculate the centroid of the transformed polygon
+  const centroid = vertices.reduce(
+    (acc, v) => [acc[0] + v[0], acc[1] + v[1]] as Vec2,
+    [0, 0] as Vec2
+  );
+  const site: Vec2 = [
+    centroid[0] / vertices.length,
+    centroid[1] / vertices.length,
+  ];
+
+  // Create the piece object
+  const piece: Piece = {
+    id: pieceId,
+    site,
+    halfEdge: -1, // Will be set by createHalfEdgeLoop
+    bounds: polygonBounds(vertices),
+  };
+
+  // Create the half-edge loop for the piece's vertices
+  const newHalfEdges = createHalfEdgeLoop(vertices, pieceId, topology);
+  if (newHalfEdges.length > 0) {
+    piece.halfEdge = newHalfEdges[0].id;
+  }
+
+  return piece;
 }
 
 /**

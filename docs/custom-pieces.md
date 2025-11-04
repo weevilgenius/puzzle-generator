@@ -317,11 +317,11 @@ function generateCustomPieceThumbnail(
 - ✅ Note: Allow all placements (including overlaps). Validation flags issues visually via problem checker
 
 ### Phase 6: Pipeline Integration - Voronoi
-- [ ] Modify VoronoiPieceGenerator to accept customPieces
-- [ ] Implement custom piece polygon conversion
-- [ ] Add overlap detection for Voronoi cells
-- [ ] Implement cell clipping against custom pieces
-- [ ] Create pieces from custom piece geometry
+- ✅ Modify VoronoiPieceGenerator to accept customPieces
+- ✅ Implement custom piece polygon conversion
+- ✅ Add overlap detection for Voronoi cells
+- ✅ Implement cell clipping against custom pieces
+- ✅ Create pieces from custom piece geometry
 - [ ] Test with various custom piece configurations
 
 ### Phase 7: Pipeline Integration - Rectangular
