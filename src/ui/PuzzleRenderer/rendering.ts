@@ -361,21 +361,27 @@ export function renderCustomPieces(
       // Convert path commands to Paper.js path
       const path = pathCommandsToPath(customPiece.path, paperScope);
 
-      // Apply transform using Paper.js built-in properties
-      // This approach: center at origin, scale, rotate, then translate to final position
+      // Apply transform to match exactly what handle rendering does:
+      // 1. Center path at origin
+      // 2. Apply scale, rotation, translation via matrix
       const { position, rotation, scale } = customPiece.transform;
 
-      // 1. Move path center to origin
+      // Center the path at origin (same as handle rendering does with tempPath)
       path.position = new paperScope.Point(0, 0);
 
-      // 2. Scale around origin (path's center)
-      path.scale(scale[0], scale[1]);
+      // Build transformation matrix to apply: scale, then rotate, then translate
+      // Paper.js uses post-multiplication: matrix.op() does matrix = matrix * op
+      // To get final matrix T * R * S, we apply operations in reverse order
+      const matrix = new paperScope.Matrix();
 
-      // 3. Rotate around origin (path's center)
-      path.rotate(rotation * (180 / Math.PI)); // Paper.js uses degrees
+      // Apply in reverse: translate, rotate, scale
+      // This builds: matrix = T * R * S
+      matrix.translate(new paperScope.Point(position[0], position[1]));
+      matrix.rotate(rotation * (180 / Math.PI), new paperScope.Point(0, 0));
+      matrix.scale(scale[0], scale[1], new paperScope.Point(0, 0));
 
-      // 4. Move to final position
-      path.position = new paperScope.Point(position[0], position[1]);
+      // Apply the transformation matrix to the centered path
+      path.transform(matrix);
 
       // Set styling
       const isSelected = customPiece.id === selectedCustomPieceId;
@@ -455,6 +461,19 @@ export function renderCustomPieceHandles(
         rotatedY + position[1]
       );
     });
+
+    // Draw circumscribed circle around the bounding box
+    // The circle is centered at the piece position and passes through all corners
+    // const center = new paperScope.Point(position[0], position[1]);
+    // const radius = center.getDistance(transformedCorners[0]); // radius is distance from center to any corner
+    // const circumscribedCircle = new paperScope.Path.Circle(center, radius);
+    // circumscribedCircle.strokeColor = new paperScope.Color(0, 0.5, 1, 1); // Blue with transparency
+    // circumscribedCircle.strokeWidth = 1;
+    // circumscribedCircle.dashArray = [2, 4]; // Dotted line
+    // circumscribedCircle.fillColor = null;
+    // // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    // circumscribedCircle.data.handleType = 'circumscribed-circle';
+    // state.customHandlesLayer!.addChild(circumscribedCircle);
 
     // Draw bounding box connecting the transformed corners
     const bbox = new paperScope.Path();
