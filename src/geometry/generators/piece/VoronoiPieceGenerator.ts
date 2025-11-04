@@ -35,7 +35,8 @@ export const Name: VoronoiPieceGeneratorName = "VoronoiPieceGenerator";
 /** Required config for this generator */
 export interface VoronoiPieceGeneratorConfig extends GeneratorConfig {
   name: VoronoiPieceGeneratorName;
-  // no special config
+  /** Algorithm to use when integrating whimsies into the Voronoi diagram */
+  whimsyMode?: 'simple';
 }
 
 /** UI metadata needed for this generator */
@@ -48,7 +49,17 @@ export const VoronoiPieceGeneratorUIMetadata: GeneratorUIMetadata = {
     "sides.",
   sortHint: 1,
   // these have to match the GeneratorConfig above
-  controls: [],
+  controls: [
+    {
+      type: 'choice',
+      name: 'whimsyMode',
+      label: 'Whimsy Mode',
+      defaultValue: 'simple',
+      choices: [
+        ['simple', 'Simple', 'Cuts each whimsy out of the generated pieces with no other modifications'],
+      ],
+    },
+  ],
 };
 
 /**
@@ -122,8 +133,9 @@ function distanceToSegment(point: Vec2, segStart: Vec2, segEnd: Vec2): number {
  * It builds a full half-edge data structure representing the pieces and their
  * connectivity.
  */
-export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (border: PathCommand[], bounds: { width: number; height: number }, _config: VoronoiPieceGeneratorConfig) => {
+export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (border: PathCommand[], bounds: { width: number; height: number }, config: VoronoiPieceGeneratorConfig) => {
   const { width, height } = bounds;
+  const whimsyMode = config.whimsyMode ?? 'simple';
 
   // Pre-compute boundary data once for reuse across all cells
   const boundaryContext: BoundaryContext = createBoundaryContext(border);
@@ -177,25 +189,58 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
           continue;
         }
 
-        // Check if this cell overlaps with any custom pieces
-        const overlappingCustomPieces = checkCustomPieceOverlap(clippedVertices, customPieces);
+        // Handle custom piece integration based on whimsyMode
+        // Currently only 'simple' mode is implemented, which clips Voronoi cells
+        // against custom piece boundaries using polygon subtraction
+        if (whimsyMode === 'simple') {
+          // Check if this cell overlaps with any custom pieces
+          const overlappingCustomPieces = checkCustomPieceOverlap(clippedVertices, customPieces);
 
-        if (overlappingCustomPieces.length > 0) {
-          // Subtract the custom pieces from this cell
-          const remainingPolygons = subtractCustomPieces(clippedVertices, overlappingCustomPieces);
+          if (overlappingCustomPieces.length > 0) {
+            // Subtract the custom pieces from this cell
+            const remainingPolygons = subtractCustomPieces(clippedVertices, overlappingCustomPieces);
 
-          if (!remainingPolygons || remainingPolygons.length === 0) {
-            // Cell is fully contained in custom pieces, skip it
-            continue;
-          }
+            if (!remainingPolygons || remainingPolygons.length === 0) {
+              // Cell is fully contained in custom pieces, skip it
+              continue;
+            }
 
-          // The cell may have been split into multiple polygons
-          // Create a piece for each resulting polygon
-          for (const polygon of remainingPolygons) {
-            if (polygon.length < 3) continue; // Skip degenerate polygons
+            // The cell may have been split into multiple polygons
+            // Create a piece for each resulting polygon
+            for (const polygon of remainingPolygons) {
+              if (polygon.length < 3) continue; // Skip degenerate polygons
 
+              const pieceId = pieceIdCounter++;
+              const piece = createPieceFromPolygon(pieceId, polygon, topology);
+
+              // Override the site to use the original seed point instead of centroid
+              piece.site = site;
+
+              topology.pieces.set(pieceId, piece);
+
+              // Collect the half-edges for this piece to link them with neighbors
+              const pieceHalfEdges: HalfEdge[] = [];
+              let currentHeId = piece.halfEdge;
+              if (currentHeId !== -1) {
+                const startHeId = currentHeId;
+                do {
+                  const he = topology.halfEdges.get(currentHeId)!;
+                  pieceHalfEdges.push(he);
+                  currentHeId = he.next;
+                } while (currentHeId !== startHeId);
+              }
+
+              // Link edges to neighbors or mark them as part of the boundary
+              linkAndCreateEdges(pieceHalfEdges, topology, halfEdgeTwinMap, (p1, p2) => {
+                const onBoundary = isPointNearBoundary(p1, boundaryContext) &&
+                  isPointNearBoundary(p2, boundaryContext);
+                return onBoundary;
+              });
+            }
+          } else {
+            // No overlap with custom pieces, create piece normally
             const pieceId = pieceIdCounter++;
-            const piece = createPieceFromPolygon(pieceId, polygon, topology);
+            const piece = createPieceFromPolygon(pieceId, clippedVertices, topology);
 
             // Override the site to use the original seed point instead of centroid
             piece.site = site;
@@ -221,34 +266,6 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
               return onBoundary;
             });
           }
-        } else {
-          // No overlap with custom pieces, create piece normally
-          const pieceId = pieceIdCounter++;
-          const piece = createPieceFromPolygon(pieceId, clippedVertices, topology);
-
-          // Override the site to use the original seed point instead of centroid
-          piece.site = site;
-
-          topology.pieces.set(pieceId, piece);
-
-          // Collect the half-edges for this piece to link them with neighbors
-          const pieceHalfEdges: HalfEdge[] = [];
-          let currentHeId = piece.halfEdge;
-          if (currentHeId !== -1) {
-            const startHeId = currentHeId;
-            do {
-              const he = topology.halfEdges.get(currentHeId)!;
-              pieceHalfEdges.push(he);
-              currentHeId = he.next;
-            } while (currentHeId !== startHeId);
-          }
-
-          // Link edges to neighbors or mark them as part of the boundary
-          linkAndCreateEdges(pieceHalfEdges, topology, halfEdgeTwinMap, (p1, p2) => {
-            const onBoundary = isPointNearBoundary(p1, boundaryContext) &&
-              isPointNearBoundary(p2, boundaryContext);
-            return onBoundary;
-          });
         }
       }
 
