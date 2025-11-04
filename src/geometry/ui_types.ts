@@ -48,12 +48,21 @@ export interface StringUIControl extends BaseUIControl {
   defaultValue?: string;
 }
 
+/** Describes a choice (select/dropdown) control. */
+export interface ChoiceUIControl extends BaseUIControl {
+  type: 'choice';
+  defaultValue?: string;
+  /** Array of [value, displayLabel, helpText?] tuples representing available choices */
+  choices: readonly (readonly [string, string, string?])[];
+}
+
 /** A union of all possible control types. */
 export type UIControl =
   | RangeUIControl
   | NumberUIControl
   | BooleanUIControl
-  | StringUIControl;
+  | StringUIControl
+  | ChoiceUIControl;
 
 /** Describes a generator so that it can be rendered in the UI */
 export interface GeneratorUIMetadata {

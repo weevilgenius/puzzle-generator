@@ -2,6 +2,7 @@
 import m from 'mithril';
 import type { GeneratorRegistry, GeneratorConfig, GeneratorName } from '../geometry/generators/Generator';
 import BooleanInputControl from './inputs/BooleanInputControl';
+import ChoiceInputControl from './inputs/ChoiceInputControl';
 import NumberInputControl from './inputs/NumberInputControl';
 import RangeInputControl from './inputs/RangeInputControl';
 import StringInputControl from './inputs/StringInputControl';
@@ -95,6 +96,14 @@ export const GeneratorPicker: m.ClosureComponent<GeneratorPickerAttrs> = () => {
                     });
                   case "string":
                     return m(StringInputControl, {
+                      config: control,
+                      value: (attrs.config?.[control.name] ?? control.defaultValue) as string | undefined,
+                      onChange: (value) => {
+                        attrs.onConfigChange(control.name, value);
+                      },
+                    });
+                  case "choice":
+                    return m(ChoiceInputControl, {
                       config: control,
                       value: (attrs.config?.[control.name] ?? control.defaultValue) as string | undefined,
                       onChange: (value) => {
