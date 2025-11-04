@@ -169,6 +169,9 @@ export interface Piece {
 
   /** Bounding box for this piece */
   bounds: AABB;
+
+  /** True if this piece was created from a custom piece (whimsy), false or undefined otherwise */
+  isCustomPiece?: boolean;
 }
 
 /* ========================================================= *\

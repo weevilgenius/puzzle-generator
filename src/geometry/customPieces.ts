@@ -301,6 +301,7 @@ export function createPieceFromCustom(
     site,
     halfEdge: -1, // Will be set by createHalfEdgeLoop
     bounds: polygonBounds(vertices),
+    isCustomPiece: true, // Mark this as a custom piece for tab placement
   };
 
   // Create the half-edge loop for the piece's vertices

@@ -73,6 +73,13 @@ function placeTabOnEdge(
   const he2 = topology.halfEdges.get(edge.heRight);
   if (!he1 || !he2) return;
 
+  // Skip edges that touch custom pieces (whimsies) - they should remain smooth
+  const piece1 = topology.pieces.get(he1.piece);
+  const piece2 = topology.pieces.get(he2.piece);
+  if (piece1?.isCustomPiece || piece2?.isCustomPiece) {
+    return;
+  }
+
   const p1 = he1.origin;
   const p2 = he2.origin;
   const edgeLength = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);

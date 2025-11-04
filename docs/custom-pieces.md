@@ -537,6 +537,190 @@ const layerLifecycle = {
 - Add validation: minimum custom piece size
 - Or: Skip tab generation on small edges (already done by TabGenerator)
 
+## Advanced Whimsy Integration Algorithms
+
+The current "simple" whimsy mode in VoronoiPieceGenerator uses a straightforward polygon subtraction approach: generate Voronoi cells, then clip them against custom pieces. While functional, this can result in thin fragments, awkward piece shapes, and doesn't create the "flowing around" effect desired for high-quality puzzles.
+
+This section explores more sophisticated algorithms that could better integrate whimsies into the procedural generation process.
+
+### Problem Statement
+
+**Goals**:
+- Procedurally generated pieces should "flow" around placed whimsies
+- Avoid small piece fragments near custom pieces
+- Avoid piece geometry that is too thin or awkward
+- Maintain reasonable piece density and size distribution
+
+**Current Limitation**: The simple mode generates Voronoi cells first, then subtracts custom pieces. This is reactive rather than proactive - the Voronoi diagram has no knowledge of the whimsies.
+
+### Algorithm 1: Seed Point Elimination + Boundary Seeding
+
+**Concept**: Remove problematic seed points and add new ones on whimsy boundaries before generating the Voronoi diagram.
+
+**Algorithm Steps**:
+1. Eliminate any seed points inside custom pieces
+2. Eliminate seed points within a threshold distance of custom piece boundaries (e.g., 20-30 pixels)
+3. Add new seed points along the custom piece boundary at regular intervals
+4. Generate Voronoi diagram from the adjusted seed points
+5. The Voronoi cells will naturally incorporate whimsy boundaries as edges
+
+**Benefits**:
+- Voronoi cells naturally incorporate whimsy boundaries as edges
+- No thin fragments since we control minimum distance from boundaries
+- Pieces "flow around" the whimsies organically
+- Straightforward to implement using existing polygon intersection code
+
+**Challenges**:
+- Determining optimal spacing for boundary seed points
+- May create very large cells adjacent to whimsies if we eliminate too many points
+- Need to balance elimination threshold vs piece size distribution
+
+**Parameters to Tune**:
+- `eliminationThreshold`: Distance from whimsy boundary to eliminate seed points (pixels)
+- `boundaryPointSpacing`: Distance between seed points placed on whimsy boundaries (pixels)
+
+**Implementation Sketch**:
+```typescript
+if (whimsyMode === 'flow') {
+  const adjustedPoints = adjustSeedPointsForWhimsies(
+    points,
+    customPieces,
+    { eliminationThreshold: 30, boundaryPointSpacing: 50 }
+  );
+  const delaunay = Delaunay.from(adjustedPoints);
+  // ... continue with Voronoi generation
+}
+```
+
+### Algorithm 2: Seed Point Repulsion (Force-Directed)
+
+**Concept**: Push seed points away from whimsies using a physics-like repulsion force.
+
+**Algorithm Steps**:
+1. For each seed point within a repulsion radius of any custom piece:
+   - Calculate repulsion vector away from nearest point on whimsy boundary
+   - Move seed point outward by distance proportional to proximity
+2. Iterate until all seed points are sufficiently far from whimsies (or max iterations reached)
+3. Generate Voronoi diagram from adjusted points
+
+**Benefits**:
+- Maintains overall seed point density better than elimination
+- Gradual transition rather than hard cutoff
+- Natural "flowing" effect as points are pushed away smoothly
+- More control over piece size distribution
+
+**Challenges**:
+- Iterative process may be slower than elimination approach
+- Need to tune repulsion parameters (force strength, radius, iteration count)
+- Risk of points being pushed into other whimsies or puzzle boundaries
+
+**Parameters to Tune**:
+- `repulsionRadius`: Distance at which repulsion force is felt (pixels)
+- `repulsionStrength`: How strongly points are pushed away
+- `maxIterations`: Limit on relaxation iterations (typically 10-50)
+
+**Variations**:
+- Combined repulsion + attraction to maintain uniform density
+- Variable repulsion strength based on whimsy size
+- Constraints to prevent points from clustering too densely
+
+### Algorithm 3: Constrained Voronoi with Whimsy Boundaries
+
+**Concept**: Treat whimsy boundaries as hard constraints in the Voronoi diagram construction.
+
+**Algorithm Steps**:
+1. Keep all seed points (even those near whimsies)
+2. Generate constrained Voronoi diagram where:
+   - Voronoi edges cannot cross whimsy boundaries
+   - Whimsy boundaries become edges in the Voronoi diagram
+3. This creates a diagram where whimsies act as obstacles
+
+**Benefits**:
+- Most sophisticated integration approach
+- Maintains good seed point density everywhere
+- Boundaries are natural Voronoi edges (not clipped geometry)
+- Theoretically optimal piece shapes
+
+**Challenges**:
+- More complex implementation (may need specialized library)
+- Constrained Delaunay/Voronoi is non-trivial to implement from scratch
+- Harder to prevent thin fragments programmatically
+- May require switching from d3-delaunay to a more specialized library
+
+**Implementation Notes**:
+- May need to find or implement a constrained Voronoi/Delaunay library
+- Could potentially use constrained Delaunay triangulation (CDT) then compute Voronoi dual
+- Research existing libraries that support constrained Voronoi diagrams
+
+### Algorithm 4: Hybrid - Elimination + Lloyd's Relaxation
+
+**Concept**: Combine elimination with iterative improvement for more uniform cells.
+
+**Algorithm Steps**:
+1. Eliminate seed points inside whimsies and within threshold distance
+2. Generate initial Voronoi diagram from remaining points
+3. Apply Lloyd's relaxation for N iterations:
+   - Calculate centroid of each Voronoi cell
+   - Move seed point to centroid
+   - Regenerate Voronoi diagram
+4. During relaxation, prevent seeds from moving into whimsy-forbidden zones
+5. Final Voronoi generation after relaxation converges
+
+**Benefits**:
+- Lloyd's relaxation creates more uniform, aesthetically pleasing cells
+- Natural flow around obstacles
+- Can prevent convergence into thin regions with constraints
+- Combines benefits of elimination (avoiding fragments) with optimization (better shapes)
+
+**Challenges**:
+- More computationally expensive (multiple Voronoi generations)
+- Need to handle constraints during relaxation carefully
+- May need many iterations to converge (typically 5-10)
+
+**Parameters to Tune**:
+- `eliminationThreshold`: Initial distance from whimsy to eliminate seed points
+- `relaxationIterations`: Number of Lloyd's iterations (typically 5-10)
+- `relaxationConstraint`: How strongly to prevent movement into forbidden zones
+
+### Algorithm Comparison
+
+| Algorithm | Complexity | Performance | Quality | Ease of Implementation |
+|-----------|------------|-------------|---------|----------------------|
+| Elimination + Boundary Seeding | Low | Fast | Good | Easy ⭐ Recommended to start |
+| Seed Point Repulsion | Medium | Medium | Very Good | Medium |
+| Constrained Voronoi | High | Medium | Excellent | Hard |
+| Elimination + Lloyd's | Medium | Slower | Excellent | Medium |
+
+### Recommendation
+
+**Start with Algorithm 1 (Elimination + Boundary Seeding)** because:
+- Relatively straightforward to implement
+- Leverages existing polygon intersection code
+- Directly addresses the "flow around" goal
+- Easy to tune with just a few parameters (elimination threshold, boundary point spacing)
+- Can be implemented as a new `'flow'` mode alongside existing `'simple'` mode
+
+**Future Exploration**:
+- Algorithm 4 (Elimination + Lloyd's) as a `'relaxed'` mode for higher quality
+- Algorithm 2 (Repulsion) as a `'smooth'` mode for gradual transitions
+- Algorithm 3 (Constrained Voronoi) as a research direction if specialized library is found
+
+### Implementation Strategy
+
+Add new whimsy mode options to VoronoiPieceGeneratorConfig:
+```typescript
+export interface VoronoiPieceGeneratorConfig extends GeneratorConfig {
+  name: VoronoiPieceGeneratorName;
+  whimsyMode?: 'simple' | 'flow' | 'relaxed' | 'smooth';
+}
+```
+
+Each mode would have its own configuration controls in the UI:
+- `simple`: No additional parameters (current implementation)
+- `flow`: Elimination threshold, boundary point spacing
+- `relaxed`: Elimination threshold, Lloyd's iterations
+- `smooth`: Repulsion radius, repulsion strength, max iterations
+
 ## Future Extensions
 
 ### 1. Virtual Whimsies for Piece Editing

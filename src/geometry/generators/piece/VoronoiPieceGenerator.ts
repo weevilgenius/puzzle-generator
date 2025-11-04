@@ -1,6 +1,7 @@
 import { Delaunay } from 'd3-delaunay';
 import { PieceGenerator, PieceGeneratorRuntimeOptions } from "./PieceGenerator";
 import type {
+  CustomPiece,
   Edge,
   EdgeID,
   HalfEdge,
@@ -11,7 +12,7 @@ import type {
   PuzzleTopology,
   Vec2,
 } from '../../types';
-import { linkAndCreateEdges } from '../../utils';
+import { linkAndCreateEdges, isPointInPolygon } from '../../utils';
 import type { GeneratorUIMetadata } from '../../ui_types';
 import type { GeneratorConfig, GeneratorFactory } from "../Generator";
 import { PieceGeneratorRegistry } from "../Generator";
@@ -25,6 +26,7 @@ import {
   checkCustomPieceOverlap,
   subtractCustomPieces,
   createPieceFromCustom,
+  customPieceToPolygon,
 } from '../../customPieces';
 
 
@@ -36,7 +38,9 @@ export const Name: VoronoiPieceGeneratorName = "VoronoiPieceGenerator";
 export interface VoronoiPieceGeneratorConfig extends GeneratorConfig {
   name: VoronoiPieceGeneratorName;
   /** Algorithm to use when integrating whimsies into the Voronoi diagram */
-  whimsyMode?: 'simple';
+  whimsyMode?: 'simple' | 'flow';
+  /** Distance from whimsy boundary to eliminate seed points (pixels) - only for flow mode */
+  eliminationThreshold?: number;
 }
 
 /** UI metadata needed for this generator */
@@ -56,8 +60,17 @@ export const VoronoiPieceGeneratorUIMetadata: GeneratorUIMetadata = {
       label: 'Whimsy Mode',
       defaultValue: 'simple',
       choices: [
-        ['simple', 'Simple', 'Cuts each whimsy out of the generated pieces with no other modifications'],
+        ['simple', 'Simple', 'Cuts each whimsy out of the generated pieces.'],
+        ['flow', 'Flow', 'Eliminates seed points near whimsies. Works best with convex shapes.'],
       ],
+    },
+    {
+      type: 'number',
+      name: 'eliminationThreshold',
+      label: 'Elimination Threshold',
+      defaultValue: 20,
+      min: 0,
+      max: 60,
     },
   ],
 };
@@ -129,6 +142,70 @@ function distanceToSegment(point: Vec2, segStart: Vec2, segEnd: Vec2): number {
 }
 
 /**
+ * Calculates the minimum distance from a point to a polygon boundary.
+ * @param point The point.
+ * @param polygon The polygon boundary.
+ * @returns The minimum distance to any edge of the polygon.
+ */
+function distanceToPolygon(point: Vec2, polygon: Vec2[]): number {
+  let minDistance = Infinity;
+
+  for (let i = 0; i < polygon.length; i++) {
+    const p1 = polygon[i];
+    const p2 = polygon[(i + 1) % polygon.length];
+    const dist = distanceToSegment(point, p1, p2);
+    minDistance = Math.min(minDistance, dist);
+  }
+
+  return minDistance;
+}
+
+/**
+ * Adjusts seed points for the flow whimsy mode by eliminating points near custom pieces.
+ * This creates larger Voronoi cells around the whimsies, allowing them to fit more naturally.
+ * @param points The original seed points.
+ * @param customPieces The custom pieces to flow around.
+ * @param eliminationThreshold Distance from whimsy boundary to eliminate seed points.
+ * @returns The adjusted seed points.
+ */
+function adjustSeedPointsForWhimsies(
+  points: Vec2[],
+  customPieces: CustomPiece[],
+  eliminationThreshold: number
+): Vec2[] {
+  const adjustedPoints: Vec2[] = [];
+
+  // Convert custom pieces to polygons once
+  const customPolygons = customPieces.map((piece) => customPieceToPolygon(piece));
+
+  // Filter out seed points that are inside or too close to custom pieces
+  for (const point of points) {
+    let shouldKeep = true;
+
+    for (const polygon of customPolygons) {
+      // Check if point is inside the custom piece
+      if (isPointInPolygon(point, polygon)) {
+        shouldKeep = false;
+        break;
+      }
+
+      // Check if point is within threshold distance of the custom piece boundary
+      const distance = distanceToPolygon(point, polygon);
+      if (distance < eliminationThreshold) {
+        shouldKeep = false;
+        break;
+      }
+    }
+
+    if (shouldKeep) {
+      adjustedPoints.push(point);
+    }
+  }
+
+  return adjustedPoints;
+}
+
+/**
  * A `PieceGenerator` that uses a Voronoi diagram to create the puzzle's topology.
  * It builds a full half-edge data structure representing the pieces and their
  * connectivity.
@@ -136,6 +213,7 @@ function distanceToSegment(point: Vec2, segStart: Vec2, segEnd: Vec2): number {
 export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (border: PathCommand[], bounds: { width: number; height: number }, config: VoronoiPieceGeneratorConfig) => {
   const { width, height } = bounds;
   const whimsyMode = config.whimsyMode ?? 'simple';
+  const eliminationThreshold = config.eliminationThreshold ?? 20;
 
   // Pre-compute boundary data once for reuse across all cells
   const boundaryContext: BoundaryContext = createBoundaryContext(border);
@@ -156,8 +234,23 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
       // repeating for a number of iterations before proceeding.
 
       console.log(`VoronoiPieceGenerator using dimensions ${width}x${height}`);
+
+      // Adjust seed points based on whimsy mode
+      let adjustedPoints = points;
+      if (whimsyMode === 'flow' && customPieces.length > 0) {
+        console.log(`Flow mode: adjusting ${points.length} seed points for ${customPieces.length} custom pieces (threshold: ${eliminationThreshold}px)`);
+        adjustedPoints = adjustSeedPointsForWhimsies(
+          points,
+          customPieces,
+          eliminationThreshold
+        );
+        const eliminated = points.length - adjustedPoints.length;
+        const eliminatedPercent = ((eliminated / points.length) * 100).toFixed(1);
+        console.log(`Flow mode: ${adjustedPoints.length} seed points remaining (eliminated ${eliminated} / ${eliminatedPercent}%)`);
+      }
+
       // 1. Generate Voronoi diagram from points, clipped to the rectangular bounds.
-      const delaunay = Delaunay.from(points);
+      const delaunay = Delaunay.from(adjustedPoints);
       const voronoi = delaunay.voronoi([0, 0, width, height]);
 
       // 2. Initialize data structures for the topology.
@@ -175,8 +268,8 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
 
       // 3. For each Voronoi cell, clip it against the puzzle boundary and create a piece
       let pieceIdCounter = 0;
-      for (let i = 0; i < points.length; i++) {
-        const site = points[i];
+      for (let i = 0; i < adjustedPoints.length; i++) {
+        const site = adjustedPoints[i];
         const cellPolygon = voronoi.cellPolygon(i);
 
         if (!cellPolygon) continue;
@@ -189,10 +282,9 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
           continue;
         }
 
-        // Handle custom piece integration based on whimsyMode
-        // Currently only 'simple' mode is implemented, which clips Voronoi cells
-        // against custom piece boundaries using polygon subtraction
-        if (whimsyMode === 'simple') {
+        // Handle custom piece integration
+        // Both simple and flow modes clip Voronoi cells against custom piece boundaries
+        if (customPieces.length > 0) {
           // Check if this cell overlaps with any custom pieces
           const overlappingCustomPieces = checkCustomPieceOverlap(clippedVertices, customPieces);
 
@@ -237,36 +329,39 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
                 return onBoundary;
               });
             }
-          } else {
-            // No overlap with custom pieces, create piece normally
-            const pieceId = pieceIdCounter++;
-            const piece = createPieceFromPolygon(pieceId, clippedVertices, topology);
-
-            // Override the site to use the original seed point instead of centroid
-            piece.site = site;
-
-            topology.pieces.set(pieceId, piece);
-
-            // Collect the half-edges for this piece to link them with neighbors
-            const pieceHalfEdges: HalfEdge[] = [];
-            let currentHeId = piece.halfEdge;
-            if (currentHeId !== -1) {
-              const startHeId = currentHeId;
-              do {
-                const he = topology.halfEdges.get(currentHeId)!;
-                pieceHalfEdges.push(he);
-                currentHeId = he.next;
-              } while (currentHeId !== startHeId);
-            }
-
-            // Link edges to neighbors or mark them as part of the boundary
-            linkAndCreateEdges(pieceHalfEdges, topology, halfEdgeTwinMap, (p1, p2) => {
-              const onBoundary = isPointNearBoundary(p1, boundaryContext) &&
-                isPointNearBoundary(p2, boundaryContext);
-              return onBoundary;
-            });
+            // Skip the normal piece creation below since we handled it with clipping
+            continue;
           }
+          // Fall through to create piece normally if no overlap
         }
+
+        // No overlap with custom pieces: create piece normally from Voronoi cell
+        const pieceId = pieceIdCounter++;
+        const piece = createPieceFromPolygon(pieceId, clippedVertices, topology);
+
+        // Override the site to use the original seed point instead of centroid
+        piece.site = site;
+
+        topology.pieces.set(pieceId, piece);
+
+        // Collect the half-edges for this piece to link them with neighbors
+        const pieceHalfEdges: HalfEdge[] = [];
+        let currentHeId = piece.halfEdge;
+        if (currentHeId !== -1) {
+          const startHeId = currentHeId;
+          do {
+            const he = topology.halfEdges.get(currentHeId)!;
+            pieceHalfEdges.push(he);
+            currentHeId = he.next;
+          } while (currentHeId !== startHeId);
+        }
+
+        // Link edges to neighbors or mark them as part of the boundary
+        linkAndCreateEdges(pieceHalfEdges, topology, halfEdgeTwinMap, (p1, p2) => {
+          const onBoundary = isPointNearBoundary(p1, boundaryContext) &&
+            isPointNearBoundary(p2, boundaryContext);
+          return onBoundary;
+        });
       }
 
       // 4. Add custom pieces as their own pieces in the topology
