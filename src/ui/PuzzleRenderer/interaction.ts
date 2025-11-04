@@ -9,8 +9,8 @@ import { distanceSq } from '../../geometry/utils';
 import type { PuzzleRendererAttrs, PuzzleRendererState } from './constants';
 import { REGENERATION_THROTTLE_MS, HOVER_DISTANCE_SQ, MIN_ZOOM, MAX_ZOOM, ZOOM_STEP } from './constants';
 import type MithrilViewEvent from '../../utils/MithrilViewEvent';
-import type { Vec2, PieceID } from '../../geometry/types';
-import { renderPuzzle, getBoundaryEdgeVertexIds } from './rendering';
+import type { Vec2, PieceID, CustomPieceTransform } from '../../geometry/types';
+import { renderPuzzle, getBoundaryEdgeVertexIds, renderCustomPieces, renderCustomPieceHandles } from './rendering';
 
 /* ========================================================= *\
  *  Pan and Zoom Event Handlers                              *
@@ -419,6 +419,92 @@ export function handleMouseMove(
   state.canvas.style.cursor = isNearItem ? 'grab' : 'default';
 }
 
+/* ========================================================= *\
+ *  Custom Piece Interaction Handlers                       *
+\* ========================================================= */
+
+/**
+ * Handle custom piece drag move - updates transform in real-time
+ */
+function handleCustomPieceDragMove(
+  viewPoint: paper.Point,
+  attrs: PuzzleRendererAttrs,
+  state: PuzzleRendererState
+): void {
+  if (!state.draggedCustomPieceId || !state.customPieceDragStart || !state.customPieceInitialTransform) {
+    return;
+  }
+
+  if (!attrs.customPieces) return;
+
+  const customPiece = attrs.customPieces.find((p) => p.id === state.draggedCustomPieceId);
+  if (!customPiece) return;
+
+  const currentPos: Vec2 = [viewPoint.x, viewPoint.y];
+  const deltaX = currentPos[0] - state.customPieceDragStart[0];
+  const deltaY = currentPos[1] - state.customPieceDragStart[1];
+
+  let newTransform: CustomPieceTransform;
+
+  if (state.draggedHandleType === 'piece') {
+    // Translate the piece
+    newTransform = {
+      ...state.customPieceInitialTransform,
+      position: [
+        state.customPieceInitialTransform.position[0] + deltaX,
+        state.customPieceInitialTransform.position[1] + deltaY,
+      ],
+    };
+  } else if (state.draggedHandleType === 'rotation' && state.customPieceInitialAngle !== null) {
+    // Calculate rotation based on change in angle from start
+    const center = state.customPieceInitialTransform.position;
+    const currentAngle = Math.atan2(
+      currentPos[1] - center[1],
+      currentPos[0] - center[0]
+    );
+    const angleDelta = currentAngle - state.customPieceInitialAngle;
+    newTransform = {
+      ...state.customPieceInitialTransform,
+      rotation: state.customPieceInitialTransform.rotation + angleDelta,
+    };
+  } else if (state.draggedHandleType === 'scale' && state.draggedCorner) {
+    // Calculate scale based on distance from center
+    const center = state.customPieceInitialTransform.position;
+    const initialDistance = Math.hypot(
+      state.customPieceDragStart[0] - center[0],
+      state.customPieceDragStart[1] - center[1]
+    );
+    const currentDistance = Math.hypot(
+      currentPos[0] - center[0],
+      currentPos[1] - center[1]
+    );
+    const scaleFactor = currentDistance / initialDistance;
+    newTransform = {
+      ...state.customPieceInitialTransform,
+      scale: [
+        state.customPieceInitialTransform.scale[0] * scaleFactor,
+        state.customPieceInitialTransform.scale[1] * scaleFactor,
+      ],
+    };
+  } else {
+    return;
+  }
+
+  // Update the transform in the custom piece (for live preview)
+  const updatedPieces = attrs.customPieces.map((p) =>
+    p.id === state.draggedCustomPieceId ? { ...p, transform: newTransform } : p
+  );
+
+  // Re-render custom pieces and handles with updated transform
+  if (state.paperCtx) {
+    renderCustomPieces(state, updatedPieces, attrs.color, attrs.selectedCustomPieceId);
+    const updatedPiece = updatedPieces.find((p) => p.id === state.draggedCustomPieceId);
+    if (updatedPiece) {
+      renderCustomPieceHandles(state, updatedPiece);
+    }
+  }
+}
+
 /**
  * Handle the start of a drag operation (mouse or mobile).
  */
@@ -450,7 +536,114 @@ export function handleDragStart(
   const viewPoint = getViewPoint(e, state.canvas, state);
   if (!viewPoint) return;
 
-  // Priority 1: Seed points (if visible)
+  // Priority 1: Custom piece handles (if a piece is selected)
+  if (attrs.selectedCustomPieceId && state.customHandlesLayer) {
+    const handleHit = state.customHandlesLayer.hitTest(viewPoint, {
+      fill: true,
+      stroke: true,
+      tolerance: 5,
+    });
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    if (handleHit?.item.data.handleType) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const handleType = handleHit.item.data.handleType as string;
+
+      if (handleType === 'rotation' || handleType === 'scale' || handleType === 'bbox') {
+        const customPiece = attrs.customPieces?.find((p) => p.id === attrs.selectedCustomPieceId);
+        if (customPiece) {
+          state.draggedCustomPieceId = attrs.selectedCustomPieceId;
+          state.draggedHandleType = handleType === 'bbox' ? 'piece' : (handleType === 'rotation' ? 'rotation' : 'scale');
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          state.draggedCorner = handleHit.item.data.corner as string | null;
+          state.customPieceDragStart = [viewPoint.x, viewPoint.y];
+          state.customPieceInitialTransform = { ...customPiece.transform };
+
+          // For rotation, store the initial angle from center to mouse
+          if (state.draggedHandleType === 'rotation') {
+            const center = customPiece.transform.position;
+            state.customPieceInitialAngle = Math.atan2(
+              viewPoint.y - center[1],
+              viewPoint.x - center[0]
+            );
+          } else {
+            state.customPieceInitialAngle = null;
+          }
+
+          state.isDragging = true;
+
+          // For mouse events, attach document-level listeners
+          if (e instanceof MouseEvent) {
+            state.documentMouseMove = (docEvent: MouseEvent) => {
+              const mithrilEvent = docEvent as MouseEvent & MithrilViewEvent;
+              mithrilEvent.redraw = false;
+              handleDragMove(mithrilEvent, attrs, state);
+            };
+            state.documentMouseUp = (docEvent: MouseEvent) => {
+              const mithrilEvent = docEvent as MouseEvent & MithrilViewEvent;
+              mithrilEvent.redraw = false;
+              handleDragEnd(mithrilEvent, attrs, state);
+            };
+            document.addEventListener('mousemove', state.documentMouseMove);
+            document.addEventListener('mouseup', state.documentMouseUp);
+          }
+          return;
+        }
+      }
+    }
+  }
+
+  // Priority 2: Custom pieces (for selection)
+  if (attrs.customPieces && state.customPiecesLayer) {
+    const customPieceHit = state.customPiecesLayer.hitTest(viewPoint, {
+      fill: true,
+      stroke: true,
+      tolerance: 5,
+    });
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    if (customPieceHit?.item.data.customPieceId) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const clickedPieceId = customPieceHit.item.data.customPieceId as string;
+
+      // If clicking on a different piece, select it
+      if (clickedPieceId !== attrs.selectedCustomPieceId) {
+        if (attrs.onCustomPieceSelected) {
+          attrs.onCustomPieceSelected(clickedPieceId);
+        }
+        return;
+      }
+
+      // If clicking on already selected piece, start dragging it
+      const customPiece = attrs.customPieces.find((p) => p.id === clickedPieceId);
+      if (customPiece) {
+        state.draggedCustomPieceId = clickedPieceId;
+        state.draggedHandleType = 'piece';
+        state.draggedCorner = null;
+        state.customPieceDragStart = [viewPoint.x, viewPoint.y];
+        state.customPieceInitialTransform = { ...customPiece.transform };
+        state.customPieceInitialAngle = null; // Not needed for translation
+        state.isDragging = true;
+
+        // For mouse events, attach document-level listeners
+        if (e instanceof MouseEvent) {
+          state.documentMouseMove = (docEvent: MouseEvent) => {
+            const mithrilEvent = docEvent as MouseEvent & MithrilViewEvent;
+            mithrilEvent.redraw = false;
+            handleDragMove(mithrilEvent, attrs, state);
+          };
+          state.documentMouseUp = (docEvent: MouseEvent) => {
+            const mithrilEvent = docEvent as MouseEvent & MithrilViewEvent;
+            mithrilEvent.redraw = false;
+            handleDragEnd(mithrilEvent, attrs, state);
+          };
+          document.addEventListener('mousemove', state.documentMouseMove);
+          document.addEventListener('mouseup', state.documentMouseUp);
+        }
+        return;
+      }
+    }
+  }
+
+  // Priority 3: Seed points (if visible)
   if (attrs.pointColor && state.seedPointItems) {
     const seedHit = state.seedPointItems.hitTest(viewPoint, {
       fill: true,
@@ -531,6 +724,19 @@ export function handleDragMove(
   const viewPoint = getViewPoint(e, state.canvas, state);
   if (!viewPoint) return;
 
+  // Handle custom piece dragging
+  if (state.draggedCustomPieceId) {
+    state.isDragging = true;
+    e.preventDefault();
+
+    // Update cursor to grabbing
+    state.canvas.style.cursor = 'grabbing';
+
+    // Update custom piece transform in real-time
+    handleCustomPieceDragMove(viewPoint, attrs, state);
+    return;
+  }
+
   // Handle vertex dragging
   if (state.draggedVertexId >= 0) {
     state.isDragging = true;
@@ -601,8 +807,70 @@ export function handleDragEnd(
     state.pendingRegeneration = null;
   }
 
+  const wasDraggingCustomPiece = state.draggedCustomPieceId && state.isDragging;
   const wasDraggingVertex = state.draggedVertexId >= 0 && state.isDragging;
   const wasDraggingSeedPoint = state.draggedSeedPointId >= 0 && state.isDragging;
+
+  if (wasDraggingCustomPiece) {
+    e.preventDefault();
+    // Commit the custom piece transform by calling the callback
+    const viewPoint = getViewPoint(e, state.canvas, state);
+    if (viewPoint && state.customPieceInitialTransform && attrs.onCustomPieceTransformed) {
+      const currentPos: Vec2 = [viewPoint.x, viewPoint.y];
+      const deltaX = currentPos[0] - state.customPieceDragStart![0];
+      const deltaY = currentPos[1] - state.customPieceDragStart![1];
+
+      let finalTransform: CustomPieceTransform;
+
+      if (state.draggedHandleType === 'piece') {
+        // Translate the piece
+        finalTransform = {
+          ...state.customPieceInitialTransform,
+          position: [
+            state.customPieceInitialTransform.position[0] + deltaX,
+            state.customPieceInitialTransform.position[1] + deltaY,
+          ],
+        };
+      } else if (state.draggedHandleType === 'rotation' && state.customPieceInitialAngle !== null) {
+        // Calculate rotation based on change in angle from start
+        const center = state.customPieceInitialTransform.position;
+        const currentAngle = Math.atan2(
+          currentPos[1] - center[1],
+          currentPos[0] - center[0]
+        );
+        const angleDelta = currentAngle - state.customPieceInitialAngle;
+        finalTransform = {
+          ...state.customPieceInitialTransform,
+          rotation: state.customPieceInitialTransform.rotation + angleDelta,
+        };
+      } else if (state.draggedHandleType === 'scale') {
+        // Calculate scale
+        const center = state.customPieceInitialTransform.position;
+        const initialDistance = Math.hypot(
+          state.customPieceDragStart![0] - center[0],
+          state.customPieceDragStart![1] - center[1]
+        );
+        const currentDistance = Math.hypot(
+          currentPos[0] - center[0],
+          currentPos[1] - center[1]
+        );
+        const scaleFactor = currentDistance / initialDistance;
+        finalTransform = {
+          ...state.customPieceInitialTransform,
+          scale: [
+            state.customPieceInitialTransform.scale[0] * scaleFactor,
+            state.customPieceInitialTransform.scale[1] * scaleFactor,
+          ],
+        };
+      } else {
+        finalTransform = state.customPieceInitialTransform;
+      }
+
+      if (state.draggedCustomPieceId) {
+        attrs.onCustomPieceTransformed(state.draggedCustomPieceId, finalTransform);
+      }
+    }
+  }
 
   if (wasDraggingVertex) {
     e.preventDefault();
@@ -634,6 +902,12 @@ export function handleDragEnd(
   state.isDragging = false;
   state.draggedVertexId = -1;
   state.draggedSeedPointId = -1;
+  state.draggedCustomPieceId = null;
+  state.draggedHandleType = null;
+  state.draggedCorner = null;
+  state.customPieceDragStart = null;
+  state.customPieceInitialTransform = null;
+  state.customPieceInitialAngle = null;
 
   // Reset cursor
   state.canvas.style.cursor = 'default';

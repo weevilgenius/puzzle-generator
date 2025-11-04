@@ -280,41 +280,41 @@ function generateCustomPieceThumbnail(
 - ✅ Connect to PuzzlePage state (add/edit callbacks)
 
 ### Phase 4: UI - Whimsy Manager
-- [ ] Create `src/ui/WhimsyManager.ts` component
-- [ ] Implement thumbnail generation (`src/utils/thumbnails.ts`)
-- [ ] Build tile view
-- [ ] Add piece selection state management
-- [ ] Create add/edit/duplicate/delete/position control buttons that apply to selected tile
-- [ ] Integrate with PuzzlePage controls section
+- ✅ Create `src/ui/WhimsyManager.ts` component
+- ✅ Implement thumbnail generation (`src/utils/thumbnails.ts`)
+- ✅ Build tile view
+- ✅ Add piece selection state management
+- ✅ Create add/edit/duplicate/delete/position control buttons that apply to selected tile
+- ✅ Integrate with PuzzlePage controls section
 
 ### Phase 5: UI - Canvas Positioning (Integrated into PuzzleRenderer)
-- [ ] Extend PuzzleRenderer to support custom piece rendering
-  - [ ] Create Paper.js layer architecture (puzzle, customPieces, customHandles, etc.)
-  - [ ] Add `interactionMode` state management
-  - [ ] Extend PuzzleRendererAttrs with customPieces, selectedCustomPieceId, callbacks
-- [ ] Implement custom piece layer rendering
-  - [ ] Render custom pieces with transforms applied
-  - [ ] Show/hide based on interaction mode
-- [ ] Implement transform handles layer
-  - [ ] Rotation handle (circular handle at radius from center)
-  - [ ] Scale handles (corner/edge handles on bounding box)
-  - [ ] Show handles only for selected custom piece in positioning mode
-- [ ] Implement positioning interactions
-  - [ ] Selection via hit testing (click to select)
-  - [ ] Drag to translate (preview only, updates transform in real-time)
-  - [ ] Drag rotation handle to rotate (preview only)
-  - [ ] Drag scale handles to scale (preview only)
-  - [ ] On mouse up: Fire `onCustomPieceTransformed` callback
-- [ ] Add visual feedback during manipulation
-  - [ ] Highlight overlaps with red outline during drag
-  - [ ] Show current transform values (rotation angle, scale factor)
-- [ ] Coordinate regeneration workflow
-  - [ ] PuzzlePage listens to `onCustomPieceTransformed` callback
-  - [ ] On callback: Update customPiece transform in state
-  - [ ] Trigger puzzle regeneration with updated custom pieces
-  - [ ] Procedural pieces flow around custom pieces at new positions
-- [ ] Add flip horizontal/vertical controls (future feature idea)
-- [ ] Note: Allow all placements (including overlaps). Validation flags issues visually via problem checker
+- ✅ Extend PuzzleRenderer to support custom piece rendering
+  - ✅ Create Paper.js layer architecture (puzzle, customPieces, customHandles, etc.)
+  - ✅ Add `interactionMode` state management
+  - ✅ Extend PuzzleRendererAttrs with customPieces, selectedCustomPieceId, callbacks
+- ✅ Implement custom piece layer rendering
+  - ✅ Render custom pieces with transforms applied
+  - ✅ Show/hide based on interaction mode (handles shown when piece selected)
+- ✅ Implement transform handles layer
+  - ✅ Rotation handle (circular handle at radius from center)
+  - ✅ Scale handles (corner/edge handles on bounding box)
+  - ✅ Show handles only for selected custom piece in positioning mode
+- ✅ Implement positioning interactions
+  - ✅ Selection via hit testing (click to select)
+  - ✅ Drag to translate (preview only, updates transform in real-time)
+  - ✅ Drag rotation handle to rotate (preview only)
+  - ✅ Drag scale handles to scale (preview only)
+  - ✅ On mouse up: Fire `onCustomPieceTransformed` callback
+- [~] Add visual feedback during manipulation
+  - ✅ Selected piece draws in a different color (blue)
+  - [ ] Highlight custom piece overlaps as part of problem checker (deferred to Phase 9)
+  - [ ] Show current transform values (rotation angle, scale factor) (deferred to Phase 9)
+- ✅ Coordinate regeneration workflow
+  - ✅ PuzzlePage listens to `onCustomPieceTransformed` callback
+  - ✅ On callback: Update customPiece transform in state
+  - ✅ Trigger puzzle regeneration with updated custom pieces
+- [ ] Add flip horizontal/vertical controls (future feature idea - deferred to Phase 9)
+- ✅ Note: Allow all placements (including overlaps). Validation flags issues visually via problem checker
 
 ### Phase 6: Pipeline Integration - Voronoi
 - [ ] Modify VoronoiPieceGenerator to accept customPieces

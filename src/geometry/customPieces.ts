@@ -212,3 +212,68 @@ export function computeCustomPieceBounds(piece: CustomPiece): readonly [number, 
 
   return [xmin, ymin, xmax, ymax];
 }
+
+/**
+ * Computes the bounding box for a path (without transforms applied).
+ *
+ * @param path - The path commands
+ * @returns The bounding box as [xmin, ymin, xmax, ymax]
+ */
+export function computePathBounds(path: PathCommand[]): readonly [number, number, number, number] {
+  const polygon = flattenPath(path);
+
+  if (polygon.length === 0) {
+    return [0, 0, 0, 0];
+  }
+
+  let xmin = polygon[0][0];
+  let ymin = polygon[0][1];
+  let xmax = polygon[0][0];
+  let ymax = polygon[0][1];
+
+  for (let i = 1; i < polygon.length; i++) {
+    const [x, y] = polygon[i];
+    if (x < xmin) xmin = x;
+    if (x > xmax) xmax = x;
+    if (y < ymin) ymin = y;
+    if (y > ymax) ymax = y;
+  }
+
+  return [xmin, ymin, xmax, ymax];
+}
+
+/**
+ * Creates an initial transform for a new custom piece.
+ * Centers the piece on the puzzle and scales it so its largest dimension
+ * matches the target piece size.
+ *
+ * @param path - The path commands for the piece
+ * @param canvasWidth - Width of the puzzle canvas
+ * @param canvasHeight - Height of the puzzle canvas
+ * @param targetPieceSize - Target size for the piece's largest dimension
+ * @returns The initial transform
+ */
+export function createInitialTransform(
+  path: PathCommand[],
+  canvasWidth: number,
+  canvasHeight: number,
+  targetPieceSize: number
+): CustomPieceTransform {
+  // Calculate bounds of the raw path
+  const [xmin, ymin, xmax, ymax] = computePathBounds(path);
+  const width = xmax - xmin;
+  const height = ymax - ymin;
+
+  // Find the largest dimension
+  const maxDimension = Math.max(width, height);
+
+  // Calculate scale factor to match target piece size
+  // Handle edge case of zero or very small paths
+  const scaleFactor = maxDimension > 0 ? targetPieceSize / maxDimension : 1;
+
+  return {
+    position: [canvasWidth / 2, canvasHeight / 2],
+    rotation: 0,
+    scale: [scaleFactor, scaleFactor],
+  };
+}

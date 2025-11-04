@@ -9,9 +9,12 @@ import { DEFAULT_ZOOM, PRESET_ZOOM_LEVELS, PRESET_ZOOM_LABELS } from './constant
 import {
   initializePaper,
   renderPuzzle,
-  createPaperGroups,
+  createPaperLayers,
   cleanupPaper,
   updateBackgroundImage,
+  renderCustomPieces,
+  renderCustomPieceHandles,
+  clearCustomPieceHandles,
 } from './rendering';
 import {
   handleMouseMove,
@@ -51,6 +54,16 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
     // Paper.js items
     paperCtx: null,
     backgroundRaster: null,
+
+    // Paper.js layer architecture
+    puzzleLayer: null,
+    customPiecesLayer: null,
+    customHandlesLayer: null,
+    seedPointsLayer: null,
+    verticesLayer: null,
+    problemsLayer: null,
+
+    // Groups within layers
     paperPath: null,
     seedPointItems: null,
     problemItems: null,
@@ -59,6 +72,14 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
     // Hover and selection state
     hoveredVertexId: -1,
     selectedPieceId: -1,
+
+    // Custom piece interaction state
+    draggedCustomPieceId: null,
+    draggedHandleType: null,
+    draggedCorner: null,
+    customPieceDragStart: null,
+    customPieceInitialTransform: null,
+    customPieceInitialAngle: null,
 
     // Pan and zoom state
     zoom: DEFAULT_ZOOM,
@@ -127,8 +148,8 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
       // Initialize Paper.js
       initializePaper(state.canvas, attrs.width, attrs.height, state);
 
-      // Create Paper.js groups for different layers
-      createPaperGroups(state);
+      // Create Paper.js layer architecture
+      createPaperLayers(state);
 
       // Set up pan and zoom event handlers
       setupPanZoomHandling(state, attrs.onZoomChanged);
@@ -140,6 +161,21 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
       // Initial render
       if (!attrs.isDirty) {
         renderPuzzle(state, attrs.puzzle, attrs.color, attrs.pointColor);
+      }
+
+      // Render custom pieces if present
+      if (attrs.customPieces && attrs.customPieces.length > 0) {
+        renderCustomPieces(state, attrs.customPieces, attrs.color, attrs.selectedCustomPieceId);
+
+        // Render transform handles for selected custom piece
+        if (attrs.selectedCustomPieceId) {
+          const selectedPiece = attrs.customPieces.find((p) => p.id === attrs.selectedCustomPieceId);
+          if (selectedPiece) {
+            renderCustomPieceHandles(state, selectedPiece);
+          }
+        } else {
+          clearCustomPieceHandles(state);
+        }
       }
     },
 
@@ -159,6 +195,25 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
       // Re-render if puzzle is not being regenerated
       if (!attrs.isDirty) {
         renderPuzzle(state, attrs.puzzle, attrs.color, attrs.pointColor);
+      }
+
+      // Render custom pieces (always update them, even if puzzle is dirty)
+      if (attrs.customPieces && attrs.customPieces.length > 0) {
+        renderCustomPieces(state, attrs.customPieces, attrs.color, attrs.selectedCustomPieceId);
+
+        // Render transform handles for selected custom piece
+        if (attrs.selectedCustomPieceId) {
+          const selectedPiece = attrs.customPieces.find((p) => p.id === attrs.selectedCustomPieceId);
+          if (selectedPiece) {
+            renderCustomPieceHandles(state, selectedPiece);
+          }
+        } else {
+          clearCustomPieceHandles(state);
+        }
+      } else if (state.customPiecesLayer) {
+        // Clear custom pieces layer if no custom pieces
+        state.customPiecesLayer.removeChildren();
+        clearCustomPieceHandles(state);
       }
     },
 

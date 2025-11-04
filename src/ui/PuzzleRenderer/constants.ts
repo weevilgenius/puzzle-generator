@@ -3,8 +3,17 @@
  */
 
 import m from 'mithril';
-import type { PieceID, VertexID, PuzzleGeometry, Vec2 } from '../../geometry/types';
+import type { PieceID, VertexID, PuzzleGeometry, Vec2, CustomPiece, CustomPieceTransform } from '../../geometry/types';
 import type { PaperContext } from '../../utils/paperScope';
+
+/**
+ * Interaction mode for the puzzle renderer
+ */
+export type InteractionMode =
+  | 'viewing'
+  | 'editingVertices'
+  | 'editingSeedPoints'
+  | 'positioningCustomPiece';
 
 /**
  * Component attributes for PuzzleRenderer
@@ -30,6 +39,16 @@ export interface PuzzleRendererAttrs extends m.Attributes {
   onSeedPointMoved?: (pieceId: PieceID, newPosition: Vec2) => void;
   /** Callback when zoom level changes */
   onZoomChanged?: (zoom: number) => void;
+  /** Custom pieces to render on the puzzle */
+  customPieces?: CustomPiece[];
+  /** Current interaction mode */
+  interactionMode?: InteractionMode;
+  /** ID of the currently selected custom piece */
+  selectedCustomPieceId?: string | null;
+  /** Callback when a custom piece is transformed */
+  onCustomPieceTransformed?: (id: string, transform: CustomPieceTransform) => void;
+  /** Callback when a custom piece is selected */
+  onCustomPieceSelected?: (id: string | null) => void;
 }
 
 /**
@@ -58,13 +77,28 @@ export interface PuzzleRendererState {
   paperCtx: PaperContext | null;
   /** Background image raster */
   backgroundRaster: paper.Raster | null;
-  /** Main puzzle group containing border and all piece paths */
+
+  // Paper.js layer architecture
+  /** Layer for procedurally generated puzzle pieces */
+  puzzleLayer: paper.Layer | null;
+  /** Layer for custom pieces (whimsies) */
+  customPiecesLayer: paper.Layer | null;
+  /** Layer for transform handles on custom pieces */
+  customHandlesLayer: paper.Layer | null;
+  /** Layer for seed point indicators */
+  seedPointsLayer: paper.Layer | null;
+  /** Layer for vertex circles (shown on hover) */
+  verticesLayer: paper.Layer | null;
+  /** Layer for problem indicators */
+  problemsLayer: paper.Layer | null;
+
+  /** Main puzzle group containing border and all piece paths (within puzzleLayer) */
   paperPath: paper.Group | null;
-  /** Group for seed point circles */
+  /** Group for seed point circles (within seedPointsLayer) */
   seedPointItems: paper.Group | null;
-  /** Group for problem indicators */
+  /** Group for problem indicators (within problemsLayer) */
   problemItems: paper.Group | null;
-  /** Group for vertex circles (shown on hover) */
+  /** Group for vertex circles (within verticesLayer) */
   vertexItems: paper.Group | null;
 
   // Hover and selection state
@@ -72,6 +106,20 @@ export interface PuzzleRendererState {
   hoveredVertexId: VertexID;
   /** Currently selected piece ID (for future features) */
   selectedPieceId: PieceID;
+
+  // Custom piece interaction state
+  /** ID of custom piece being dragged */
+  draggedCustomPieceId: string | null;
+  /** Type of handle being dragged */
+  draggedHandleType: 'piece' | 'rotation' | 'scale' | null;
+  /** For scale handles, which corner */
+  draggedCorner: string | null;
+  /** Initial mouse position when drag started */
+  customPieceDragStart: Vec2 | null;
+  /** Initial transform when drag started */
+  customPieceInitialTransform: CustomPieceTransform | null;
+  /** Initial angle from center to mouse (for rotation) */
+  customPieceInitialAngle: number | null;
 
   // Pan and zoom state
   /** Current zoom level (1.0 = 100%) */

@@ -26,6 +26,7 @@ import { Name as TraditionalTabGeneratorName } from '../geometry/generators/tab/
 import { buildPuzzle, rebuildPuzzleWithUpdatedSeedPoint } from '../geometry/PuzzleMaker';
 import { checkGeometryInWorker } from '../geometry/GeometryChecker';
 import { createRectangleBorder, createCircleBorder, createEllipseBorder, createRoundedRectBorder } from '../geometry/borderShapes';
+import { createInitialTransform } from '../geometry/customPieces';
 
 // register generators (side-effect imports)
 import "../geometry/generators/point/GridJitterPointGenerator";
@@ -218,16 +219,17 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
         return piece;
       });
     } else {
-      // Create new piece
+      // Create new piece with initial transform that centers and scales it
       const newPiece: CustomPiece = {
         id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name,
         path,
-        transform: {
-          position: [state.canvasWidth / 2, state.canvasHeight / 2],
-          rotation: 0,
-          scale: [1, 1],
-        },
+        transform: createInitialTransform(
+          path,
+          state.canvasWidth,
+          state.canvasHeight,
+          state.distance // target piece size
+        ),
         created: now,
       };
 
@@ -426,10 +428,56 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
               puzzle: state.puzzle,
               isDirty: state.dirty,
               pointColor: state.drawPoints ? state.pointColor : undefined,
+              customPieces: state.customPieces,
+              selectedCustomPieceId: state.selectedCustomPieceId,
               onPuzzleChanged: (puzzle) => {
                 // user dragged a vertex to tweak the puzzle
                 state.puzzle = puzzle;
                 m.redraw();
+              },
+              onCustomPieceSelected: (id) => {
+                state.selectedCustomPieceId = id;
+                m.redraw();
+              },
+              onCustomPieceTransformed: (id, transform) => {
+                // Update the custom piece's transform
+                state.customPieces = state.customPieces.map((piece) =>
+                  piece.id === id ? { ...piece, transform } : piece
+                );
+
+                // Trigger puzzle regeneration with updated custom pieces
+                state.dirty = true;
+                m.redraw();
+
+                buildPuzzle({
+                  bounds: {
+                    width: state.canvasWidth,
+                    height: state.canvasHeight,
+                  },
+                  border: createBorder(),
+                  seed: state.seed,
+                  pieceSize: state.distance,
+                  pointConfig: state.generators.point.config,
+                  pieceConfig: state.generators.piece.config,
+                  placementConfig: state.generators.placement.config,
+                  tabConfig: state.generators.tab.config,
+                  customPieces: state.customPieces,
+                }).then((puzzle) => {
+                  state.geometryProblems.problems = undefined;
+                  state.geometryProblems.progress = undefined;
+                  state.puzzle = puzzle;
+                  state.dirty = false;
+                  m.redraw();
+
+                  if (state.geometryProblems.autoCheck) {
+                    handleCheckGeometry();
+                  }
+                })
+                  .catch((err) => {
+                    console.error('Failed to rebuild puzzle with custom pieces:', err);
+                    state.dirty = false;
+                    m.redraw();
+                  });
               },
               onSeedPointMoved: (pieceId, newPosition) => {
                 // user dragged a seed point to a new position
