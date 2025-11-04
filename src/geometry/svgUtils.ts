@@ -1,9 +1,9 @@
 /**
- * SVG path parser for the PathEditor component
+ * SVG path parsing utilities
  * Converts SVG path data to PathCommand[] format
  */
 
-import type { PathCommand } from '../../geometry/types';
+import type { PathCommand } from './types';
 
 /**
  * Result of parsing an SVG file
@@ -444,80 +444,4 @@ export function parseSVGPath(d: string): SVGParseResult {
   }
 
   return result;
-}
-
-/**
- * Scale and translate path commands to fit within canvas bounds
- *
- * @param commands - Array of PathCommand objects
- * @param canvasWidth - Target canvas width
- * @param canvasHeight - Target canvas height
- * @param padding - Padding around the path (default: 20)
- * @returns Transformed PathCommand array
- */
-export function fitPathToCanvas(
-  commands: PathCommand[],
-  canvasWidth: number,
-  canvasHeight: number,
-  padding = 20,
-): PathCommand[] {
-  if (commands.length === 0) return commands;
-
-  // Find bounding box
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-
-  const updateBounds = (x: number, y: number) => {
-    minX = Math.min(minX, x);
-    minY = Math.min(minY, y);
-    maxX = Math.max(maxX, x);
-    maxY = Math.max(maxY, y);
-  };
-
-  for (const cmd of commands) {
-    if (cmd.type === 'move' || cmd.type === 'line') {
-      updateBounds(cmd.p[0], cmd.p[1]);
-    } else if (cmd.type === 'bezier') {
-      updateBounds(cmd.p1[0], cmd.p1[1]);
-      updateBounds(cmd.p2[0], cmd.p2[1]);
-      updateBounds(cmd.p3[0], cmd.p3[1]);
-    }
-  }
-
-  const pathWidth = maxX - minX;
-  const pathHeight = maxY - minY;
-
-  // Calculate scale to fit within canvas with padding
-  const availableWidth = canvasWidth - 2 * padding;
-  const availableHeight = canvasHeight - 2 * padding;
-  const scale = Math.min(availableWidth / pathWidth, availableHeight / pathHeight);
-
-  // Calculate offset to center the path
-  const scaledWidth = pathWidth * scale;
-  const scaledHeight = pathHeight * scale;
-  const offsetX = padding + (availableWidth - scaledWidth) / 2 - minX * scale;
-  const offsetY = padding + (availableHeight - scaledHeight) / 2 - minY * scale;
-
-  // Transform all commands
-  const transformedCommands: PathCommand[] = [];
-
-  for (const cmd of commands) {
-    if (cmd.type === 'move' || cmd.type === 'line') {
-      transformedCommands.push({
-        ...cmd,
-        p: [cmd.p[0] * scale + offsetX, cmd.p[1] * scale + offsetY],
-      });
-    } else if (cmd.type === 'bezier') {
-      transformedCommands.push({
-        type: 'bezier',
-        p1: [cmd.p1[0] * scale + offsetX, cmd.p1[1] * scale + offsetY],
-        p2: [cmd.p2[0] * scale + offsetX, cmd.p2[1] * scale + offsetY],
-        p3: [cmd.p3[0] * scale + offsetX, cmd.p3[1] * scale + offsetY],
-      });
-    }
-  }
-
-  return transformedCommands;
 }

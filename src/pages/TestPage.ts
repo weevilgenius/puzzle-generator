@@ -2,7 +2,8 @@
 import m from 'mithril';
 import type { PathCommand } from '../geometry/types';
 import PathEditor from '../ui/PathEditor';
-import { parseSVGFile, fitPathToCanvas } from '../ui/PathEditor/svgParser';
+import { parseSVGFile } from '../geometry/svgUtils';
+import { fitPathToCanvas } from '../geometry/utils';
 import type MithrilViewEvent from '../utils/MithrilViewEvent';
 
 // import our CSS

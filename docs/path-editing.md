@@ -853,7 +853,7 @@ When implementing panning, we initially attempted to use `paper.view.translate()
   - User-friendly error messages displayed in UI
 
 **Implementation Details**:
-- Created `src/ui/PathEditor/svgParser.ts` with `parseSVGFile()` and `parseSVGPath()` functions
+- Created `src/geometry/svgUtils.ts` with `parseSVGFile()` and `parseSVGPath()` functions
 - Parser uses DOMParser for robust XML parsing
 - Tokenization handles commas, whitespace, and compact SVG notation
 - State tracking for implicit commands and smooth curve reflection
