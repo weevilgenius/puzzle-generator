@@ -41,6 +41,8 @@ import "../geometry/generators/tab/TraditionalTabGenerator";
 // Web Awesome components
 import '@awesome.me/webawesome/dist/components/button/button.js';
 
+// CSS for this page
+import './PuzzlePage.css';
 
 // detect light/dark mode
 let isDarkMode = false;

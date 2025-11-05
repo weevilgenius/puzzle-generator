@@ -1,0 +1,54 @@
+.page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 1em;
+  box-sizing: border-box;
+}
+
+.page > h1 {
+  flex-shrink: 0;
+  margin: 0 0 1em 0;
+}
+
+.container {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 1em;
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.puzzle-stack {
+  flex-shrink: 0;
+}
+
+.container > .controls {
+  z-index: 3; /* always visible */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch; /* Make controls fill width */
+  gap: 1em;
+  overflow-y: auto;
+  height: 100%;
+  padding-right: 1em; /* For scrollbar */
+  flex-basis: 400px; /* Give controls a base width */
+  flex-shrink: 0;
+}
+
+.container > .controls .background-image-label {
+  padding: 2px 0.5em;
+  color: var(--wa-color-neutral-60);
+}
+
+.container button {
+  margin: 0.5em 1em;
+}
+
+.container .actions {
+  margin-top: 1em;
+  display: flex;
+  flex-direction: row;
+  gap: 1em;
+}

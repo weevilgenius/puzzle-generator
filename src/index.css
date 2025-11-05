@@ -12,34 +12,3 @@ body {
 .page .hidden {
   display: none;
 }
-
-.container {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  gap: 1em;
-}
-
-.container > .controls {
-  z-index: 3; /* always visible */;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.5em;
-}
-
-.container > .controls .background-image-label {
-  padding: 2px 0.5em;
-  color: var(--wa-color-neutral-60);
-}
-
-.container button {
-  margin: 0.5em 1em;
-}
-
-.container .actions {
-  margin-top: 1em;
-  display: flex;
-  flex-direction: row;
-  gap: 1em;
-}
