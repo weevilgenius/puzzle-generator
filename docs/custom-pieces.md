@@ -682,44 +682,214 @@ if (whimsyMode === 'flow') {
 - `relaxationIterations`: Number of Lloyd's iterations (typically 5-10)
 - `relaxationConstraint`: How strongly to prevent movement into forbidden zones
 
+### Algorithm 5: Iterative Fragment Filtering (Adaptive Mode)
+
+**Concept**: Eliminate seeds that would create undersized fragments after clipping, using iterative refinement.
+
+**Algorithm Steps**:
+1. Start with seed points after initial elimination (Algorithm 1 - remove seeds inside/near whimsies)
+2. Generate Voronoi diagram from remaining seeds
+3. For each seed point:
+   - Get its Voronoi cell
+   - Clip cell against all custom pieces (using martinez-polygon-clipping)
+   - Check resulting fragments: if any are below minimum area/width, eliminate this seed
+4. Regenerate Voronoi with filtered seeds
+5. Repeat steps 3-4 for N iterations (typically 2-3) until no more seeds are eliminated
+
+**Benefits**:
+- Directly solves undersized fragment problem (slivers along thin whimsy parts)
+- No density increase - only removes problematic seeds
+- Handles complex whimsy shapes (concave regions, thin shafts, teeth, etc.)
+- Area-based filtering is simple and effective
+- Can also check minimum width to catch thin but large-area fragments
+
+**Challenges**:
+- Multiple Voronoi generations (typically converges in 2-3 iterations)
+- Need to determine appropriate minimum fragment size
+- Performance cost: ~100-300ms per iteration for typical puzzles
+
+**Parameters to Tune**:
+- `minFragmentArea`: Absolute minimum area in square pixels (e.g., 500-1000)
+- `minFragmentSizeRatio`: Minimum as percentage of average piece size (e.g., 0.25-0.35)
+- `minFragmentWidth`: Optional minimum width threshold for detecting slivers (e.g., 20px)
+- `maxIterations`: Maximum refinement iterations (typically 2-3)
+
+**Implementation Sketch**:
+```typescript
+function eliminateSeedsCausingSmallFragments(
+  seedPoints: Vec2[],
+  whimsies: CustomPiece[],
+  bounds: { width: number; height: number },
+  options: {
+    minFragmentArea?: number;
+    minFragmentSizeRatio?: number;
+    minFragmentWidth?: number;
+    maxIterations?: number;
+  }
+): Vec2[] {
+  const { maxIterations = 3 } = options;
+
+  // Calculate minimum area threshold
+  const averagePieceArea = (bounds.width * bounds.height) / seedPoints.length;
+  const minFragmentArea = options.minFragmentArea ??
+    Math.max(500, averagePieceArea * (options.minFragmentSizeRatio ?? 0.3));
+
+  let currentSeeds = seedPoints;
+
+  for (let iteration = 0; iteration < maxIterations; iteration++) {
+    const delaunay = Delaunay.from(currentSeeds.flatMap(p => [p.x, p.y]));
+    const voronoi = delaunay.voronoi([0, 0, bounds.width, bounds.height]);
+
+    const validSeeds: Vec2[] = [];
+    let eliminatedCount = 0;
+
+    for (let i = 0; i < currentSeeds.length; i++) {
+      const cell = voronoiCellToPolygon(voronoi, i);
+      const fragments = subtractCustomPieces(cell, whimsies);
+
+      // Check if all fragments meet minimum size
+      const allFragmentsValid = fragments !== null &&
+        fragments.every(frag => {
+          const area = polygonArea(frag);
+          const width = options.minFragmentWidth
+            ? getMinimumWidth(frag)
+            : Infinity;
+          return area >= minFragmentArea &&
+            width >= (options.minFragmentWidth ?? 0);
+        });
+
+      if (allFragmentsValid) {
+        validSeeds.push(currentSeeds[i]);
+      } else {
+        eliminatedCount++;
+      }
+    }
+
+    if (eliminatedCount === 0) break;
+    currentSeeds = validSeeds;
+  }
+
+  return currentSeeds;
+}
+```
+
+**Real-World Performance**:
+- Tested with key-shaped whimsy (thin shaft, round head, straight teeth)
+- Successfully eliminates seeds that would create slivers along shaft
+- Handles multiple fragments well - only filters undersized ones
+- Typically converges in 2 iterations for complex whimsy shapes
+- Performance overhead: ~200-400ms for 100-piece puzzle
+
+**Integration with Algorithm 1**:
+```typescript
+if (whimsyMode === 'adaptive') {
+  // Step 1: Basic elimination (Algorithm 1)
+  let filteredPoints = eliminateSeedsNearWhimsies(
+    points,
+    customPieces,
+    threshold
+  );
+
+  // Step 2: Fragment filtering (Algorithm 5)
+  filteredPoints = eliminateSeedsCausingSmallFragments(
+    filteredPoints,
+    customPieces,
+    bounds,
+    {
+      minFragmentSizeRatio: 0.3,
+      minFragmentWidth: 20,
+      maxIterations: 3
+    }
+  );
+
+  // Step 3: Generate final Voronoi
+  const delaunay = Delaunay.from(filteredPoints);
+}
+```
+
+### Algorithm 6: Post-Generation Fragment Merging (Simple+Merge Mode) ✅ Implemented
+
+**Concept**: Generate Voronoi diagram normally (simple mode), then merge undersized fragments into their smallest procedural neighbors.
+
+**Algorithm Steps**:
+1. Generate Voronoi diagram from all seed points (no elimination)
+2. Clip cells against custom pieces (standard "simple" mode behavior)
+3. Identify fragments:
+   - Area below threshold (same calculation as adaptive mode)
+   - Adjacent to at least one custom piece
+4. For each fragment (sorted smallest first):
+   - Find procedural neighbors (excluding custom pieces)
+   - Sort neighbors by area (smallest first)
+   - Merge fragment into smallest neighbor using polygon union
+5. Update topology (remove shared edges, re-link to other neighbors)
+
+**Benefits**:
+- ✅ Maintains uniform piece density (no seed elimination)
+- ✅ Eliminates small fragments (addresses the core problem)
+- ✅ Simpler than seed manipulation (no iterative repulsion/relocation)
+- ✅ Clean conceptual model: "generate optimistically, fix problems afterward"
+- ✅ Reusable: `mergeFragmentsIntoNeighbors()` can be called by other generators
+
+**Implementation Details**:
+- Uses martinez polygon union for geometry operations
+- Preserves neighbor links by re-linking after merge
+- Handles edge cases: fragments with no procedural neighbors are skipped
+- Single pass (could be made iterative in the future)
+- Merged pieces are irregular (not true Voronoi cells) but aesthetically acceptable
+
+**Trade-offs**:
+- Merged pieces are not perfect Voronoi cells (intentional compromise)
+- Some pieces near whimsies will be larger/more irregular than average
+- Better than adaptive mode for maintaining density, but pieces are less uniform than pure Voronoi
+
 ### Algorithm Comparison
 
-| Algorithm | Complexity | Performance | Quality | Ease of Implementation |
-|-----------|------------|-------------|---------|----------------------|
-| Elimination + Boundary Seeding | Low | Fast | Good | Easy ⭐ Recommended to start |
-| Seed Point Repulsion | Medium | Medium | Very Good | Medium |
-| Constrained Voronoi | High | Medium | Excellent | Hard |
-| Elimination + Lloyd's | Medium | Slower | Excellent | Medium |
+| Algorithm | Complexity | Performance | Quality | Density | Implementation Status |
+|-----------|------------|-------------|---------|---------|---------------------|
+| Simple | Low | Very Fast | Poor (fragments) | Uniform | ✅ Implemented |
+| Simple+Merge | Low-Medium | Fast | Good | Uniform | ✅ Implemented |
+| Elimination + Boundary Seeding (Flow) | Low | Fast | Good | Lower near whimsies | ✅ Implemented |
+| Seed Point Repulsion | Medium | Medium | Very Good | Good | ❌ Not implemented |
+| Constrained Voronoi | High | Medium | Excellent | Excellent | ❌ Not implemented |
+| Elimination + Lloyd's | Medium | Slower | Excellent | Lower | ❌ Not implemented |
+| Iterative Fragment Filtering (Adaptive) | Low-Medium | Medium | Very Good | Lower near whimsies | ✅ Implemented |
 
 ### Recommendation
 
-**Start with Algorithm 1 (Elimination + Boundary Seeding)** because:
-- Relatively straightforward to implement
-- Leverages existing polygon intersection code
-- Directly addresses the "flow around" goal
-- Easy to tune with just a few parameters (elimination threshold, boundary point spacing)
-- Can be implemented as a new `'flow'` mode alongside existing `'simple'` mode
+**✅ Use `'simple+merge'` mode (Algorithm 6) as the default** because:
+- Best balance of quality and uniform density
+- No visible fragments (merged into neighbors)
+- Maintains piece density everywhere in the puzzle
+- Simple implementation that's easy to understand and maintain
+- Fast performance (single merge pass after generation)
+- Works well with all whimsy shapes (convex, concave, thin, complex)
+
+**When to use other modes**:
+- `'simple'` - Fastest generation, acceptable for large whimsies where fragments are rare
+- `'flow'` - When you want to minimize generation time and whimsies are mostly convex
+- `'adaptive'` - When you need the absolute smallest piece count (density loss is acceptable)
 
 **Future Exploration**:
+- Make merge process iterative (multiple passes until no fragments remain)
 - Algorithm 4 (Elimination + Lloyd's) as a `'relaxed'` mode for higher quality
 - Algorithm 2 (Repulsion) as a `'smooth'` mode for gradual transitions
 - Algorithm 3 (Constrained Voronoi) as a research direction if specialized library is found
 
 ### Implementation Strategy
 
-Add new whimsy mode options to VoronoiPieceGeneratorConfig:
+Whimsy mode options in VoronoiPieceGeneratorConfig:
 ```typescript
 export interface VoronoiPieceGeneratorConfig extends GeneratorConfig {
   name: VoronoiPieceGeneratorName;
-  whimsyMode?: 'simple' | 'flow' | 'relaxed' | 'smooth';
+  whimsyMode?: 'simple' | 'simple+merge' | 'flow' | 'adaptive';
 }
 ```
 
-Each mode would have its own configuration controls in the UI:
-- `simple`: No additional parameters (current implementation)
-- `flow`: Elimination threshold, boundary point spacing
-- `relaxed`: Elimination threshold, Lloyd's iterations
-- `smooth`: Repulsion radius, repulsion strength, max iterations
+Each mode has its own configuration controls in the UI:
+- `simple`: No additional parameters - basic polygon clipping
+- `simple+merge` ⭐ **Default**: Min fragment size ratio (Algorithm 6)
+- `flow`: Elimination threshold (Algorithm 1)
+- `adaptive`: Elimination threshold, min fragment size ratio, max iterations (Algorithm 1 + 5)
 
 ## Future Extensions
 

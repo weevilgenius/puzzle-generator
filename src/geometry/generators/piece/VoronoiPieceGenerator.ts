@@ -12,7 +12,15 @@ import type {
   PuzzleTopology,
   Vec2,
 } from '../../types';
-import { linkAndCreateEdges, isPointInPolygon } from '../../utils';
+import {
+  linkAndCreateEdges,
+  isPointInPolygon,
+  polygonArea,
+  isAdjacentToCustomPiece,
+  getPieceNeighbors,
+  mergePieces,
+  extractPiecePolygon,
+} from '../../utils';
 import type { GeneratorUIMetadata } from '../../ui_types';
 import type { GeneratorConfig, GeneratorFactory } from "../Generator";
 import { PieceGeneratorRegistry } from "../Generator";
@@ -38,9 +46,13 @@ export const Name: VoronoiPieceGeneratorName = "VoronoiPieceGenerator";
 export interface VoronoiPieceGeneratorConfig extends GeneratorConfig {
   name: VoronoiPieceGeneratorName;
   /** Algorithm to use when integrating whimsies into the Voronoi diagram */
-  whimsyMode?: 'simple' | 'flow';
-  /** Distance from whimsy boundary to eliminate seed points (pixels) - only for flow mode */
+  whimsyMode?: 'simple' | 'simple+merge' | 'flow' | 'adaptive';
+  /** Distance from whimsy boundary to eliminate seed points (pixels) - for flow and adaptive modes */
   eliminationThreshold?: number;
+  /** Minimum fragment size as ratio of average piece size - for adaptive and simple+merge modes */
+  minFragmentSizeRatio?: number;
+  /** Maximum iterations for fragment filtering - only for adaptive mode */
+  maxIterations?: number;
 }
 
 /** UI metadata needed for this generator */
@@ -58,10 +70,12 @@ export const VoronoiPieceGeneratorUIMetadata: GeneratorUIMetadata = {
       type: 'choice',
       name: 'whimsyMode',
       label: 'Whimsy Mode',
-      defaultValue: 'simple',
+      defaultValue: 'simple+merge',
       choices: [
         ['simple', 'Simple', 'Cuts each whimsy out of the generated pieces.'],
+        ['simple+merge', 'Simple+Merge', 'Cuts out whimsies, then merges small fragments into neighbors. Best balance of quality and uniform density.'],
         ['flow', 'Flow', 'Eliminates seed points near whimsies. Works best with convex shapes.'],
+        ['adaptive', 'Adaptive', 'Eliminates seed points near whimsies and filters out undersized fragments. Best for complex whimsies.'],
       ],
     },
     {
@@ -71,6 +85,22 @@ export const VoronoiPieceGeneratorUIMetadata: GeneratorUIMetadata = {
       defaultValue: 20,
       min: 0,
       max: 60,
+    },
+    {
+      type: 'number',
+      name: 'minFragmentSizeRatio',
+      label: 'Min Fragment Size Ratio',
+      defaultValue: 0.3,
+      min: 0.1,
+      max: 0.8,
+    },
+    {
+      type: 'number',
+      name: 'maxIterations',
+      label: 'Max Iterations',
+      defaultValue: 3,
+      min: 1,
+      max: 5,
     },
   ],
 };
@@ -206,14 +236,255 @@ function adjustSeedPointsForWhimsies(
 }
 
 /**
+ * Converts a Voronoi cell to a polygon (Vec2 array).
+ * @param voronoi The Voronoi diagram.
+ * @param cellIndex The index of the cell to convert.
+ * @returns The cell polygon as an array of Vec2 points.
+ */
+function voronoiCellToPolygon(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  voronoi: any,
+  cellIndex: number
+): Vec2[] | null {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+  const cell = voronoi.cellPolygon(cellIndex);
+  if (!cell) return null;
+
+  // Convert from [x, y][] to Vec2[]
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  return Array.from(cell).map((point: unknown) => {
+    const [x, y] = point as [number, number];
+    return [x, y] as Vec2;
+  });
+}
+
+
+/**
+ * Eliminates seed points that would create undersized fragments after clipping against
+ * custom pieces. Uses iterative refinement to converge on a valid set of seed points.
+ * This is Algorithm 5 from the custom pieces documentation.
+ * @param seedPoints The seed points after initial elimination (Algorithm 1).
+ * @param customPieces The custom pieces to check against.
+ * @param bounds The puzzle bounds.
+ * @param boundaryContext The boundary context for clipping.
+ * @param options Configuration options for fragment filtering.
+ * @returns The filtered seed points.
+ */
+function eliminateSeedsCausingSmallFragments(
+  seedPoints: Vec2[],
+  customPieces: CustomPiece[],
+  bounds: { width: number; height: number },
+  boundaryContext: BoundaryContext,
+  options: {
+    minFragmentSizeRatio: number;
+    maxIterations: number;
+  }
+): Vec2[] {
+  const { minFragmentSizeRatio, maxIterations } = options;
+
+  // Calculate minimum area threshold
+  const averagePieceArea = (bounds.width * bounds.height) / seedPoints.length;
+  const minFragmentArea = Math.max(500, averagePieceArea * minFragmentSizeRatio);
+
+  console.log(`Fragment filtering: min area = ${minFragmentArea.toFixed(0)}px² (${(minFragmentSizeRatio * 100).toFixed(0)}% of avg ${averagePieceArea.toFixed(0)}px²)`);
+
+  let currentSeeds = seedPoints;
+  let totalEliminated = 0;
+
+  for (let iteration = 0; iteration < maxIterations; iteration++) {
+    if (currentSeeds.length === 0) {
+      console.warn(`Fragment filtering: All seeds eliminated after ${iteration} iterations`);
+      break;
+    }
+
+    // Generate Voronoi diagram from current seeds
+    const delaunay = Delaunay.from(currentSeeds);
+    const voronoi = delaunay.voronoi([0, 0, bounds.width, bounds.height]);
+
+    const validSeeds: Vec2[] = [];
+    let eliminatedCount = 0;
+
+    for (let i = 0; i < currentSeeds.length; i++) {
+      // Get the Voronoi cell
+      const cellPolygon = voronoiCellToPolygon(voronoi, i);
+      if (!cellPolygon) {
+        eliminatedCount++;
+        continue;
+      }
+
+      // Clip against puzzle boundary
+      const clippedCell = clipCellToBoundary(cellPolygon, boundaryContext);
+      if (!clippedCell) {
+        eliminatedCount++;
+        continue;
+      }
+
+      // Subtract custom pieces from the cell
+      if (customPieces.length > 0) {
+        const overlappingPieces = checkCustomPieceOverlap(clippedCell, customPieces);
+
+        if (overlappingPieces.length > 0) {
+          const fragments = subtractCustomPieces(clippedCell, overlappingPieces);
+
+          // Check if all fragments meet minimum size
+          if (!fragments || fragments.length === 0) {
+            // Cell fully contained in custom pieces
+            eliminatedCount++;
+            continue;
+          }
+
+          // Check if any fragment is too small
+          const hasSmallFragment = fragments.some((frag) => {
+            const area = polygonArea(frag);
+            return area < minFragmentArea;
+          });
+
+          if (hasSmallFragment) {
+            eliminatedCount++;
+            continue;
+          }
+        }
+      }
+
+      // This seed is valid, keep it
+      validSeeds.push(currentSeeds[i]);
+    }
+
+    totalEliminated += eliminatedCount;
+
+    // Log iteration results
+    if (eliminatedCount > 0) {
+      console.log(`Fragment filtering iteration ${iteration + 1}: eliminated ${eliminatedCount} seeds (${validSeeds.length} remaining)`);
+    }
+
+    // If no seeds eliminated this iteration, we're done
+    if (eliminatedCount === 0) {
+      console.log(`Fragment filtering converged after ${iteration + 1} iteration(s) (total eliminated: ${totalEliminated})`);
+      break;
+    }
+
+    currentSeeds = validSeeds;
+  }
+
+  return currentSeeds;
+}
+
+/**
+ * Merges undersized fragments adjacent to custom pieces into their smallest procedural neighbors.
+ * This is a post-processing step that can be applied after Voronoi generation.
+ *
+ * @param topology The puzzle topology to process.
+ * @param minFragmentArea Minimum area threshold - fragments smaller than this will be merged.
+ * @param halfEdgeTwinMap The map of unmatched half-edges for re-linking after merges.
+ * @param isBoundaryEdgeFn Callback to determine if an edge is on the puzzle boundary.
+ * @returns The number of fragments merged.
+ */
+export function mergeFragmentsIntoNeighbors(
+  topology: PuzzleTopology,
+  minFragmentArea: number,
+  halfEdgeTwinMap: Map<string, HalfEdgeID>,
+  isBoundaryEdgeFn: (p1: Vec2, p2: Vec2) => boolean
+): number {
+  // Collect fragments to merge
+  const fragmentsToMerge: { pieceId: PieceID; area: number }[] = [];
+
+  for (const piece of topology.pieces.values()) {
+    // Skip custom pieces
+    if (piece.isCustomPiece) continue;
+
+    // Calculate actual polygon area (not bounding box)
+    const polygon = extractPiecePolygon(piece, topology);
+    const area = polygonArea(polygon);
+
+    // Check if it's below threshold
+    if (area < minFragmentArea) {
+      // Check if this piece is adjacent to any custom pieces
+      const isAdjacent = isAdjacentToCustomPiece(piece, topology);
+
+      if (!isAdjacent) {
+        console.log(`  Fragment ${piece.id} (${area.toFixed(0)}px²) is undersized but NOT adjacent to custom pieces (skipping)`);
+        continue;
+      }
+
+      fragmentsToMerge.push({ pieceId: piece.id, area });
+    }
+  }
+
+  if (fragmentsToMerge.length === 0) {
+    return 0;
+  }
+
+  console.log(`Merge mode: found ${fragmentsToMerge.length} fragments to merge (< ${minFragmentArea.toFixed(0)}px²)`);
+
+  // Sort fragments by area (smallest first) to avoid cascading size issues
+  fragmentsToMerge.sort((a, b) => a.area - b.area);
+
+  let mergedCount = 0;
+
+  for (const fragment of fragmentsToMerge) {
+    const piece = topology.pieces.get(fragment.pieceId);
+
+    // Piece may have been merged already in a previous iteration
+    if (!piece) continue;
+
+    // Get neighbors (excluding custom pieces)
+    const neighbors = getPieceNeighbors(piece, topology);
+
+    if (neighbors.length === 0) {
+      // Fragment has no procedural neighbors (only touches whimsies/boundary)
+      // Skip it - this is rare but possible
+      console.log(`  Skipping fragment ${fragment.pieceId}: no procedural neighbors`);
+      continue;
+    }
+
+    // Sort neighbors by area (smallest first)
+    neighbors.sort((a, b) => {
+      const pieceA = topology.pieces.get(a[0]);
+      const pieceB = topology.pieces.get(b[0]);
+      if (!pieceA || !pieceB) return 0;
+
+      const polyA = extractPiecePolygon(pieceA, topology);
+      const polyB = extractPiecePolygon(pieceB, topology);
+      const areaA = polygonArea(polyA);
+      const areaB = polygonArea(polyB);
+
+      return areaA - areaB;
+    });
+
+    // Merge into the smallest neighbor
+    const [targetPieceId] = neighbors[0];
+
+    const success = mergePieces(
+      targetPieceId,
+      fragment.pieceId,
+      topology,
+      halfEdgeTwinMap,
+      isBoundaryEdgeFn
+    );
+
+    if (success) {
+      mergedCount++;
+    } else {
+      console.warn(`  Failed to merge fragment ${fragment.pieceId} into piece ${targetPieceId}`);
+    }
+  }
+
+  console.log(`Merge mode: successfully merged ${mergedCount} fragments`);
+
+  return mergedCount;
+}
+
+/**
  * A `PieceGenerator` that uses a Voronoi diagram to create the puzzle's topology.
  * It builds a full half-edge data structure representing the pieces and their
  * connectivity.
  */
 export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (border: PathCommand[], bounds: { width: number; height: number }, config: VoronoiPieceGeneratorConfig) => {
   const { width, height } = bounds;
-  const whimsyMode = config.whimsyMode ?? 'simple';
+  const whimsyMode = config.whimsyMode ?? 'adaptive';
   const eliminationThreshold = config.eliminationThreshold ?? 20;
+  const minFragmentSizeRatio = config.minFragmentSizeRatio ?? 0.3;
+  const maxIterations = config.maxIterations ?? 3;
 
   // Pre-compute boundary data once for reuse across all cells
   const boundaryContext: BoundaryContext = createBoundaryContext(border);
@@ -237,8 +508,9 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
 
       // Adjust seed points based on whimsy mode
       let adjustedPoints = points;
-      if (whimsyMode === 'flow' && customPieces.length > 0) {
-        console.log(`Flow mode: adjusting ${points.length} seed points for ${customPieces.length} custom pieces (threshold: ${eliminationThreshold}px)`);
+      if (customPieces.length > 0 && (whimsyMode === 'flow' || whimsyMode === 'adaptive')) {
+        // Step 1: Apply Algorithm 1 (seed point elimination near whimsies)
+        console.log(`${whimsyMode === 'adaptive' ? 'Adaptive' : 'Flow'} mode: adjusting ${points.length} seed points for ${customPieces.length} custom pieces (threshold: ${eliminationThreshold}px)`);
         adjustedPoints = adjustSeedPointsForWhimsies(
           points,
           customPieces,
@@ -246,7 +518,25 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
         );
         const eliminated = points.length - adjustedPoints.length;
         const eliminatedPercent = ((eliminated / points.length) * 100).toFixed(1);
-        console.log(`Flow mode: ${adjustedPoints.length} seed points remaining (eliminated ${eliminated} / ${eliminatedPercent}%)`);
+        console.log(`Seed elimination: ${adjustedPoints.length} seed points remaining (eliminated ${eliminated} / ${eliminatedPercent}%)`);
+
+        // Step 2: Apply Algorithm 5 (fragment filtering) for adaptive mode
+        if (whimsyMode === 'adaptive') {
+          console.log(`Adaptive mode: filtering seeds that would create small fragments`);
+          adjustedPoints = eliminateSeedsCausingSmallFragments(
+            adjustedPoints,
+            customPieces,
+            bounds,
+            boundaryContext,
+            {
+              minFragmentSizeRatio,
+              maxIterations,
+            }
+          );
+          const totalEliminated = points.length - adjustedPoints.length;
+          const totalEliminatedPercent = ((totalEliminated / points.length) * 100).toFixed(1);
+          console.log(`Adaptive mode: ${adjustedPoints.length} seed points remaining after all filtering (total eliminated ${totalEliminated} / ${totalEliminatedPercent}%)`);
+        }
       }
 
       // 1. Generate Voronoi diagram from points, clipped to the rectangular bounds.
@@ -394,7 +684,26 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
         });
       }
 
-      // 5. Final step: Collect all unique vertices.
+      // 5. Post-processing: Merge fragments for simple+merge mode
+      if (customPieces.length > 0 && whimsyMode === 'simple+merge') {
+        const averagePieceArea = (bounds.width * bounds.height) / adjustedPoints.length;
+        const minFragmentArea = Math.max(500, averagePieceArea * minFragmentSizeRatio);
+
+        console.log(`Simple+merge mode: post-processing to merge fragments (threshold: ${minFragmentArea.toFixed(0)}px²)`);
+
+        mergeFragmentsIntoNeighbors(
+          topology,
+          minFragmentArea,
+          halfEdgeTwinMap,
+          (p1, p2) => {
+            const onBoundary = isPointNearBoundary(p1, boundaryContext) &&
+              isPointNearBoundary(p2, boundaryContext);
+            return onBoundary;
+          }
+        );
+      }
+
+      // 6. Final step: Collect all unique vertices.
       const vertexSet = new Map<string, Vec2>();
       for (const he of topology.halfEdges.values()) {
         const key = pointToKey(he.origin);

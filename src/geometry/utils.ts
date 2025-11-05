@@ -270,6 +270,455 @@ export function arePointsEqual(p1: Vec2, p2: Vec2): boolean {
 }
 
 /**
+ * Calculates the area of a polygon using the shoelace formula.
+ * @param polygon The polygon vertices.
+ * @returns The absolute area of the polygon.
+ */
+export function polygonArea(polygon: Vec2[]): number {
+  if (polygon.length < 3) return 0;
+
+  let area = 0;
+  for (let i = 0; i < polygon.length; i++) {
+    const j = (i + 1) % polygon.length;
+    area += polygon[i][0] * polygon[j][1];
+    area -= polygon[j][0] * polygon[i][1];
+  }
+  return Math.abs(area / 2);
+}
+
+/**
+ * Calculates the centroid of a polygon.
+ * @param polygon The polygon vertices.
+ * @returns The centroid point.
+ */
+export function calculateCentroid(polygon: Vec2[]): Vec2 {
+  if (polygon.length === 0) return [0, 0];
+
+  const sum = polygon.reduce(
+    (acc, v) => [acc[0] + v[0], acc[1] + v[1]] as Vec2,
+    [0, 0] as Vec2
+  );
+
+  return [sum[0] / polygon.length, sum[1] / polygon.length];
+}
+
+/**
+ * Extracts the polygon vertices for a piece by traversing its half-edge loop.
+ * @param piece The piece to extract vertices from.
+ * @param topology The puzzle topology.
+ * @returns Array of vertices in counter-clockwise order.
+ */
+export function extractPiecePolygon(piece: Piece, topology: PuzzleTopology): Vec2[] {
+  const vertices: Vec2[] = [];
+  const startHeId = piece.halfEdge;
+
+  if (startHeId === -1) return vertices;
+
+  let currentHeId = startHeId;
+  do {
+    const he = topology.halfEdges.get(currentHeId);
+    if (!he) break;
+
+    vertices.push(he.origin);
+    currentHeId = he.next;
+  } while (currentHeId !== startHeId && currentHeId !== -1);
+
+  return vertices;
+}
+
+/**
+ * Collects all half-edges for a piece by traversing its half-edge loop.
+ * @param piece The piece to collect half-edges from.
+ * @param topology The puzzle topology.
+ * @returns Array of half-edges belonging to this piece.
+ */
+export function collectPieceHalfEdges(piece: Piece, topology: PuzzleTopology): HalfEdge[] {
+  const halfEdges: HalfEdge[] = [];
+  const startHeId = piece.halfEdge;
+
+  if (startHeId === -1) return halfEdges;
+
+  let currentHeId = startHeId;
+  do {
+    const he = topology.halfEdges.get(currentHeId);
+    if (!he) break;
+
+    halfEdges.push(he);
+    currentHeId = he.next;
+  } while (currentHeId !== startHeId && currentHeId !== -1);
+
+  return halfEdges;
+}
+
+/**
+ * Gets all neighboring pieces for a given piece by traversing twin edges.
+ * Includes geometric proximity fallback for fragments created by polygon clipping.
+ * @param piece The piece to find neighbors for.
+ * @param topology The puzzle topology.
+ * @param proximityThreshold Maximum distance to consider pieces adjacent (default: 2 pixels).
+ * @returns Array of [pieceId, sharedEdgeLength] tuples for procedural piece neighbors.
+ */
+export function getPieceNeighbors(
+  piece: Piece,
+  topology: PuzzleTopology,
+  proximityThreshold = 2.0
+): [PieceID, number][] {
+  const neighbors = new Map<PieceID, number>();
+  const startHeId = piece.halfEdge;
+
+  // First pass: collect neighbors via twin edges (fast, accurate)
+  if (startHeId !== -1) {
+    let currentHeId = startHeId;
+    do {
+      const he = topology.halfEdges.get(currentHeId);
+      if (!he) break;
+
+      // Check if this half-edge has a twin (neighbor piece)
+      if (he.twin !== -1) {
+        const twin = topology.halfEdges.get(he.twin);
+        if (twin && twin.piece !== piece.id) {
+          const neighborPiece = topology.pieces.get(twin.piece);
+          // Only include procedural pieces (exclude custom pieces)
+          if (neighborPiece && !neighborPiece.isCustomPiece) {
+            // Calculate edge length
+            const next = topology.halfEdges.get(he.next);
+            if (next) {
+              const edgeLength = Math.hypot(
+                next.origin[0] - he.origin[0],
+                next.origin[1] - he.origin[1]
+              );
+
+              // Accumulate edge length for this neighbor
+              const currentLength = neighbors.get(twin.piece) ?? 0;
+              neighbors.set(twin.piece, currentLength + edgeLength);
+            }
+          }
+        }
+      }
+
+      currentHeId = he.next;
+    } while (currentHeId !== startHeId && currentHeId !== -1);
+  }
+
+  // If we found neighbors via twins, return them
+  if (neighbors.size > 0) {
+    return Array.from(neighbors.entries());
+  }
+
+  // Fallback: geometric proximity check for fragments with no valid twins
+  // This happens when polygon clipping creates edges that don't match existing topology
+  const piecePolygon = extractPiecePolygon(piece, topology);
+  const pieceBounds = piece.bounds;
+
+  for (const [candidateId, candidate] of topology.pieces) {
+    // Skip self and custom pieces
+    if (candidateId === piece.id || candidate.isCustomPiece) continue;
+
+    // Quick rejection: check bounding boxes
+    const dx = Math.max(
+      pieceBounds[0] - candidate.bounds[2],
+      candidate.bounds[0] - pieceBounds[2]
+    );
+    const dy = Math.max(
+      pieceBounds[1] - candidate.bounds[3],
+      candidate.bounds[1] - pieceBounds[3]
+    );
+
+    if (dx < proximityThreshold && dy < proximityThreshold) {
+      // Bounding boxes are close, check vertex-to-edge distances
+      const candidatePolygon = extractPiecePolygon(candidate, topology);
+      let sharedEdgeLength = 0;
+
+      // Check if vertices of piece are close to edges of candidate
+      for (const vertex of piecePolygon) {
+        for (let i = 0; i < candidatePolygon.length; i++) {
+          const p1 = candidatePolygon[i];
+          const p2 = candidatePolygon[(i + 1) % candidatePolygon.length];
+
+          const dist = distanceToSegment(vertex, p1, p2);
+          if (dist < proximityThreshold) {
+            // Approximate shared edge length as distance between vertices
+            const edgeLen = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+            sharedEdgeLength += edgeLen;
+            break; // Move to next vertex
+          }
+        }
+      }
+
+      if (sharedEdgeLength > 0) {
+        neighbors.set(candidateId, sharedEdgeLength);
+      }
+    }
+  }
+
+  return Array.from(neighbors.entries());
+}
+
+/**
+ * Checks if a piece is adjacent to any custom pieces.
+ * Uses both topology (twin edges) and geometric proximity as fallback.
+ * @param piece The piece to check.
+ * @param topology The puzzle topology.
+ * @param proximityThreshold Maximum distance to consider pieces adjacent (default: 2 pixels).
+ * @returns True if the piece is adjacent to at least one custom piece.
+ */
+export function isAdjacentToCustomPiece(
+  piece: Piece,
+  topology: PuzzleTopology,
+  proximityThreshold = 2.0
+): boolean {
+  // First, check via twin edges (fast path)
+  const startHeId = piece.halfEdge;
+  if (startHeId !== -1) {
+    let currentHeId = startHeId;
+    do {
+      const he = topology.halfEdges.get(currentHeId);
+      if (!he) break;
+
+      if (he.twin !== -1) {
+        const twin = topology.halfEdges.get(he.twin);
+        if (twin) {
+          const neighborPiece = topology.pieces.get(twin.piece);
+          if (neighborPiece?.isCustomPiece) {
+            return true;
+          }
+        }
+      }
+
+      currentHeId = he.next;
+    } while (currentHeId !== startHeId && currentHeId !== -1);
+  }
+
+  // Fallback: check geometric proximity to custom pieces
+  // This catches fragments created by polygon clipping that don't have proper twin edges
+  const customPieces = Array.from(topology.pieces.values()).filter((p) => p.isCustomPiece);
+  if (customPieces.length === 0) return false;
+
+  // Quick rejection: check bounding boxes
+  for (const customPiece of customPieces) {
+    const dx = Math.max(
+      piece.bounds[0] - customPiece.bounds[2],
+      customPiece.bounds[0] - piece.bounds[2]
+    );
+    const dy = Math.max(
+      piece.bounds[1] - customPiece.bounds[3],
+      customPiece.bounds[1] - piece.bounds[3]
+    );
+
+    if (dx < proximityThreshold && dy < proximityThreshold) {
+      // Bounding boxes are close, do detailed check
+      const piecePolygon = extractPiecePolygon(piece, topology);
+      const customPolygon = extractPiecePolygon(customPiece, topology);
+
+      // Check if any vertex of the piece is very close to any edge of the custom piece
+      for (const vertex of piecePolygon) {
+        for (let i = 0; i < customPolygon.length; i++) {
+          const p1 = customPolygon[i];
+          const p2 = customPolygon[(i + 1) % customPolygon.length];
+
+          const dist = distanceToSegment(vertex, p1, p2);
+          if (dist < proximityThreshold) {
+            return true;
+          }
+        }
+      }
+
+      // Also check if any vertex of the custom piece is close to any edge of the piece
+      for (const vertex of customPolygon) {
+        for (let i = 0; i < piecePolygon.length; i++) {
+          const p1 = piecePolygon[i];
+          const p2 = piecePolygon[(i + 1) % piecePolygon.length];
+
+          const dist = distanceToSegment(vertex, p1, p2);
+          if (dist < proximityThreshold) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Calculates the minimum distance from a point to a line segment.
+ * @param point The point.
+ * @param segStart Start of the line segment.
+ * @param segEnd End of the line segment.
+ * @returns The minimum distance.
+ */
+function distanceToSegment(point: Vec2, segStart: Vec2, segEnd: Vec2): number {
+  const [px, py] = point;
+  const [x1, y1] = segStart;
+  const [x2, y2] = segEnd;
+
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const lengthSq = dx * dx + dy * dy;
+
+  if (lengthSq === 0) {
+    // Degenerate segment (point)
+    return Math.hypot(px - x1, py - y1);
+  }
+
+  // Project point onto line, clamped to segment
+  let t = ((px - x1) * dx + (py - y1) * dy) / lengthSq;
+  t = Math.max(0, Math.min(1, t));
+
+  const projX = x1 + t * dx;
+  const projY = y1 + t * dy;
+
+  return Math.hypot(px - projX, py - projY);
+}
+
+/**
+ * Merges two pieces into one by performing a polygon union and updating the topology.
+ * This function:
+ * 1. Extracts polygons for both pieces
+ * 2. Performs a union operation
+ * 3. Removes old half-edges and edges
+ * 4. Creates a new half-edge loop for the merged polygon
+ * 5. Re-links to neighboring pieces
+ *
+ * @param pieceAId The ID of the first piece (will be kept).
+ * @param pieceBId The ID of the second piece (will be removed).
+ * @param topology The puzzle topology to modify.
+ * @param halfEdgeTwinMap The map of unmatched half-edges for re-linking.
+ * @param isBoundaryEdgeFn Callback to determine if an edge is on the puzzle boundary.
+ * @returns True if merge was successful, false otherwise.
+ */
+export function mergePieces(
+  pieceAId: PieceID,
+  pieceBId: PieceID,
+  topology: PuzzleTopology,
+  halfEdgeTwinMap: Map<string, HalfEdgeID>,
+  isBoundaryEdgeFn: (p1: Vec2, p2: Vec2) => boolean
+): boolean {
+  const pieceA = topology.pieces.get(pieceAId);
+  const pieceB = topology.pieces.get(pieceBId);
+
+  if (!pieceA || !pieceB) {
+    console.warn(`  Merge failed: piece not found (A: ${pieceA ? 'ok' : 'missing'}, B: ${pieceB ? 'ok' : 'missing'})`);
+    return false;
+  }
+
+  // 1. Extract polygons for both pieces
+  const polyA = extractPiecePolygon(pieceA, topology);
+  const polyB = extractPiecePolygon(pieceB, topology);
+
+  if (polyA.length < 3 || polyB.length < 3) {
+    console.warn(`  Merge failed: invalid polygons (A: ${polyA.length} verts, B: ${polyB.length} verts)`);
+    return false;
+  }
+
+  // 2. Union them using martinez polygon clipping
+  const martinezA: martinez.Polygon = [polyA.map((p) => [p[0], p[1]])];
+  const martinezB: martinez.Polygon = [polyB.map((p) => [p[0], p[1]])];
+
+  const union = martinez.union(martinezA, martinezB);
+
+  if (!union || union.length === 0) {
+    console.warn(`  Merge failed: union returned empty/null (polyA: ${polyA.length} verts, polyB: ${polyB.length} verts)`);
+    return false;
+  }
+
+  // Martinez returns either Polygon or MultiPolygon
+  // MultiPolygon: [[[[x,y]...]...]]
+  // Polygon: [[[x,y]...]...]
+  let mergedPolygon: Vec2[];
+
+  if (isMartinezPolygon(union)) {
+    // It's a Polygon - extract the outer ring (first element)
+    mergedPolygon = union[0].map((p) => [p[0], p[1]] as Vec2);
+  } else {
+    // It's a MultiPolygon - extract outer ring of first polygon
+    const firstPolygon = union[0];
+    if (!firstPolygon || !Array.isArray(firstPolygon[0])) {
+      console.warn(`  Merge failed: unexpected union format`);
+      return false;
+    }
+    mergedPolygon = firstPolygon[0].map((p) => [p[0], p[1]] as Vec2);
+  }
+
+  if (mergedPolygon.length < 3) {
+    console.warn(`  Merge failed: merged polygon has ${mergedPolygon.length} vertices`);
+    return false;
+  }
+
+  // 3. Collect all half-edges to remove
+  const halfEdgesToRemove = [
+    ...collectPieceHalfEdges(pieceA, topology),
+    ...collectPieceHalfEdges(pieceB, topology),
+  ];
+
+  // 4. For each half-edge to remove, handle its twin and clean up the map
+  const key = (p1: Vec2, p2: Vec2) => `${p1[0]},${p1[1]}-${p2[0]},${p2[1]}`;
+
+  for (const he of halfEdgesToRemove) {
+    // Remove this half-edge's entry from the twin map (if it exists)
+    const nextHe = topology.halfEdges.get(he.next);
+    if (nextHe) {
+      const selfKey = key(he.origin, nextHe.origin);
+      halfEdgeTwinMap.delete(selfKey);
+    }
+
+    if (he.twin !== -1) {
+      const twin = topology.halfEdges.get(he.twin);
+      if (twin && twin.piece !== pieceAId && twin.piece !== pieceBId) {
+        // This twin belongs to a different piece (neighbor), unlink it
+        twin.twin = -1;
+
+        // Add twin back to map for re-linking
+        const nextOfTwin = topology.halfEdges.get(twin.next);
+        if (nextOfTwin) {
+          const edgeKey = key(twin.origin, nextOfTwin.origin);
+          halfEdgeTwinMap.set(edgeKey, twin.id);
+        }
+      }
+    }
+  }
+
+  // 5. Remove old half-edges and their associated edges
+  for (const he of halfEdgesToRemove) {
+    // Find and remove any edge that references this half-edge
+    for (const [edgeId, edge] of topology.edges) {
+      if (edge.heLeft === he.id || edge.heRight === he.id) {
+        topology.edges.delete(edgeId);
+
+        // Remove from boundary list if present
+        const boundaryIndex = topology.boundary.indexOf(edgeId);
+        if (boundaryIndex !== -1) {
+          topology.boundary.splice(boundaryIndex, 1);
+        }
+        break;
+      }
+    }
+
+    // Remove the half-edge itself
+    topology.halfEdges.delete(he.id);
+  }
+
+  // 6. Remove pieceB from the topology
+  topology.pieces.delete(pieceBId);
+
+  // 7. Create new half-edge loop for the merged polygon
+  const newHalfEdges = createHalfEdgeLoop(mergedPolygon, pieceAId, topology);
+
+  if (newHalfEdges.length === 0) return false;
+
+  // 8. Update pieceA with new geometry
+  pieceA.halfEdge = newHalfEdges[0].id;
+  pieceA.bounds = polygonBounds(mergedPolygon);
+  pieceA.site = calculateCentroid(mergedPolygon);
+
+  // 9. Link new half-edges to neighbors
+  linkAndCreateEdges(newHalfEdges, topology, halfEdgeTwinMap, isBoundaryEdgeFn);
+
+  return true;
+}
+
+/**
  * Generates the full segment path for an edge based on its TabPlacements.
  * This function modifies the half-edges of the provided edge in place.
  */
