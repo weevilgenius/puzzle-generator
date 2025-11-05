@@ -3,11 +3,9 @@ import m from 'mithril';
 
 // UI parts
 import GitHubCorner from './ui/GitHubCorner';
-import Navigation from './ui/Navigation';
 
 // Pages
 import PuzzlePage from './pages/PuzzlePage';
-import TestPage from './pages/TestPage';
 
 // Webawesome components
 import { registerIconLibrary } from '@awesome.me/webawesome/dist/webawesome.js';
@@ -42,13 +40,14 @@ configureDarkLightTheme();
 
 // Layout component that wraps all pages with navigation and GitHub corner
 const Layout: m.Component = {
-  view: (vnode) => {
+  view: () => {
     return [
       m(GitHubCorner, {
         link: "https://github.com/weevilgenius/puzzle-generator",
       }),
-      m(Navigation),
-      vnode.children,
+      // m(Navigation),
+      // vnode.children,
+      m(PuzzlePage),
     ];
   },
 };
@@ -65,12 +64,17 @@ registerIconLibrary('material', {
   mutator: (svg) => svg.setAttribute('fill', 'currentColor'),
 });
 
-// Set up routing
-m.route(document.body, "/puzzle", {
-  "/puzzle": {
-    render: () => m(Layout, m(PuzzlePage)),
-  },
-  "/test": {
-    render: () => m(Layout, m(TestPage)),
-  },
-});
+// Ask Mithril to render the page, our componet gets placed into the root element.
+// Mithril will rerender automatically after DOM event handlers defined in component
+// views and also whenever m.redraw() is called.
+m.mount(document.body, Layout);
+
+// optional routing for multiple pages
+// m.route(document.body, "/", {
+//   "/": {
+//     render: () => m(Layout, m(PuzzlePage)),
+//   },
+//   "/test": {
+//     render: () => m(Layout, m(TestPage)),
+//   },
+// });
