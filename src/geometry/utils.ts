@@ -719,6 +719,111 @@ export function mergePieces(
 }
 
 /**
+ * Merges undersized fragments adjacent to custom pieces into their smallest procedural neighbors.
+ * This is a post-processing step that can be applied after piece generation.
+ *
+ * @param topology The puzzle topology to process.
+ * @param minFragmentArea Minimum area threshold - fragments smaller than this will be merged.
+ * @param halfEdgeTwinMap The map of unmatched half-edges for re-linking after merges.
+ * @param isBoundaryEdgeFn Callback to determine if an edge is on the puzzle boundary.
+ * @returns The number of fragments merged.
+ */
+export function mergeFragmentsIntoNeighbors(
+  topology: PuzzleTopology,
+  minFragmentArea: number,
+  halfEdgeTwinMap: Map<string, HalfEdgeID>,
+  isBoundaryEdgeFn: (p1: Vec2, p2: Vec2) => boolean
+): number {
+  // Collect fragments to merge
+  const fragmentsToMerge: { pieceId: PieceID; area: number }[] = [];
+
+  for (const piece of topology.pieces.values()) {
+    // Skip custom pieces
+    if (piece.isCustomPiece) continue;
+
+    // Calculate actual polygon area (not bounding box)
+    const polygon = extractPiecePolygon(piece, topology);
+    const area = polygonArea(polygon);
+
+    // Check if it's below threshold
+    if (area < minFragmentArea) {
+      // Check if this piece is adjacent to any custom pieces
+      const isAdjacent = isAdjacentToCustomPiece(piece, topology);
+
+      if (!isAdjacent) {
+        console.log(`  Fragment ${piece.id} (${area.toFixed(0)}px²) is undersized but NOT adjacent to custom pieces (skipping)`);
+        continue;
+      }
+
+      fragmentsToMerge.push({ pieceId: piece.id, area });
+    }
+  }
+
+  if (fragmentsToMerge.length === 0) {
+    return 0;
+  }
+
+  console.log(`Merge mode: found ${fragmentsToMerge.length} fragments to merge (< ${minFragmentArea.toFixed(0)}px²)`);
+
+  // Sort fragments by area (smallest first) to avoid cascading size issues
+  fragmentsToMerge.sort((a, b) => a.area - b.area);
+
+  let mergedCount = 0;
+
+  for (const fragment of fragmentsToMerge) {
+    const piece = topology.pieces.get(fragment.pieceId);
+
+    // Piece may have been merged already in a previous iteration
+    if (!piece) continue;
+
+    // Get neighbors (excluding custom pieces)
+    const neighbors = getPieceNeighbors(piece, topology);
+
+    if (neighbors.length === 0) {
+      // Fragment has no procedural neighbors (only touches whimsies/boundary)
+      // Skip it - this is rare but possible
+      console.log(`  Skipping fragment ${fragment.pieceId}: no procedural neighbors`);
+      continue;
+    }
+
+    // Sort neighbors by area (smallest first)
+    neighbors.sort((a, b) => {
+      const pieceA = topology.pieces.get(a[0]);
+      const pieceB = topology.pieces.get(b[0]);
+      if (!pieceA || !pieceB) return 0;
+
+      const polyA = extractPiecePolygon(pieceA, topology);
+      const polyB = extractPiecePolygon(pieceB, topology);
+      const areaA = polygonArea(polyA);
+      const areaB = polygonArea(polyB);
+
+      return areaA - areaB;
+    });
+
+    // Merge into the smallest neighbor
+    const [targetPieceId] = neighbors[0];
+
+    const success = mergePieces(
+      targetPieceId,
+      fragment.pieceId,
+      topology,
+      halfEdgeTwinMap,
+      isBoundaryEdgeFn
+    );
+
+    if (success) {
+      mergedCount++;
+    } else {
+      console.warn(`  Failed to merge fragment ${fragment.pieceId} into piece ${targetPieceId}`);
+    }
+  }
+
+  console.log(`Merge mode: successfully merged ${mergedCount} fragments`);
+
+  return mergedCount;
+}
+
+/**
  * Generates the full segment path for an edge based on its TabPlacements.
  * This function modifies the half-edges of the provided edge in place.
  */
@@ -1097,6 +1202,7 @@ export function linkAndCreateEdges(
 ): void {
   const key = (p1: Vec2, p2: Vec2) => `${p1[0]},${p1[1]}-${p2[0]},${p2[1]}`;
   const numEdges = halfEdges.length;
+  const PROXIMITY_THRESHOLD = 0.1; // 0.1 pixel tolerance for matching edges
 
   for (let i = 0; i < numEdges; i++) {
     const he = halfEdges[i];
@@ -1104,7 +1210,28 @@ export function linkAndCreateEdges(
     const p2 = topology.halfEdges.get(he.next)!.origin;
 
     const twinKey = key(p2, p1);
-    const twinId = halfEdgeTwinMap.get(twinKey);
+    const selfKey = key(p1, p2);
+    let twinId = halfEdgeTwinMap.get(twinKey);
+
+    // If exact match not found, try geometric proximity search
+    if (twinId === undefined) {
+      for (const [mapKey, candidateId] of halfEdgeTwinMap.entries()) {
+        const candidateHe = topology.halfEdges.get(candidateId)!;
+        const cp1 = candidateHe.origin;
+        const cp2 = topology.halfEdges.get(candidateHe.next)!.origin;
+
+        // Check if edges match in reverse direction with proximity tolerance
+        const d1 = Math.sqrt((p1[0] - cp2[0]) ** 2 + (p1[1] - cp2[1]) ** 2);
+        const d2 = Math.sqrt((p2[0] - cp1[0]) ** 2 + (p2[1] - cp1[1]) ** 2);
+
+        if (d1 < PROXIMITY_THRESHOLD && d2 < PROXIMITY_THRESHOLD) {
+          twinId = candidateId;
+          halfEdgeTwinMap.delete(mapKey);
+          break;
+        }
+      }
+    }
+
     const edgeId = getUniqueId();
     let edge: Edge;
 
@@ -1114,10 +1241,11 @@ export function linkAndCreateEdges(
       he.twin = twinHe.id;
       twinHe.twin = he.id;
       edge = { id: edgeId, heLeft: twinHe.id, heRight: he.id, bounds: polygonBounds([p1, p2]) };
-      halfEdgeTwinMap.delete(twinKey);
+      if (halfEdgeTwinMap.get(twinKey) === twinId) {
+        halfEdgeTwinMap.delete(twinKey);
+      }
     } else {
       // No twin found.
-      const selfKey = key(p1, p2);
       halfEdgeTwinMap.set(selfKey, he.id);
 
       if (isBoundaryEdgeFn(p1, p2)) {
