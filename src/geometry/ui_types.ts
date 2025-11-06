@@ -5,6 +5,17 @@ import type { GeneratorName } from './generators/Generator';
  *  UI Controls.                                             *
 \* ========================================================= */
 
+/**
+ * Specifies a dependency condition for UI control visibility.
+ * A control is shown if the specified config key has the specified value.
+ */
+export interface DependsOnValue {
+  /** The config key to check (e.g., "whimsyMode"). */
+  config: string;
+  /** The expected value. Control is shown if current config matches this value. */
+  value: string | number | boolean;
+}
+
 /** Common properties for any UI control description. */
 interface BaseUIControl {
   /** The key in the config object this control maps to (e.g., "size"). */
@@ -17,6 +28,11 @@ interface BaseUIControl {
   optional?: boolean;
   /** Optional help text to show as a tooltip or description. */
   helpText?: string;
+  /**
+   * Optional array of dependency conditions. If specified, the control not shown
+   * unless at least one of the dependent config values is also set.
+   */
+  dependsOn?: DependsOnValue[];
 }
 
 /** Describes a range (slider) control. */

@@ -1,6 +1,7 @@
 // UI component that lets the user pick and configure a generator
 import m from 'mithril';
 import type { GeneratorRegistry, GeneratorConfig, GeneratorName } from '../geometry/generators/Generator';
+import type { UIControl } from '../geometry/ui_types';
 import BooleanInputControl from './inputs/BooleanInputControl';
 import ChoiceInputControl from './inputs/ChoiceInputControl';
 import NumberInputControl from './inputs/NumberInputControl';
@@ -30,6 +31,21 @@ export interface GeneratorPickerAttrs<C extends GeneratorConfig = GeneratorConfi
   /** Called when any config value changes */
   onConfigChange: <K extends keyof C>(key: K, value: C[K]) => void;
 }
+
+/**
+ * Helper function to determine if a control should be shown based on its dependencies.
+ * Returns true if the control has no dependencies, or if at least ONE dependency condition
+ * matches the current config (OR logic).
+ */
+const shouldShowControl = (control: UIControl, config: GeneratorConfig): boolean => {
+  // If no dependencies, always show
+  if (!control.dependsOn || control.dependsOn.length === 0) {
+    return true;
+  }
+
+  // Show if ANY condition matches (OR logic)
+  return control.dependsOn.some((dep) => config[dep.config] === dep.value);
+};
 
 // component
 export const GeneratorPicker: m.ClosureComponent<GeneratorPickerAttrs> = () => {
@@ -67,8 +83,8 @@ export const GeneratorPicker: m.ClosureComponent<GeneratorPickerAttrs> = () => {
                 // detailed description of the generator if available
                 uiMetadata?.description ? m('p', uiMetadata.description) : null,
 
-                // UI controls defined by the generator
-                ...uiMetadata?.controls.map((control) => {
+                // UI controls defined by the generator (filtered by dependencies)
+                ...uiMetadata?.controls.filter((control) => shouldShowControl(control, attrs.config)).map((control) => {
                   switch(control.type) {
                   case "range":
                     return m(RangeInputControl, {

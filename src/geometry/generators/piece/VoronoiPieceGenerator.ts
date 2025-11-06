@@ -82,6 +82,11 @@ export const VoronoiPieceGeneratorUIMetadata: GeneratorUIMetadata = {
       defaultValue: 20,
       min: 0,
       max: 60,
+      helpText: 'Distance (in pixels) from whimsy boundaries where seed points are eliminated. Higher values remove more seeds near whimsies.',
+      dependsOn: [
+        { config: 'whimsyMode', value: 'flow' },
+        { config: 'whimsyMode', value: 'adaptive' },
+      ],
     },
     {
       type: 'number',
@@ -90,6 +95,11 @@ export const VoronoiPieceGeneratorUIMetadata: GeneratorUIMetadata = {
       defaultValue: 0.3,
       min: 0.1,
       max: 0.8,
+      helpText: 'Minimum acceptable piece size as a fraction of average piece size. Pieces smaller than this are eliminated or merged. (e.g., 0.3 = 30% of average)',
+      dependsOn: [
+        { config: 'whimsyMode', value: 'adaptive' },
+        { config: 'whimsyMode', value: 'simple+merge' },
+      ],
     },
     {
       type: 'number',
@@ -98,6 +108,10 @@ export const VoronoiPieceGeneratorUIMetadata: GeneratorUIMetadata = {
       defaultValue: 3,
       min: 1,
       max: 5,
+      helpText: 'Number of filtering passes to remove seed points that create undersized pieces. More iterations = more thorough filtering.',
+      dependsOn: [
+        { config: 'whimsyMode', value: 'adaptive' },
+      ],
     },
   ],
 };
