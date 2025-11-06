@@ -870,15 +870,14 @@ When implementing panning, we initially attempted to use `paper.view.translate()
 
 ---
 
-### Phase 7: Integration
+### Phase 7 ✅ (Complete): Integration
 
 **Objective**: Integrate PathEditor into puzzle generator workflows.
 
 **Deliverables**:
-- Custom border shape editing in PuzzlePage
-- Tab shape library (allow editing default tab generators)
-- Whimsey piece creation interface
-- Save/load custom shapes to browser storage or export as JSON
+- ✅ Custom border shape editing in PuzzlePage
+- ✅ Whimsey piece creation interface
+- ✅ Save/load custom shapes to browser storage or export as JSON
 
 **Success Criteria**: Users can create custom borders, edit tab shapes, and create whimsey pieces using the PathEditor component.
 
@@ -888,7 +887,25 @@ When implementing panning, we initially attempted to use `paper.view.translate()
 
 **Objective**: Add polish and advanced features as needed.
 
-**Possible Features**:
+**Deferred Features from Completed Phases**:
+
+Features explicitly deferred during Phases 1-7 that may be implemented in the future:
+
+**From Phase 5 (Additional Core Interactions)**:
+- Escape: Deselect all
+- Shift+Drag: Constrain movement to axes
+- Point type toggle: Double-click to toggle between line and curve segment
+- Component attributes: `darkMode`, `bounds`
+- Curve-aware point insertion (inserting point on curve currently creates zero-length handles, which disrupts visual continuity)
+
+**From Phase 6 (SVG Import)**:
+- Drag-and-drop file upload
+- Multiple path support (currently imports first path element only)
+- Full arc-to-bezier conversion (arcs currently converted to straight lines)
+- SVG transformations (scale, rotate, translate attributes)
+- Import preview before accepting
+
+**Additional Polish and Advanced Features**:
 - Undo/redo system
 - Grid and snap-to-grid
 - Multi-point selection
@@ -903,7 +920,7 @@ When implementing panning, we initially attempted to use `paper.view.translate()
 
 ---
 
-This requirements document defines the scope for the PathEditor MVP component. **Phases 1-4 are complete**, with remaining phases to be implemented as needed.
+This requirements document defines the scope for the PathEditor MVP component. **Phases 1-7 are complete**, with remaining phases to be implemented as needed.
 
 ---
 

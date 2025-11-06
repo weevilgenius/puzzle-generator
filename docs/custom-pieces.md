@@ -325,15 +325,15 @@ function generateCustomPieceThumbnail(
 - [ ] Test with various custom piece configurations
 
 ### Phase 7: Pipeline Integration - Rectangular
-- [ ] Modify RectangularPieceGenerator to accept customPieces
-- [ ] Add overlap detection for grid cells
-- [ ] Implement cell clipping/subdivision
-- [ ] Test with rectangular grids and custom pieces
+- ✅ Modify RectangularPieceGenerator to accept customPieces
+- ✅ Add overlap detection for grid cells
+- ✅ Implement cell clipping/subdivision
+- ✅ Test with rectangular grids and custom pieces
 
 ### Phase 8: Tab Generation
-- [ ] Ensure tabs are not generated on custom piece boundaries
-- [ ] Handle tab placement at custom piece / procedural piece interfaces
-- [ ] Test tab generation with mixed piece types
+- ✅ Ensure tabs are not generated on custom piece boundaries
+- ✅ Handle tab placement at custom piece / procedural piece interfaces
+- ✅ Test tab generation with mixed piece types
 
 ### Phase 9: Polish & Edge Cases
 - [ ] Handle custom pieces near puzzle boundaries
@@ -1056,16 +1056,16 @@ Each mode has its own configuration controls in the UI:
 
 The custom pieces feature will be considered complete when:
 
-1. [ ] Users can create custom pieces by drawing or importing SVG paths
-2. [ ] Validation prevents invalid pieces (open paths, self-intersecting) with clear feedback
-3. [ ] Custom pieces can be positioned, rotated, and scaled on the puzzle canvas
-4. [ ] Multiple custom pieces can be managed (add, edit, delete) through the UI
-5. [ ] Procedural piece generation correctly flows around custom pieces
-6. [ ] Custom pieces appear exactly once in the generated puzzle
-7. [ ] Tabs are handled correctly at custom/procedural piece boundaries
-8. [ ] Performance remains acceptable with up to 10 custom pieces
-9. [ ] Custom pieces persist across puzzle regenerations (seed changes, algorithm changes)
-10. [ ] Documentation and code comments explain the feature for future maintenance
+1. ✅ Users can create custom pieces by drawing or importing SVG paths
+2. ✅ Validation prevents invalid pieces (open paths, self-intersecting) with clear feedback
+3. ✅ Custom pieces can be positioned, rotated, and scaled on the puzzle canvas
+4. ✅ Multiple custom pieces can be managed (add, edit, delete) through the UI
+5. ✅ Procedural piece generation correctly flows around custom pieces
+6. ✅ Custom pieces appear exactly once in the generated puzzle
+7. ✅ Tabs are handled correctly at custom/procedural piece boundaries
+8. ✅ Performance remains acceptable with up to 10 custom pieces
+9. ✅ Custom pieces persist across puzzle regenerations (seed changes, algorithm changes)
+10. ✅ Documentation and code comments explain the feature for future maintenance
 
 ## Conclusion
 
