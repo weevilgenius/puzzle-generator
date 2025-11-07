@@ -6,6 +6,10 @@
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "useDefineForClassFields": true,
     "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "src/*": ["src/*"]
+    },
     "types": [
       "paper", // include global paper.js types even though we only import paper-core
       "vitest/globals" // include vitest globals for test files

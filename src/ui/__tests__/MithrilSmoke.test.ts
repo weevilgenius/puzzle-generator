@@ -1,13 +1,11 @@
 import m from 'mithril';
 import { describe, expect, it } from 'vitest';
-import { screen } from '@testing-library/dom';
 import userEvent from '@testing-library/user-event';
+import { screen } from '@testing-library/dom';
+import { renderComponent } from '../../../tests/utils/mithrilTestHarness';
 
 describe('Mithril smoke component', () => {
   it('mounts a simple component and responds to DOM events', async () => {
-    const root = document.createElement('div');
-    document.body.appendChild(root);
-
     const Counter: m.ClosureComponent = () => {
       const state = { count: 0 };
 
@@ -22,7 +20,7 @@ describe('Mithril smoke component', () => {
       };
     };
 
-    m.mount(root, Counter);
+    const mounted = renderComponent(Counter);
 
     const button = screen.getByRole('button', { name: 'Clicked 0 times' });
     const user = userEvent.setup();
@@ -31,7 +29,6 @@ describe('Mithril smoke component', () => {
 
     expect(screen.getByRole('button', { name: 'Clicked 1 times' })).toBeTruthy();
 
-    m.mount(root, null);
-    root.remove();
+    mounted.unmount();
   });
 });

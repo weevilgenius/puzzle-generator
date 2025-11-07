@@ -8,7 +8,7 @@
   "license": "MIT",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src",
+    "lint": "eslint src tests",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
