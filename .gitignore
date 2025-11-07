@@ -10,5 +10,8 @@ node_modules/
 # typescript build output
 /dist
 
+# unit test coverage
+/coverage
+
 # AI stuff
 .claude

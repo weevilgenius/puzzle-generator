@@ -47,6 +47,24 @@ pnpm install
 pnpm run dev
 ```
 
+### Testing
+
+The project uses [Vitest](https://vitest.dev/) for unit and component coverage.
+
+```bash
+# run the fast suite once (CI friendly)
+pnpm run test
+
+# keep Vitest in watch mode while iterating locally
+pnpm run test:watch
+
+# collect V8 coverage details
+pnpm run test:coverage
+
+# run typecheck, lint, and tests together before a commit
+pnpm run check
+```
+
 Acknowledgements
 ----------------
 

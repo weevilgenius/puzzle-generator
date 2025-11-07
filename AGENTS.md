@@ -12,10 +12,12 @@ Paper.js.
 
 ## Development Commands
 
-Ensure the project compiles and lint checks pass when making changes:
-- Check compilation and lint: `pnpm exec tsc --noEmit && pnpm run lint`
+Ensure the project compiles, lint checks and unit tests pass when making changes:
+- Check compilation: `pnpm run typecheck`
+- Check lint rules: `pnpm run lint`
+- Run tests: `pnpm run test`
+- Check all three: `pnpm run check`
 - Build project: `pnpm run build`
-- Tests are not yet implemented
 
 ## Coding Conventions
 
