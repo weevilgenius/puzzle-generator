@@ -117,7 +117,7 @@ Array of `CustomPiece` objects (`src/geometry/types.ts:200-218`):
 - Not part of "puzzle definition"
 - User re-uploads if needed
 
-#### 6. Manual Seed Point Modifications
+#### 6. Seed Point Editing Mode (Optional Feature)
 
 **Current Behavior** (`src/geometry/PuzzleMaker.ts:130-163`):
 - User drags seed point in UI → triggers full rebuild
@@ -125,56 +125,228 @@ Array of `CustomPiece` objects (`src/geometry/types.ts:200-218`):
 - **Does NOT persist** in separate state
 - Lost when regenerating puzzle (e.g., changing generator config)
 
-**Storage Options**:
+**Recommended Approach: Global "Edit Seed Points" Mode**
 
-**A) Save Modified Seed Points**
+Add an explicit mode toggle that switches between algorithmic generation and edited placement.
+
+**State Changes**:
+```typescript
+interface PageState {
+  // ...
+  seedPointMode: 'generate' | 'edit';
+  editedSeedPoints?: Vec2[];  // Only used when mode is 'edit'
+}
+```
+
+**UI Behavior**:
+
+*Generate Mode (default)*:
+- Point generator picker **enabled**
+- Seed point dragging **disabled** (or prompts to switch to edit mode)
+- Normal generator configuration workflow
+
+*Edit Mode*:
+- Point generator picker **disabled/grayed out** with message: "Using edited seed points"
+- Seed point dragging **enabled**
+- Button: "Reset to Generator" (returns to generate mode)
+- When entering edit mode: captures current puzzle's seed points as starting state
+
+**Integration with Existing Infrastructure**:
+
+The system already supports this via `PuzzleGenerationOptions.seedPoints`:
+```typescript
+// In PuzzlePage, when building puzzle:
+const seedPoints = state.seedPointMode === 'edit'
+  ? state.editedSeedPoints
+  : undefined;  // undefined triggers generation
+
+await buildPuzzle({
+  // ... other options
+  pointConfig: state.generators.point.config,  // Ignored if seedPoints provided
+  seedPoints: seedPoints,  // Bypasses point generator when provided
+});
+```
+
+**Workflow Example**:
+1. User generates puzzle with PoissonPoint generator → 100 points
+2. User clicks "Edit Seed Points" button
+   - Mode switches to 'edit'
+   - Current points copied to `state.editedSeedPoints`
+   - Point generator UI disabled/grayed out
+   - Seed point dragging enabled
+3. User drags seed points → updates `state.editedSeedPoints` → puzzle rebuilds
+4. User changes piece generator or tab settings → still uses edited seed points
+5. User clicks "Reset to Generator" → returns to generate mode with point generator active
+
+**Save Format**:
 ```typescript
 {
-  seedPointOverrides?: {
-    [pieceId: string]: [x, y]  // Only store modified points
+  puzzle: {
+    // ...
+    seedPointMode: 'edit',
+    editedSeedPoints: [[100, 150], [200, 175], ...],
+
+    // Point generator config saved but ignored when in edit mode
+    generators: {
+      point: { name: 'PoissonPointGenerator' },
+      // ...
+    }
   }
 }
 ```
-- Small storage footprint
-- Preserves user intent
-- Apply on load: generate points, then apply overrides
 
-**B) Save All Final Seed Points**
+**Benefits**:
+- **Explicit mode** - User understands they've switched from algorithmic to edited
+- **Clear UI affordance** - Point generator section visibly disabled in edit mode
+- **Uses existing infrastructure** - `seedPoints` parameter already bypasses generation
+- **Persistence** - Edited points saved and restored across sessions
+- **No generator changes needed** - All logic in PuzzlePage state management
+
+**Terminology Note**: Uses "Edit" rather than "Manual" since the UI only allows moving existing generated points, not creating new ones from scratch.
+
+**Alternative Approaches**:
+
+*Option B: Seed Point Overrides (Delta Storage)*
 ```typescript
 {
-  seedPoints: Array<[x, y]>     // Complete array from puzzle.seedPoints
+  seedPointOverrides?: {
+    [index: number]: [x, y]  // Only store modified points
+  }
 }
 ```
-- Captures exact state
-- Bypasses point generator on load
-- Larger storage, but complete
+- Smaller storage footprint (only deltas)
+- More complex: must apply overrides after generation
+- Loses position if point count changes
 
-**C) No Storage**
-- Treat manual edits as temporary
-- Lost on save/load (same as current regeneration behavior)
+*Option C: No Persistence*
+- Treat edits as temporary
 - Simpler implementation
+- Less useful for users wanting to preserve custom layouts
 
 #### 7. Manual Vertex Modifications
 
-**Current Status**: Not yet implemented in UI
+**Current Behavior**:
 - PuzzleRenderer supports vertex dragging visually
-- No callback to persist changes
-- Would require similar approach to seed points
+- Modified positions persist in `puzzle.vertices` array until puzzle regeneration
+- Lost when any generator config changes (triggers rebuild)
 
-**Recommendation**: Defer until feature is implemented
+**Persistence Options**:
 
-### Not Required
+**Option A: Save Complete Geometry**
 
-The following state does NOT need to be saved:
+Include the full `PuzzleGeometry` structure in save files, which automatically captures all vertex edits.
+
+*What Gets Saved*:
+- All vertex positions (including manual edits)
+- Complete half-edge topology (`pieces`, `edges`, `halfEdges`, `boundary`)
+- All tab geometry (Bezier curve segments)
+- Generator configs (for reference/regeneration)
+
+*Size Impact*:
+- **Config-only save**: 1-5 KB
+- **With geometry**: 30-60 KB for typical 100-piece puzzle
+  - Vertices: ~400 × 20 bytes = 8KB
+  - Topology: 5-10KB
+  - Tab segments (Bezier curves): 20-40KB
+  - Total: ~10-60× larger, but still reasonable
+
+*Pros*:
+- Vertex edits automatically preserved (no extra code)
+- Exact puzzle state captured (pixel-perfect reproduction)
+- Fast load (no regeneration needed)
+- Generator evolution doesn't break old saves
+- Simple implementation (serialize existing structure)
+
+*Cons*:
+- Larger files (30-60KB vs 1-5KB)
+- Geometry becomes stale if configs change
+- Redundant (geometry derivable from configs)
+- Maps require conversion for JSON serialization
+
+*Technical Note*:
+```typescript
+// Maps don't serialize to JSON directly
+function serializeGeometry(puzzle: PuzzleGeometry) {
+  return {
+    ...puzzle,
+    pieces: Array.from(puzzle.pieces.entries()),
+    edges: Array.from(puzzle.edges.entries()),
+    halfEdges: Array.from(puzzle.halfEdges.entries()),
+  };
+}
+
+function deserializeGeometry(saved: any): PuzzleGeometry {
+  return {
+    ...saved,
+    pieces: new Map(saved.pieces),
+    edges: new Map(saved.edges),
+    halfEdges: new Map(saved.halfEdges),
+  };
+}
+```
+
+**Option B: Selective Geometry Inclusion**
+
+Save geometry in file downloads, skip in auto-save:
+
+*File Download (explicit save)*:
+- Include full geometry
+- Use case: archival, sharing finished puzzles
+- Vertex edits preserved
+- Larger file acceptable
+
+*LocalStorage auto-save*:
+- Configs only
+- Smaller storage footprint
+- Vertex edits lost on reload (acceptable as temporary tweaks)
+- User can "Download" to preserve edits
+
+*Pros*:
+- Clear user model: "Download preserves everything, auto-save preserves settings"
+- Efficient auto-save (no storage bloat)
+- Vertex preservation when needed
+- Simple implementation (no conditional logic)
+
+*Cons*:
+- Different behavior between auto-save and file save
+- Requires user to explicitly download to preserve vertex edits
+
+**Option C: "Edit Vertices" Mode**
+
+Similar to "Edit Seed Points" mode (section 6):
+- Explicit mode toggle
+- Track which vertices have been modified
+- Persist only deltas or full vertex array
+
+*Pros*:
+- Consistent with seed point approach
+- Explicit user intent
+- Can preserve edits across regeneration
+
+*Cons*:
+- More complex implementation
+- Requires tracking original vs edited positions
+- UI complexity (mode switching)
+
+**Recommendation**: Start with **Option B (Selective Geometry)** in Phase 2:
+- Simple implementation
+- Preserves vertex edits when users explicitly save
+- Efficient auto-save
+- Can evolve to Option A or C if users need more
+
+Current "edits lost on regeneration" behavior is acceptable complexity tradeoff for now.
+
+### Not Required (Config-Only Saves)
+
+The following state does NOT need to be saved in **config-only saves** (but may be included in geometry-inclusive saves):
 
 - **Generated Geometry** (`puzzle.vertices`, `puzzle.pieces`, `puzzle.halfEdges`)
   - Can be regenerated from seed + configs
-  - Very large (complete half-edge data structure)
-  - Would bloat save files significantly
+  - See section 7 for discussion of optionally including geometry
 
 - **UI State** (`dirty`, `geometryProblems`, `customPieceEditorOpen`, etc.)
   - Transient view state
-  - Reset on load
+  - Always reset on load
 
 - **Computed Values** (`aspectRatio`)
   - Derived from other saved values
@@ -410,21 +582,29 @@ debouncedSave(state);
 **Primary: LocalStorage Auto-Save**
 - Auto-save current state on every change (debounced 1-2 seconds)
 - Restore on page load (with "New Puzzle" button to clear)
-- **Exclude** background images from auto-save (too large)
-- **Include** everything else: generators, seed, custom pieces
+- **Configs only**: generators, seed, custom pieces, dimensions, visual settings
+- **Exclude** background images (too large, 5-10MB quota)
+- **Exclude** geometry (vertices, edges, topology - regenerate from configs)
+- File size: ~1-5 KB per save
 
 **Secondary: File Export/Import**
-- "Download Puzzle" button → JSON file with all settings
-- Checkbox: "Include background image as base64" (unchecked by default)
+- "Download Puzzle" button → JSON file
+- **Phase 1**: Configs only (same as auto-save)
+- **Phase 2**: Optional checkboxes:
+  - "Include background image as base64" (unchecked by default)
+  - "Include puzzle geometry" (preserves vertex edits) (unchecked by default)
 - "Load Puzzle" button → File picker → Restore state
 - Support for drag-and-drop JSON files
+- File size: 1-5 KB (configs), 30-60 KB (with geometry), 1-5 MB (with background)
 
 **Manual Modifications**:
-- **Recommended**: Save modified seed points
-  - Store only overrides (delta from generated points)
-  - Small storage footprint
-  - Preserves user intent
-- **Alternative**: Save all final seed points if override tracking is complex
+- **Seed Points**: "Edit Seed Points" mode (Phase 2) - see section 6
+  - Explicit mode toggle
+  - Persists edited points in both auto-save and file export
+- **Vertices**: Selective geometry inclusion (Phase 2) - see section 7
+  - File downloads can optionally include full geometry
+  - Auto-save excludes geometry (acceptable tradeoff)
+  - Current "edits lost on regeneration" behavior is reasonable for now
 
 ### Generator Config Introspection
 
@@ -530,10 +710,22 @@ interface PuzzleSaveFile {
     // Custom Pieces
     customPieces: CustomPiece[];
 
-    // Optional
-    seedPointOverrides?: Record<string, [number, number]>;
+    // Optional Features
+    seedPointMode?: 'generate' | 'edit';  // Defaults to 'generate' if omitted
+    editedSeedPoints?: Array<[number, number]>;  // Only used when mode is 'edit'
     backgroundImage?: string;          // base64 data URL
     backgroundImageName?: string;
+
+    // Optional: Complete Geometry (file downloads only, not auto-save)
+    // Preserves vertex edits and exact puzzle state
+    // See section 7 for detailed discussion
+    geometry?: {
+      vertices: Vertex[];
+      pieces: Array<[PieceID, Piece]>;     // Converted from Map
+      edges: Array<[EdgeID, Edge]>;        // Converted from Map
+      halfEdges: Array<[HalfEdgeID, HalfEdge]>;  // Converted from Map
+      boundary: EdgeID[];
+    };
   };
 }
 ```
@@ -541,17 +733,19 @@ interface PuzzleSaveFile {
 ### Implementation Phases
 
 **Phase 1: Core Save/Load (Essential)**
-- LocalStorage auto-save (exclude background)
-- File download/upload (exclude background)
+- LocalStorage auto-save (configs only, exclude background & geometry)
+- File download (configs only initially)
+- File upload with restoration
 - Restore all generator configs
 - Restore custom pieces
 - UI: "Download" and "Load" buttons
+- Validation on load (check generator names exist, merge with defaults)
 
 **Phase 2: Enhanced Features (Nice-to-Have)**
+- **Geometry inclusion in file downloads** (preserves vertex edits) - see section 7
 - Optional background image in export (checkbox)
-- Seed point override tracking and restoration
+- "Edit Seed Points" mode with persistence (see section 6)
 - "Recent Puzzles" list in UI (from localStorage)
-- Validation on load (check generator names exist)
 
 **Phase 3: Advanced Features (Future)**
 - Puzzle library UI (manage multiple saved puzzles)
@@ -657,18 +851,33 @@ function loadPuzzleFile(jsonString: string): LoadResult {
 ## Summary
 
 **Recommended Implementation**:
-1. **LocalStorage auto-save**: Current state (no background image)
-2. **File download**: JSON export with optional base64 background
-3. **File upload**: Restore from JSON
-4. **Save seed point overrides**: Preserve manual edits
-5. **Exclude background by default**: Keep files small
-6. **Version field**: Enable future migrations
-7. **Validation**: Graceful degradation for missing generators
+
+*Phase 1 - Core Save/Load*:
+1. **LocalStorage auto-save**: Configs only (generators, seed, custom pieces, dimensions)
+2. **File download**: JSON export (configs only initially)
+3. **File upload**: Restore from JSON with validation and defaults merging
+4. **Generator introspection**: Fully automatic, zero maintenance for new generator properties
+5. **Version field**: Enable future migrations
+6. **Validation**: Graceful degradation for missing generators
+
+*Phase 2 - Enhanced Features*:
+7. **Optional geometry in file exports**: Checkbox to include full puzzle geometry (preserves vertex edits)
+8. **Optional background in file exports**: Checkbox to include base64 background image
+9. **Edit Seed Points mode**: Explicit mode toggle for persistent seed point editing
+10. **Recent Puzzles list**: UI for managing multiple saved puzzles from localStorage
 
 **Estimated Impact**:
-- **File Size (no background)**: 1-5 KB typical
-- **File Size (with background)**: 1-5 MB typical (depends on image)
-- **LocalStorage Usage**: <10 KB per auto-save
-- **Implementation Effort**: ~2-3 days for Phase 1
+- **LocalStorage auto-save**: 1-5 KB (configs only, fits quota easily)
+- **File download (config-only)**: 1-5 KB (Phase 1)
+- **File download (with geometry)**: 30-60 KB for 100-piece puzzle (Phase 2)
+- **File download (with background)**: 1-5 MB depending on image (Phase 2)
+- **Implementation Effort**: ~2-3 days for Phase 1, ~3-5 days total for Phase 2
 
-This approach balances user convenience (auto-save), portability (file export), and flexibility (optional background images) while maintaining the project's static SPA architecture.
+**Key Design Decisions**:
+- **Auto-save excludes geometry**: Regenerate from configs on reload (acceptable tradeoff)
+- **File exports can include geometry**: User choice via checkbox (preserves vertex edits when needed)
+- **Background images optional**: Default unchecked to keep files small
+- **Edit modes explicit**: Separate "Edit Seed Points" mode with clear UI affordances
+- **Generator independence**: Save system completely decoupled from generator implementations
+
+This approach balances user convenience (auto-save), portability (file export), flexibility (optional inclusions), and performance (small auto-saves) while maintaining the project's static SPA architecture.
