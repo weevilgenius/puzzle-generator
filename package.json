@@ -57,5 +57,8 @@
     "paper": "^0.12.18",
     "poisson-disk-sampling": "^2.3.1",
     "svg-arc-to-cubic-bezier": "^3.2.0"
+  },
+  "overrides": {
+    "rollup": ">=4.53.1"
   }
 }
