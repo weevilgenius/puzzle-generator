@@ -1,5 +1,4 @@
 import m from 'mithril';
-import { describe, expect, it } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { screen } from '@testing-library/dom';
 import { renderComponent } from '../../../tests/utils/mithrilTestHarness';
