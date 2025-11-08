@@ -53,7 +53,7 @@
     "bezier-js": "^6.1.4",
     "d3-delaunay": "^6.0.4",
     "martinez-polygon-clipping": "^0.7.4",
-    "mithril": "^2.3.7",
+    "mithril": "^2.3.8",
     "paper": "^0.12.18",
     "poisson-disk-sampling": "^2.3.1",
     "svg-arc-to-cubic-bezier": "^3.2.0"
