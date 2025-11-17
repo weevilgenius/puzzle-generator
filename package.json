@@ -33,7 +33,7 @@
     "@types/node": "22.18.12",
     "@types/poisson-disk-sampling": "^2.2.4",
     "@types/svg-arc-to-cubic-bezier": "^3.2.3",
-    "@typescript-eslint/utils": "^8.46.3",
+    "@typescript-eslint/utils": "^8.46.4",
     "@vitest/coverage-v8": "^4.0.8",
     "eslint": "^9.39.1",
     "eslint-plugin-unused-imports": "^4.3.0",
