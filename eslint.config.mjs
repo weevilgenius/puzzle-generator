@@ -32,9 +32,7 @@ export default tseslint.config(
     languageOptions: {
       parser: "@typescript-eslint/parser",
       parserOptions: {
-        projectService: {
-          defaultProject: 'tsconfig.json',
-        },
+        project: ['./tsconfig.json', './tsconfig.node.json'],
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -189,11 +187,6 @@ export default tseslint.config(
       globals: {
         ...globals.es2021,
         ...globals.node,
-      },
-      parserOptions: {
-        projectService: {
-          defaultProject: 'tsconfig.node.json',
-        },
       },
     },
   },
