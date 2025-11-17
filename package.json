@@ -30,7 +30,7 @@
     "@types/bezier-js": "^4.1.3",
     "@types/d3-delaunay": "^6.0.4",
     "@types/mithril": "^2.2.7",
-    "@types/node": "22.18.12",
+    "@types/node": "24.10.1",
     "@types/poisson-disk-sampling": "^2.2.4",
     "@types/svg-arc-to-cubic-bezier": "^3.2.3",
     "@typescript-eslint/utils": "^8.46.3",
