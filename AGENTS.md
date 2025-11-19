@@ -131,6 +131,34 @@ Ensure the project compiles, lint checks and unit tests pass when making changes
   Custom event names such as `wa-tab-show` can be attached using Mithril's convenience `on` prefix like this: `'onwa-tab-show': (e: WaTabShowEvent) => { ... }`
 - **Documentation**: Consult component usage, properties, and events at https://webawesome.com/docs/components/
 
+#### Web Awesome CSS Color Variables
+
+Web Awesome provides a comprehensive color system with CSS variables for theming and consistent styling:
+
+- **Color scales** - Each hue has 11 tints using the format `--wa-color-{hue}-{tint}` where tint ranges from 05 (near black) to 95 (near white)
+  - Available hues: red, orange, yellow, green, cyan, blue, purple, magenta, gray, etc.
+  - Example: `--wa-color-red-50`, `--wa-color-blue-70`
+- **Accessibility contrast ratios** - Use tint differences to ensure WCAG 2.1 compliance:
+  - Difference of 40 = minimum 3:1 contrast (large text/icons, AA)
+  - Difference of 50 = minimum 4.5:1 contrast (normal text AA, large text AAA)
+  - Difference of 60 = minimum 7:1 contrast (all text AAA)
+- **Semantic groups** - Any hue can be mapped to semantic scales: `brand`, `neutral`, `success`, `warning`, `danger`
+  - Use format `--wa-color-{group}-{tint}` (e.g., `--wa-color-brand-60`)
+- **Surface colors** - Convey hierarchy through elevation:
+  - `--wa-color-surface-raised` (closest to user, e.g., dialogs)
+  - `--wa-color-surface-default` (base level)
+  - `--wa-color-surface-lowered` (farthest, e.g., wells)
+  - `--wa-color-surface-border` (borders and dividers)
+- **Text colors** - Standard text elements (maintain 4.5:1 contrast with surfaces):
+  - `--wa-color-text-normal` (primary text)
+  - `--wa-color-text-quiet` (secondary text)
+  - `--wa-color-text-link` (hyperlinks)
+- **Semantic colors** - Contextual colors using format `--wa-color-{group}-{role}-{attention}`:
+  - Groups: `brand`, `success`, `neutral`, `warning`, `danger`
+  - Roles: `fill` (backgrounds), `border` (strokes), `on` (content on fills)
+  - Attention levels: `quiet` (least), `normal`, `loud` (most)
+  - Example: `--wa-color-danger-fill-loud` paired with `--wa-color-danger-on-loud`
+
 #### Paper.js Scope Management
 
 **CRITICAL**: This project uses **isolated Paper.js scopes** with **explicit scope activation** to prevent conflicts between multiple Paper.js instances (e.g., PuzzleRenderer and PathEditor).
