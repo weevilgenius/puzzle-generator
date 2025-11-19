@@ -8,6 +8,8 @@ laser cutter or CNC machine for making physical puzzles.
 
 Use the tool [here](https://weevilgenius.github.io/puzzle-generator/).
 
+See [CHANGELOG.md](./CHANGELOG.md) for a history of changes in each release.
+
 Project Goals
 -------------
 
