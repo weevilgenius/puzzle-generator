@@ -1,12 +1,9 @@
 .generator-picker {
-  border: 1px solid #ccc;
+  border: 1px solid var(--wa-color-surface-border);
+  border-radius: 0.5rem;
+  background-color: var(--wa-color-surface-default);
   border-radius: 5px;
   max-width: 500px;
-}
-
-/* dark mode */
-.wa-dark .generator-picker {
-  border: 1px solid #333;
 }
 
 .generator-picker .controls {

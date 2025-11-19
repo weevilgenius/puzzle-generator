@@ -20,5 +20,5 @@
 /* Mode indicator text */
 .path-editor .mode-indicator {
   font-size: 12px;
-  color: #666;
+  color: var(--wa-color-text-quiet);
 }

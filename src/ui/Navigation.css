@@ -1,14 +1,9 @@
 /* Navigation menu styles */
 .navigation {
-  background: var(--wa-color-neutral-50);
-  border-bottom: 1px solid var(--wa-color-neutral-200);
+  background: var(--wa-color-surface-default);
+  border-bottom: 1px solid var(--wa-color-surface-border);
   padding: 0.5rem 1rem;
   margin-bottom: 1rem;
-}
-
-.wa-dark .navigation {
-  background: var(--wa-color-neutral-900);
-  border-bottom-color: var(--wa-color-neutral-700);
 }
 
 .nav-links {

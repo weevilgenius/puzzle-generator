@@ -3,9 +3,9 @@
   flex-direction: column;
   gap: 1rem;
   padding: 1rem;
-  border: 1px solid var(--wa-color-neutral-200);
+  border: 1px solid var(--wa-color-surface-border);
   border-radius: 0.5rem;
-  background-color: var(--wa-color-neutral-50);
+  background-color: var(--wa-color-surface-default);
 }
 
 .whimsy-manager-header {
@@ -19,7 +19,7 @@
   margin: 0;
   font-size: 1.125rem;
   font-weight: 600;
-  color: var(--wa-color-neutral-900);
+  color: var(--wa-color-text-normal);
 }
 
 /* Grid of custom piece tiles */
@@ -38,7 +38,7 @@
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  color: var(--wa-color-neutral-500);
+  color: var(--wa-color-text-quiet);
   text-align: center;
 }
 
@@ -48,80 +48,80 @@
 
 .whimsy-empty-state .hint {
   font-size: 0.875rem;
-  color: var(--wa-color-neutral-400);
+  color: var(--wa-color-text-quiet);
 }
 
 /* Individual tile */
-.whimsy-tile {
+.custom-piece-tile {
   position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   padding: 0.5rem;
-  border: 2px solid var(--wa-color-neutral-200);
+  border: 2px solid var(--wa-color-surface-border);
   border-radius: 0.375rem;
-  background-color: var(--wa-color-neutral-0);
+  background-color: var(--wa-color-surface-raised);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.whimsy-tile:hover {
-  border-color: var(--wa-color-primary-400);
+.custom-piece-tile:hover {
+  border-color: var(--wa-color-brand-border-quiet);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.whimsy-tile.selected {
-  border-color: var(--wa-color-primary-600);
-  background-color: var(--wa-color-primary-50);
-  box-shadow: 0 0 0 2px var(--wa-color-primary-100);
+.custom-piece-tile.selected {
+  border-color: var(--wa-color-brand-border-normal);
+  background-color: var(--wa-color-brand-fill-quiet);
+  box-shadow: 0 0 0 2px var(--wa-color-brand-border-quiet);
 }
 
 /* Thumbnail */
-.whimsy-tile-thumbnail {
+.custom-piece-tile-thumbnail {
   width: 100%;
   aspect-ratio: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--wa-color-neutral-100);
+  background-color: var(--wa-color-surface-lowered);
   border-radius: 0.25rem;
   overflow: hidden;
 }
 
-.whimsy-tile-thumbnail img {
+.custom-piece-tile-thumbnail img {
   width: 100%;
   height: 100%;
   object-fit: contain;
 }
 
-.whimsy-tile-placeholder {
+.custom-piece-tile-placeholder {
   font-size: 2rem;
-  color: var(--wa-color-neutral-300);
+  color: var(--wa-color-text-quiet);
 }
 
 /* Name */
-.whimsy-tile-name {
+.custom-piece-tile-name {
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--wa-color-neutral-700);
+  color: var(--wa-color-text-normal);
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.whimsy-tile.selected .whimsy-tile-name {
-  color: var(--wa-color-primary-700);
+.custom-piece-tile.selected .custom-piece-tile-name {
+  color: var(--wa-color-brand-on-normal);
 }
 
 /* Selection indicator */
-.whimsy-tile-selected-indicator {
+.custom-piece-tile-selected-indicator {
   position: absolute;
   top: 0.25rem;
   right: 0.25rem;
-  color: var(--wa-color-primary-600);
+  color: var(--wa-color-brand-on-normal);
   font-size: 1.25rem;
-  background-color: var(--wa-color-neutral-0);
+  background-color: var(--wa-color-surface-raised);
   border-radius: 50%;
 }
 
@@ -131,54 +131,10 @@
   gap: 0.5rem;
   flex-wrap: wrap;
   padding-top: 0.5rem;
-  border-top: 1px solid var(--wa-color-neutral-200);
+  border-top: 1px solid var(--wa-color-surface-border);
 }
 
 .whimsy-actions wa-button {
   flex: 1;
   min-width: 100px;
-}
-
-/* Dark mode adjustments */
-@media (prefers-color-scheme: dark) {
-  .whimsy-manager {
-    background-color: var(--wa-color-neutral-900);
-    border-color: var(--wa-color-neutral-700);
-  }
-
-  .whimsy-manager-header h3 {
-    color: var(--wa-color-neutral-100);
-  }
-
-  .whimsy-tile {
-    background-color: var(--wa-color-neutral-800);
-    border-color: var(--wa-color-neutral-700);
-  }
-
-  .whimsy-tile.selected {
-    background-color: var(--wa-color-primary-950);
-    border-color: var(--wa-color-primary-500);
-    box-shadow: 0 0 0 2px var(--wa-color-primary-900);
-  }
-
-  .whimsy-tile-thumbnail {
-    background-color: var(--wa-color-neutral-700);
-  }
-
-  .whimsy-tile-name {
-    color: var(--wa-color-neutral-300);
-  }
-
-  .whimsy-tile.selected .whimsy-tile-name {
-    color: var(--wa-color-primary-300);
-  }
-
-  .whimsy-tile-selected-indicator {
-    background-color: var(--wa-color-neutral-800);
-    color: var(--wa-color-primary-400);
-  }
-
-  .whimsy-actions {
-    border-top-color: var(--wa-color-neutral-700);
-  }
 }

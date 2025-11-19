@@ -39,7 +39,7 @@
 
 .container > .controls .background-image-label {
   padding: 2px 0.5em;
-  color: var(--wa-color-neutral-60);
+  color: var(--wa-color-text-quiet);
 }
 
 .container button {

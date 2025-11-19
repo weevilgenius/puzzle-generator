@@ -7,7 +7,7 @@
 
 .geometry-check-indicator #check-geometry-now wa-icon {
   font-size: 24px;
-  color: var(--wa-color-neutral-80);
+  color: var(--wa-color-text-normal);
 }
 
 .geometry-check-indicator wa-progress-bar {
