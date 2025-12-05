@@ -52,7 +52,7 @@
     "@awesome.me/webawesome": "3.0.0",
     "bezier-js": "^6.1.4",
     "d3-delaunay": "^6.0.4",
-    "martinez-polygon-clipping": "^0.7.4",
+    "martinez-polygon-clipping": "^0.8.0",
     "mithril": "^2.3.8",
     "paper": "^0.12.18",
     "poisson-disk-sampling": "^2.3.1",
