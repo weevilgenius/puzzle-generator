@@ -14,10 +14,13 @@ updates:
     commit-message:
       prefix: deps
     groups: # groups of dependencies to be updated together in one pull request
-      vite:
+      test:
         patterns:
-          - "vite*"
-          - rollup-plugin-visualizer
+          - vitest
+          - happy-dom
+          - sinon
+          - "@vitest/*"
+          - "@testing-library/*"
       lint:
         patterns:
           - "@eslint/js"
