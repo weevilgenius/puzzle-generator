@@ -20,6 +20,7 @@ import type {
 import { getUniqueId } from "../utils/UniqueId";
 import { Bezier } from "bezier-js";
 import arcToBezier from 'svg-arc-to-cubic-bezier';
+import type { MartinezPolygon, MartinezGeometry } from './martinezTypes';
 import * as martinez from 'martinez-polygon-clipping';
 import type { TabGenerator } from "./generators/tab/TabGenerator";
 
@@ -613,8 +614,8 @@ export function mergePieces(
   }
 
   // 2. Union them using martinez polygon clipping
-  const martinezA: martinez.Polygon = [polyA.map((p) => [p[0], p[1]])];
-  const martinezB: martinez.Polygon = [polyB.map((p) => [p[0], p[1]])];
+  const martinezA: MartinezPolygon = [polyA.map((p) => [p[0], p[1]])];
+  const martinezB: MartinezPolygon = [polyB.map((p) => [p[0], p[1]])];
 
   const union = martinez.union(martinezA, martinezB);
 
@@ -1076,7 +1077,7 @@ export function isPointInBoundary(
 }
 
 // type guard for Martinez library return values
-function isMartinezPolygon(geometry: martinez.Geometry): geometry is martinez.Polygon {
+function isMartinezPolygon(geometry: MartinezGeometry): geometry is MartinezPolygon {
   return Array.isArray(geometry[0]) && Array.isArray(geometry[0][0]) && typeof geometry[0][0][0] === 'number';
 }
 
@@ -1093,8 +1094,8 @@ export function clipPolygonAgainstBoundary(polygon: Vec2[], boundary: Vec2[]): V
   // use the martinez-polygon-clipping library to handle clipping
   // It expects input in a specific GeoJSON-like format, so we must wrap our
   // simple polygons in arrays to match.
-  const subject = [polygon.map((p) => ([p[0], p[1]]))];
-  const clipper = [boundary.map((p) => ([p[0], p[1]]))];
+  const subject: MartinezPolygon = [polygon.map((p) => [p[0], p[1]] as const)];
+  const clipper: MartinezPolygon = [boundary.map((p) => [p[0], p[1]] as const)];
 
   const clipped = martinez.intersection(subject, clipper);
 

@@ -1,4 +1,5 @@
 import type { CustomPiece, CustomPieceTransform, Vec2, PathCommand, PuzzleTopology, Piece } from "./types";
+import type { MartinezPolygon, MartinezMultiPolygon } from "./martinezTypes";
 import { polygonBounds, isPointInPolygon, doAABBsIntersect, createHalfEdgeLoop } from "./utils";
 import * as martinez from 'martinez-polygon-clipping';
 
@@ -219,12 +220,12 @@ export function subtractCustomPieces(
   customPieces: CustomPiece[]
 ): Vec2[][] | null {
   // Start with the original cell
-  let result: martinez.Polygon | martinez.MultiPolygon = [cell.map((p) => [p[0], p[1]])];
+  let result: MartinezPolygon | MartinezMultiPolygon = [cell.map((p) => [p[0], p[1]])];
 
   // Subtract each custom piece from the result
   for (const customPiece of customPieces) {
     const customPolygon = customPieceToPolygon(customPiece);
-    const customMartinez: martinez.Polygon = [customPolygon.map((p) => [p[0], p[1]])];
+    const customMartinez: MartinezPolygon = [customPolygon.map((p) => [p[0], p[1]])];
 
     // Perform difference operation: result - customPiece
     const clipped = martinez.diff(result, customMartinez);
