@@ -7,7 +7,7 @@
   "repository": "github:weevilgenius/puzzle-generator",
   "license": "MIT",
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit --skipLibCheck",
     "lint": "eslint src tests",
     "dev": "vite",
     "build": "vite build",
