@@ -27,7 +27,6 @@ import {
 import {
   customPieceToPolygon,
 } from '../../customPieces';
-import type { MartinezPolygon, MartinezMultiPolygon } from '../../martinezTypes';
 import * as martinez from 'martinez-polygon-clipping';
 import type { GeneratorUIMetadata } from '../../ui_types';
 import type { GeneratorConfig, GeneratorFactory } from "../Generator";
@@ -272,10 +271,10 @@ export const RectangularPieceGeneratorFactory: GeneratorFactory<PieceGenerator> 
 
             if (overlappingPolygons.length > 0) {
               // Subtract the grid-split custom piece polygons from this cell
-              let result: MartinezPolygon | MartinezMultiPolygon = [pieceVertices.map((p) => [p[0], p[1]])];
+              let result: martinez.Polygon | martinez.MultiPolygon = [pieceVertices.map((p) => [p[0], p[1]] as const)];
 
               for (const cpSplit of overlappingPolygons) {
-                const customMartinez: MartinezPolygon = [cpSplit.map((p) => [p[0], p[1]])];
+                const customMartinez: martinez.Polygon = [cpSplit.map((p) => [p[0], p[1]] as const)];
                 const clipped = martinez.diff(result, customMartinez);
 
                 if (!clipped || clipped.length === 0) {
