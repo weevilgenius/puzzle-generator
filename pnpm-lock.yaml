@@ -18,8 +18,8 @@ importers:
         specifier: ^6.0.4
         version: 6.0.4
       martinez-polygon-clipping:
-        specifier: ^0.8.0
-        version: 0.8.0
+        specifier: ^0.8.1
+        version: 0.8.1
       mithril:
         specifier: ^2.3.8
         version: 2.3.8
@@ -1159,8 +1159,8 @@ packages:
     resolution: {integrity: sha512-hXdUTZYIVOt1Ex//jAQi+wTZZpUpwBj/0QsOzqegb3rGMMeJiSEu5xLHnYfBrRV4RH2+OCSOO95Is/7x1WJ4bw==}
     engines: {node: '>=10'}
 
-  martinez-polygon-clipping@0.8.0:
-    resolution: {integrity: sha512-gykaCjUmB5SQdB6WDLxE6onklXFj4nhgsijMKP8+j2s0Gb6LtBXtz37ZUcAMND5ekSNwCLZXhOsYVwLjrf50eQ==}
+  martinez-polygon-clipping@0.8.1:
+    resolution: {integrity: sha512-9PLLMzMPI6ihHox4Ns6LpVBLpRc7sbhULybZ/wyaY8sY3ECNe2+hxm1hA2/9bEEpRrdpjoeduBuZLg2aq1cSIQ==}
 
   merge2@1.4.1:
     resolution: {integrity: sha512-8q7VEgMJW4J8tcfVPy8g09NcQwZdbwFEqhe/WZkoIzjn/3TGDwtOCYtXGxA3O8tPzpczCCDgv+P2P5y00ZJOOg==}
@@ -2583,7 +2583,7 @@ snapshots:
     dependencies:
       semver: 7.7.3
 
-  martinez-polygon-clipping@0.8.0:
+  martinez-polygon-clipping@0.8.1:
     dependencies:
       robust-predicates: 2.0.4
       splaytree: 0.1.4
