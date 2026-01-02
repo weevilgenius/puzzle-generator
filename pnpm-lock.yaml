@@ -58,8 +58,8 @@ importers:
         specifier: ^2.2.7
         version: 2.2.7
       '@types/node':
-        specifier: ^24.10.4
-        version: 24.10.4
+        specifier: ^25.0.3
+        version: 25.0.3
       '@types/poisson-disk-sampling':
         specifier: ^2.2.4
         version: 2.2.4
@@ -71,7 +71,7 @@ importers:
         version: 8.51.0(eslint@9.39.2)(typescript@5.9.3)
       '@vitest/coverage-v8':
         specifier: ^4.0.16
-        version: 4.0.16(vitest@4.0.16(@types/node@24.10.4)(happy-dom@20.0.11))
+        version: 4.0.16(vitest@4.0.16(@types/node@25.0.3)(happy-dom@20.0.11))
       eslint:
         specifier: ^9.39.2
         version: 9.39.2
@@ -104,10 +104,10 @@ importers:
         version: 8.51.0(eslint@9.39.2)(typescript@5.9.3)
       vite:
         specifier: ^7.3.0
-        version: 7.3.0(@types/node@24.10.4)
+        version: 7.3.0(@types/node@25.0.3)
       vitest:
         specifier: ^4.0.16
-        version: 4.0.16(@types/node@24.10.4)(happy-dom@20.0.11)
+        version: 4.0.16(@types/node@25.0.3)(happy-dom@20.0.11)
 
 packages:
 
@@ -574,8 +574,8 @@ packages:
   '@types/node@20.19.27':
     resolution: {integrity: sha512-N2clP5pJhB2YnZJ3PIHFk5RkygRX5WO/5f0WC08tp0wd+sv0rsJk3MqWn3CbNmT2J505a5336jaQj4ph1AdMug==}
 
-  '@types/node@24.10.4':
-    resolution: {integrity: sha512-vnDVpYPMzs4wunl27jHrfmwojOGKya0xyM3sH+UE5iv5uPS6vX7UIoh6m+vQc5LGBq52HBKPIn/zcSZVzeDEZg==}
+  '@types/node@25.0.3':
+    resolution: {integrity: sha512-W609buLVRVmeW693xKfzHeIV6nJGGz98uCPfeXI1ELMLXVeKYZ9m15fAMSaUPBHYLGFsVRcMmSCksQOrZV9BYA==}
 
   '@types/poisson-disk-sampling@2.2.4':
     resolution: {integrity: sha512-S91hu3CW2P9Aib0uN0VO3VnL6BqlDFcmduHbcxW+I6/DwZjPkzgQM7zQaIscqxNg7aIm+QhXIFe4RSN2xFjL6g==}
@@ -1934,7 +1934,7 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
-  '@types/node@24.10.4':
+  '@types/node@25.0.3':
     dependencies:
       undici-types: 7.16.0
 
@@ -2041,7 +2041,7 @@ snapshots:
       '@typescript-eslint/types': 8.51.0
       eslint-visitor-keys: 4.2.1
 
-  '@vitest/coverage-v8@4.0.16(vitest@4.0.16(@types/node@24.10.4)(happy-dom@20.0.11))':
+  '@vitest/coverage-v8@4.0.16(vitest@4.0.16(@types/node@25.0.3)(happy-dom@20.0.11))':
     dependencies:
       '@bcoe/v8-coverage': 1.0.2
       '@vitest/utils': 4.0.16
@@ -2054,7 +2054,7 @@ snapshots:
       obug: 2.1.1
       std-env: 3.10.0
       tinyrainbow: 3.0.3
-      vitest: 4.0.16(@types/node@24.10.4)(happy-dom@20.0.11)
+      vitest: 4.0.16(@types/node@25.0.3)(happy-dom@20.0.11)
     transitivePeerDependencies:
       - supports-color
 
@@ -2067,13 +2067,13 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.0.3
 
-  '@vitest/mocker@4.0.16(vite@7.3.0(@types/node@24.10.4))':
+  '@vitest/mocker@4.0.16(vite@7.3.0(@types/node@25.0.3))':
     dependencies:
       '@vitest/spy': 4.0.16
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 7.3.0(@types/node@24.10.4)
+      vite: 7.3.0(@types/node@25.0.3)
 
   '@vitest/pretty-format@4.0.16':
     dependencies:
@@ -2856,7 +2856,7 @@ snapshots:
     dependencies:
       punycode: 2.3.1
 
-  vite@7.3.0(@types/node@24.10.4):
+  vite@7.3.0(@types/node@25.0.3):
     dependencies:
       esbuild: 0.27.2
       fdir: 6.5.0(picomatch@4.0.3)
@@ -2865,13 +2865,13 @@ snapshots:
       rollup: 4.54.0
       tinyglobby: 0.2.15
     optionalDependencies:
-      '@types/node': 24.10.4
+      '@types/node': 25.0.3
       fsevents: 2.3.3
 
-  vitest@4.0.16(@types/node@24.10.4)(happy-dom@20.0.11):
+  vitest@4.0.16(@types/node@25.0.3)(happy-dom@20.0.11):
     dependencies:
       '@vitest/expect': 4.0.16
-      '@vitest/mocker': 4.0.16(vite@7.3.0(@types/node@24.10.4))
+      '@vitest/mocker': 4.0.16(vite@7.3.0(@types/node@25.0.3))
       '@vitest/pretty-format': 4.0.16
       '@vitest/runner': 4.0.16
       '@vitest/snapshot': 4.0.16
@@ -2888,10 +2888,10 @@ snapshots:
       tinyexec: 1.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 3.0.3
-      vite: 7.3.0(@types/node@24.10.4)
+      vite: 7.3.0(@types/node@25.0.3)
       why-is-node-running: 2.3.0
     optionalDependencies:
-      '@types/node': 24.10.4
+      '@types/node': 25.0.3
       happy-dom: 20.0.11
     transitivePeerDependencies:
       - jiti
