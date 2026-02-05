@@ -108,7 +108,10 @@ Ensure the project compiles, lint checks and unit tests pass when making changes
 
 #### Web Awesome Components
 
-- **Use Web Awesome for standard UI controls** - For basic UI elements like buttons, checkboxes, color pickers, sliders, etc., prefer Web Awesome components over custom HTML implementations
+- **Use Web Awesome for standard UI controls** - For basic UI elements like buttons,
+  checkboxes, color pickers, sliders, etc., prefer Web Awesome components over custom
+  HTML implementations. See node_modules/@awesome.me/webawesome/dist/llms.txt for detailed
+  documentation.
 - **Benefits**: Web Awesome (derived from Shoelace) provides standardized, accessible UI components with consistent styling and behavior
 - **Import pattern**: Import the component registration (side-effect) and the TypeScript type (if needed)
   ```ts
