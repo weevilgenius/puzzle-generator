@@ -71,7 +71,7 @@ importers:
         version: 8.54.0(eslint@9.39.2)(typescript@5.9.3)
       '@vitest/coverage-v8':
         specifier: ^4.0.18
-        version: 4.0.18(vitest@4.0.18(@types/node@24.10.11)(happy-dom@20.5.0))
+        version: 4.0.18(vitest@4.0.18(@types/node@24.10.11)(happy-dom@20.6.1))
       eslint:
         specifier: ^9.39.2
         version: 9.39.2
@@ -85,8 +85,8 @@ importers:
         specifier: ^17.3.0
         version: 17.3.0
       happy-dom:
-        specifier: ^20.5.0
-        version: 20.5.0
+        specifier: ^20.6.1
+        version: 20.6.1
       lit:
         specifier: ^3.3.2
         version: 3.3.2
@@ -107,7 +107,7 @@ importers:
         version: 7.3.1(@types/node@24.10.11)
       vitest:
         specifier: ^4.0.18
-        version: 4.0.18(@types/node@24.10.11)(happy-dom@20.5.0)
+        version: 4.0.18(@types/node@24.10.11)(happy-dom@20.6.1)
 
 packages:
 
@@ -867,8 +867,8 @@ packages:
   emoji-regex@8.0.0:
     resolution: {integrity: sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==}
 
-  entities@4.5.0:
-    resolution: {integrity: sha512-V0hjH4dGPh9Ao5p0MoRY6BVqtwCjhz6vI5LT8AJ55H+4g9/4vbHx1I54fS0XuclLhDHArPQCiMjDxjaL8fPxhw==}
+  entities@6.0.1:
+    resolution: {integrity: sha512-aN97NXWF6AWBTahfVOIrB/NShkzi5H7F9r1s9mD3cDj4Ko5f2qhhVoYMibXF7GlLveb/D2ioWay8lxI97Ven3g==}
     engines: {node: '>=0.12'}
 
   es-module-lexer@1.7.0:
@@ -1050,8 +1050,8 @@ packages:
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
 
-  happy-dom@20.5.0:
-    resolution: {integrity: sha512-VQe+Q5CYiGOgcCERXhcfNsbnrN92FDEKciMH/x6LppU9dd0j4aTjCTlqONFOIMcAm/5JxS3+utowbXV1OoFr+g==}
+  happy-dom@20.6.1:
+    resolution: {integrity: sha512-+0vhESXXhFwkdjZnJ5DlmJIfUYGgIEEjzIjB+aKJbFuqlvvKyOi+XkI1fYbgYR9QCxG5T08koxsQ6HrQfa5gCQ==}
     engines: {node: '>=20.0.0'}
 
   has-flag@4.0.0:
@@ -2087,7 +2087,7 @@ snapshots:
       '@typescript-eslint/types': 8.54.0
       eslint-visitor-keys: 4.2.1
 
-  '@vitest/coverage-v8@4.0.18(vitest@4.0.18(@types/node@24.10.11)(happy-dom@20.5.0))':
+  '@vitest/coverage-v8@4.0.18(vitest@4.0.18(@types/node@24.10.11)(happy-dom@20.6.1))':
     dependencies:
       '@bcoe/v8-coverage': 1.0.2
       '@vitest/utils': 4.0.18
@@ -2099,7 +2099,7 @@ snapshots:
       obug: 2.1.1
       std-env: 3.10.0
       tinyrainbow: 3.0.3
-      vitest: 4.0.18(@types/node@24.10.11)(happy-dom@20.5.0)
+      vitest: 4.0.18(@types/node@24.10.11)(happy-dom@20.6.1)
 
   '@vitest/expect@4.0.18':
     dependencies:
@@ -2265,7 +2265,7 @@ snapshots:
 
   emoji-regex@8.0.0: {}
 
-  entities@4.5.0: {}
+  entities@6.0.1: {}
 
   es-module-lexer@1.7.0: {}
 
@@ -2487,12 +2487,12 @@ snapshots:
 
   graceful-fs@4.2.11: {}
 
-  happy-dom@20.5.0:
+  happy-dom@20.6.1:
     dependencies:
       '@types/node': 24.10.11
       '@types/whatwg-mimetype': 3.0.2
       '@types/ws': 8.18.1
-      entities: 4.5.0
+      entities: 6.0.1
       whatwg-mimetype: 3.0.0
       ws: 8.19.0
     transitivePeerDependencies:
@@ -2912,7 +2912,7 @@ snapshots:
       '@types/node': 24.10.11
       fsevents: 2.3.3
 
-  vitest@4.0.18(@types/node@24.10.11)(happy-dom@20.5.0):
+  vitest@4.0.18(@types/node@24.10.11)(happy-dom@20.6.1):
     dependencies:
       '@vitest/expect': 4.0.18
       '@vitest/mocker': 4.0.18(vite@7.3.1(@types/node@24.10.11))
@@ -2936,7 +2936,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 24.10.11
-      happy-dom: 20.5.0
+      happy-dom: 20.6.1
     transitivePeerDependencies:
       - jiti
       - less
