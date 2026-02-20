@@ -11,11 +11,12 @@ export default defineConfig(() => {
     // add the visualizer to see the module break-down
     plugins.push(
       visualizer({
-        open: true,
         filename: 'dist/stats.html',
+        template: 'treemap', // Report type: sunburst, treemap, network, raw-data, list, markdown, flamegraph
+        open: true,
         gzipSize: true,
         brotliSize: true,
-      })
+      }) as PluginOption
     );
   }
 
