@@ -1,4 +1,5 @@
 import eslint from "@eslint/js";
+import { defineConfig } from 'eslint/config';
 import tseslint from "typescript-eslint";
 import stylistic from '@stylistic/eslint-plugin';
 import unusedImports from "eslint-plugin-unused-imports";
@@ -8,9 +9,7 @@ import globals from "globals";
 // this configures ESLint using their new flat config system
 // https://eslint.org/docs/latest/use/configure/configuration-files
 
-// the .config() helper function simply returns each of the objects unmodified
-// but adds typing, making it easier to edit in VSCode
-export default tseslint.config(
+export default defineConfig(
 
   // config that contains only ignores is replacement for .eslintignore
   {
@@ -134,6 +133,9 @@ export default tseslint.config(
         prefer: "type-imports",
         fixStyle: "inline-type-imports",
       }],
+
+      // flag import { type A, type B } when all imports are types
+      "@typescript-eslint/no-import-type-side-effects": "warn",
 
       // Paper.js safety (for this project only)
       "paper-safety/no-paper-global": "error",

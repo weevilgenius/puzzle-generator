@@ -3,7 +3,7 @@
  * This module provides functions to render PuzzleGeometry using Paper.js.
  */
 
-import { type PaperContext } from '../utils/paperScope';
+import type { PaperContext } from '../utils/paperScope';
 import type { PuzzleGeometry, EdgeSegment, Piece } from './types';
 import { pathCommandsToPaperPath } from './paperUtils';
 
