@@ -1,4 +1,4 @@
-import { PuzzleTopology, Vec2 } from "../geometry/types";
+import type { PuzzleTopology, Vec2 } from "../geometry/types";
 
 /**
  * Generates an SVG string representation of the puzzle's cut lines.

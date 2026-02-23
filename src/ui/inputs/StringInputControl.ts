@@ -1,7 +1,7 @@
 // UI component to take string input
 import m from 'mithril';
 import type { StringUIControl } from '../../geometry/ui_types';
-import MithrilViewEvent from '../../utils/MithrilViewEvent';
+import type MithrilViewEvent from '../../utils/MithrilViewEvent';
 
 // Webawesome components
 import '@awesome.me/webawesome/dist/components/input/input.js';

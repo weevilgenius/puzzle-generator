@@ -1,4 +1,4 @@
-import { RandomFn, PuzzleTopology, Edge } from "../../types";
+import type { RandomFn, PuzzleTopology, Edge } from "../../types";
 
 /** Options passed to a TabPlacementStrategy at runtime */
 export interface TabPlacementStrategyRuntimeOptions {

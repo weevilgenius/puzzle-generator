@@ -2,7 +2,7 @@
  * Types and constants for the PuzzleRenderer component
  */
 
-import m from 'mithril';
+import type m from 'mithril';
 import type { PieceID, VertexID, PuzzleGeometry, Vec2, CustomPiece, CustomPieceTransform } from '../../geometry/types';
 import type { PaperContext } from '../../utils/paperScope';
 

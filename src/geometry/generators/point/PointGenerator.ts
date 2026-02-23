@@ -1,4 +1,4 @@
-import { PathCommand, RandomFn, Vec2 } from "../../types";
+import type { PathCommand, RandomFn, Vec2 } from "../../types";
 
 
 /** Options passed to all Point Generators at run time. */

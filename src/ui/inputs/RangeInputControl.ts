@@ -4,7 +4,7 @@ import type { RangeUIControl } from '../../geometry/ui_types';
 
 // Webawesome components
 import '@awesome.me/webawesome/dist/components/slider/slider.js';
-import WaSlider from '@awesome.me/webawesome/dist/components/slider/slider.js';
+import type WaSlider from '@awesome.me/webawesome/dist/components/slider/slider.js';
 
 // component attributes
 export interface RangeInputControlAttr extends m.Attributes {

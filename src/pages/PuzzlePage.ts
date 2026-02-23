@@ -177,7 +177,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
   };
 
   // utility to create border based on selected shape
-  function createBorder(): import('../geometry/types').PathCommand[] {
+  function createBorder(): PathCommand[] {
     const { canvasWidth, canvasHeight, borderShape, borderCornerRadius } = state;
 
     switch (borderShape) {

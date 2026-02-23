@@ -1,5 +1,5 @@
 import { Delaunay } from 'd3-delaunay';
-import { PieceGenerator, PieceGeneratorRuntimeOptions } from "./PieceGenerator";
+import type { PieceGenerator, PieceGeneratorRuntimeOptions } from "./PieceGenerator";
 import type {
   CustomPiece,
   Edge,

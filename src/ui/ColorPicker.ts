@@ -1,10 +1,10 @@
 // UI component to let the user select a color
 import m from 'mithril';
-import MithrilViewEvent from '../utils/MithrilViewEvent';
+import type MithrilViewEvent from '../utils/MithrilViewEvent';
 
 // Webawesome components
 import '@awesome.me/webawesome/dist/components/color-picker/color-picker.js';
-import WaColorPicker from '@awesome.me/webawesome/dist/components/color-picker/color-picker.js';
+import type WaColorPicker from '@awesome.me/webawesome/dist/components/color-picker/color-picker.js';
 
 // this component's CSS
 import './ColorPicker.css';

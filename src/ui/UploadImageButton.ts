@@ -1,6 +1,6 @@
 // UI component that allows the user to select an image to upload when clicked
 import m from 'mithril';
-import MithrilViewEvent from '../utils/MithrilViewEvent';
+import type MithrilViewEvent from '../utils/MithrilViewEvent';
 
 // Webawesome components
 import '@awesome.me/webawesome/dist/components/button/button.js';

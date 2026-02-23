@@ -4,7 +4,7 @@ import type { BooleanUIControl } from '../../geometry/ui_types';
 
 // Webawesome components
 import '@awesome.me/webawesome/dist/components/checkbox/checkbox.js';
-import WaCheckbox from '@awesome.me/webawesome/dist/components/checkbox/checkbox.js';
+import type WaCheckbox from '@awesome.me/webawesome/dist/components/checkbox/checkbox.js';
 
 // component attributes
 export interface BooleanInputControlAttr extends m.Attributes {

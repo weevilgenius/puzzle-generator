@@ -1,4 +1,4 @@
-import { CustomPiece, RandomFn, PuzzleTopology, Vec2, PathCommand } from "../../types";
+import type { CustomPiece, RandomFn, PuzzleTopology, Vec2, PathCommand } from "../../types";
 
 /** Options options passed to all piece generators at runtime. */
 export interface PieceGeneratorRuntimeOptions {

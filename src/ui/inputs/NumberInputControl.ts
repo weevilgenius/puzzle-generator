@@ -4,7 +4,7 @@ import type { NumberUIControl } from '../../geometry/ui_types';
 
 // Webawesome components
 import '@awesome.me/webawesome/dist/components/input/input.js';
-import WaInput from '@awesome.me/webawesome/dist/components/input/input.js';
+import type WaInput from '@awesome.me/webawesome/dist/components/input/input.js';
 
 // component attributes
 export interface NumberInputControlAttr extends m.Attributes {

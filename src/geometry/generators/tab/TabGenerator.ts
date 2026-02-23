@@ -1,4 +1,4 @@
-import { EdgeSegment, RandomFn, TabPlacement, Vec2 } from "../../types";
+import type { EdgeSegment, RandomFn, TabPlacement, Vec2 } from "../../types";
 
 /** Interface for a generator that constructs tab geometry. */
 export interface TabGenerator {

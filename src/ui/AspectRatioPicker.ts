@@ -1,13 +1,13 @@
 // UI component to let the user select an aspect ratio
 import m from 'mithril';
-import MithrilViewEvent from '../utils/MithrilViewEvent';
+import type MithrilViewEvent from '../utils/MithrilViewEvent';
 
 // Webawesome components
 import '@awesome.me/webawesome/dist/components/option/option.js';
 import '@awesome.me/webawesome/dist/components/select/select.js';
-import WaSelect from '@awesome.me/webawesome/dist/components/select/select.js';
+import type WaSelect from '@awesome.me/webawesome/dist/components/select/select.js';
 import '@awesome.me/webawesome/dist/components/slider/slider.js';
-import WaSlider from '@awesome.me/webawesome/dist/components/slider/slider.js';
+import type WaSlider from '@awesome.me/webawesome/dist/components/slider/slider.js';
 
 // this component's CSS
 import './AspectRatioPicker.css';

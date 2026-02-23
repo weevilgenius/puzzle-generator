@@ -1,11 +1,11 @@
 // Navigation menu component for routing between pages
 import m from 'mithril';
-import MithrilViewEvent from '../utils/MithrilViewEvent';
+import type MithrilViewEvent from '../utils/MithrilViewEvent';
 
 // Webawesome components
 import '@awesome.me/webawesome/dist/components/radio/radio.js';
 import '@awesome.me/webawesome/dist/components/radio-group/radio-group.js';
-import WaRadioGroup from '@awesome.me/webawesome/dist/components/radio-group/radio-group.js';
+import type WaRadioGroup from '@awesome.me/webawesome/dist/components/radio-group/radio-group.js';
 
 // CSS for navigation
 import './Navigation.css';

@@ -6,7 +6,7 @@ import m from 'mithril';
 
 // Web Awesome components
 import '@awesome.me/webawesome/dist/components/dialog/dialog.js';
-import WaDialog from '@awesome.me/webawesome/dist/components/dialog/dialog.js';
+import type WaDialog from '@awesome.me/webawesome/dist/components/dialog/dialog.js';
 //import { WaHideEvent } from '@awesome.me/webawesome';
 
 export interface DialogAttrs extends m.Attributes {

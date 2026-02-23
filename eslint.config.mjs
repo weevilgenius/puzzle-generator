@@ -129,6 +129,12 @@ export default tseslint.config(
       // complain about using a computed key with a constant
       "no-useless-computed-key": "warn",
 
+      // warn about importing a type without annotating it as a type only import
+      "@typescript-eslint/consistent-type-imports": ["warn", {
+        prefer: "type-imports",
+        fixStyle: "inline-type-imports",
+      }],
+
       // Paper.js safety (for this project only)
       "paper-safety/no-paper-global": "error",
       "paper-safety/require-scope-qualified-news": "error",

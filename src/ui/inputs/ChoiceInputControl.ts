@@ -1,12 +1,12 @@
 // UI component to take choice input from a dropdown
 import m from 'mithril';
 import type { ChoiceUIControl } from '../../geometry/ui_types';
-import MithrilViewEvent from '../../utils/MithrilViewEvent';
+import type MithrilViewEvent from '../../utils/MithrilViewEvent';
 
 // Webawesome components
 import '@awesome.me/webawesome/dist/components/option/option.js';
 import '@awesome.me/webawesome/dist/components/select/select.js';
-import WaSelect from '@awesome.me/webawesome/dist/components/select/select.js';
+import type WaSelect from '@awesome.me/webawesome/dist/components/select/select.js';
 
 // component attributes
 export interface ChoiceInputControlAttr extends m.Attributes {

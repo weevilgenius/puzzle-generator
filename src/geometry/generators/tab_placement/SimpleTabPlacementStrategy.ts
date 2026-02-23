@@ -1,7 +1,7 @@
 import type { PuzzleTopology, Edge, PathCommand, RandomFn, TabPlacement } from "../../types";
 import type { TabPlacementStrategy, TabPlacementStrategyRuntimeOptions } from "./TabPlacementStrategy";
 import type { GeneratorUIMetadata } from '../../ui_types';
-import { GeneratorConfig, GeneratorFactory } from "../Generator";
+import type { GeneratorConfig, GeneratorFactory } from "../Generator";
 import { TabPlacementStrategyRegistry } from "../Generator";
 
 // Name of this strategy, uniquely identifies from all other TabPlacementStrategies
