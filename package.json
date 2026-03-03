@@ -8,7 +8,7 @@
   "license": "MIT",
   "scripts": {
     "typecheck": "tsc --noEmit --skipLibCheck",
-    "lint": "eslint src tests",
+    "lint": "eslint .",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
@@ -41,6 +41,7 @@
     "gh-pages": "^6.3.0",
     "globals": "^17.4.0",
     "happy-dom": "^20.8.2",
+    "jiti": "^2.6.1",
     "lit": "^3.3.2",
     "rollup-plugin-visualizer": "^7.0.0",
     "sinon": "^21.0.1",

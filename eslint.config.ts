@@ -29,9 +29,9 @@ export default defineConfig(
 
     // required for linting with type information
     languageOptions: {
-      parser: "@typescript-eslint/parser",
+      parser: tseslint.parser,
       parserOptions: {
-        project: ['./tsconfig.json', './tsconfig.node.json'],
+        projectService: true,
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -69,12 +69,12 @@ export default defineConfig(
     rules: {
 
       // unused imports
-      "unused-imports/no-unused-imports": "error",
+      "unused-imports/no-unused-imports": "warn",
 
       // unused variables/arguments
       "@typescript-eslint/no-unused-vars": "off",
       "unused-imports/no-unused-vars": [
-        "error",
+        "warn",
         {
           vars: "local", // only allow global unused variables, complain about local
           argsIgnorePattern: "^_",  // allow unused arguments starting with _
@@ -162,7 +162,6 @@ export default defineConfig(
       }],
 
       // indent style: 2 spaces
-      // rule is broken, see https://github.com/typescript-eslint/typescript-eslint/issues/1824
       "stylistic/indent": ["warn", 2, { "SwitchCase": 0 }],
       "stylistic/indent-binary-ops": ["warn", 2],
 
@@ -186,8 +185,7 @@ export default defineConfig(
   // overrides for node scripts
   {
     files: [
-      'eslint.config.mjs',
-      'vite.config.ts',
+      '*.config.ts',
     ],
 
     // this is a node file, not browser

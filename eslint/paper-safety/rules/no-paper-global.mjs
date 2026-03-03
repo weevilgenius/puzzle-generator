@@ -12,7 +12,7 @@ export default {
     },
   },
   create(context) {
-    const sourceCode = context.getSourceCode();
+    const sourceCode = context.sourceCode;
 
     function isDisabledHere(node) {
       // Respect eslint-disable-next-line if you want exceptions per site.
