@@ -55,8 +55,8 @@ importers:
         specifier: ^6.0.4
         version: 6.0.4
       '@types/mithril':
-        specifier: ^2.2.7
-        version: 2.2.7
+        specifier: ^2.2.8
+        version: 2.2.8
       '@types/node':
         specifier: ^24.12.0
         version: 24.12.0
@@ -603,8 +603,8 @@ packages:
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
 
-  '@types/mithril@2.2.7':
-    resolution: {integrity: sha512-uetxoYizBMHPELl6DSZUfO6Q/aOm+h0NUCv9bVAX2iAxfrdBSOvU9KKFl+McTtxR13F+BReYLY814pJsZvnSxg==}
+  '@types/mithril@2.2.8':
+    resolution: {integrity: sha512-FN9Tv1+Nlr0LNPGnIL/xOxLJfu5WW2n8HAFeo4yxF+/O0per/8g080xlXoo+xj8baowAcfsNI3k80DxyLY34gQ==}
 
   '@types/node@24.12.0':
     resolution: {integrity: sha512-GYDxsZi3ChgmckRT9HPU0WEhKLP08ev/Yfcq2AstjrDASOYCSXeyjDsHg4v5t4jOj7cyDX3vmprafKlWIG9MXQ==}
@@ -1964,7 +1964,7 @@ snapshots:
 
   '@types/json-schema@7.0.15': {}
 
-  '@types/mithril@2.2.7': {}
+  '@types/mithril@2.2.8': {}
 
   '@types/node@24.12.0':
     dependencies:
