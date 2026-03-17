@@ -16,7 +16,7 @@ import WhimsyEditor from '../ui/WhimsyEditor';
 import WhimsyManager from '../ui/WhimsyManager';
 
 // geometry parts
-import type { CustomPiece, PuzzleGeometry, PathCommand } from '../geometry/types';
+import type { CustomPiece, PuzzleGeometry, PathCommand, Vec2 } from '../geometry/types';
 import type { GeneratorConfig, GeneratorName, GeneratorRegistry } from '../geometry/generators/Generator';
 import { PointGeneratorRegistry, PieceGeneratorRegistry, TabPlacementStrategyRegistry, TabGeneratorRegistry } from '../geometry/generators/Generator';
 import { Name as PoissonGeneratorName } from '../geometry/generators/point/PoissonPointGenerator';
@@ -27,6 +27,8 @@ import { buildPuzzle, rebuildPuzzleWithUpdatedSeedPoint } from '../geometry/Puzz
 import { checkGeometryInWorker } from '../geometry/GeometryChecker';
 import { createRectangleBorder, createCircleBorder, createEllipseBorder, createRoundedRectBorder } from '../geometry/borderShapes';
 import { createInitialTransform } from '../geometry/customPieces';
+import type MithrilViewEvent from '../utils/MithrilViewEvent';
+import { confirm } from '../ui/Confirm';
 
 // register generators (side-effect imports)
 import "../geometry/generators/point/GridJitterPointGenerator";
@@ -40,6 +42,12 @@ import "../geometry/generators/tab/TraditionalTabGenerator";
 
 // Web Awesome components
 import '@awesome.me/webawesome/dist/components/button/button.js';
+
+// Save/load
+import { createSaveData, validateAndDeserialize, downloadPuzzleFile, readPuzzleFile } from '../save/puzzleSaveFile';
+import type { PuzzleSaveData } from '../save/puzzleSaveFile';
+import { scheduleAutoSave, loadAutoSave, clearAutoSave } from '../save/autoSave';
+import SaveLoadButtons from '../ui/SaveLoadButtons';
 
 // CSS for this page
 import './PuzzlePage.css';
@@ -60,6 +68,13 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
   const defaultPointGenerator = PoissonGeneratorName;
   const defaultPieceGenerator = VoronoiGeneratorName;
   const defaultTabGenerator = TraditionalTabGeneratorName;
+
+  // Attempt to restore auto-saved state
+  const restored = loadAutoSave();
+  if (restored) {
+    restored.warnings.forEach((w) => console.warn('[restore]', w));
+  }
+  const initial = restored?.data;
 
   /** State tracked for each type of generator */
   interface GeneratorState<C extends GeneratorConfig = GeneratorConfig> {
@@ -105,6 +120,10 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     generators: Record<string, GeneratorState>;
     /** Generated puzzle geometry */
     puzzle?: PuzzleGeometry;
+    /** User-edited seed points */
+    seedPoints?: Vec2[];
+    /** Whether we are using generated or edited seed points */
+    seedPointMode: 'generate' | 'edit';
     /** User uploaded image */
     backgroundImageUrl?: string;
     /** Name of uploaded image */
@@ -119,18 +138,21 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     editingCustomPieceId?: string;
   };
 
-  // component state
+  // component state (restored from auto-save if available)
+  const initialWidth = initial?.dimensions.width ?? defaultWidth;
+  const initialHeight = initial?.dimensions.height ?? defaultHeight;
+
   const state: PageState = {
-    seed: new Date().getTime() % 10240,
-    canvasWidth: defaultWidth,
-    canvasHeight: defaultHeight,
-    aspectRatio: defaultWidth / defaultHeight,
-    distance: 40,
-    color: isDarkMode ? "#DDDDDD" : "#333333",
-    drawPoints: false,
-    pointColor: isDarkMode ? "#FF0000" : "#0000FF",
-    borderShape: 'rectangle',
-    borderCornerRadius: 50,
+    seed: initial?.seed ?? new Date().getTime() % 10240,
+    canvasWidth: initialWidth,
+    canvasHeight: initialHeight,
+    aspectRatio: initialWidth / initialHeight,
+    distance: initial?.pieceSize ?? 40,
+    color: initial?.visual.color ?? (isDarkMode ? "#DDDDDD" : "#333333"),
+    drawPoints: initial?.visual.drawPoints ?? false,
+    pointColor: initial?.visual.pointColor ?? (isDarkMode ? "#FF0000" : "#0000FF"),
+    borderShape: initial?.border.shape ?? 'rectangle',
+    borderCornerRadius: initial?.border.cornerRadius ?? 50,
     geometryProblems: {
       autoCheck: false,
       problems: undefined,
@@ -142,35 +164,37 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
       point: {
         label: "Seed Points",
         registry: PointGeneratorRegistry,
-        name: defaultPointGenerator,
-        config: PointGeneratorRegistry.getDefaultConfig(defaultPointGenerator, defaultWidth, defaultHeight),
+        name: initial?.generators.point.name ?? defaultPointGenerator,
+        config: initial?.generators.point ?? PointGeneratorRegistry.getDefaultConfig(defaultPointGenerator, initialWidth, initialHeight),
       },
       /** Strategy for turning points into puzzle pieces */
       piece: {
         label: "Piece Generation",
         registry: PieceGeneratorRegistry,
-        name: defaultPieceGenerator,
-        config: PieceGeneratorRegistry.getDefaultConfig(defaultPieceGenerator, defaultWidth, defaultHeight),
+        name: initial?.generators.piece.name ?? defaultPieceGenerator,
+        config: initial?.generators.piece ?? PieceGeneratorRegistry.getDefaultConfig(defaultPieceGenerator, initialWidth, initialHeight),
       },
       /** Strategy for placing tabs on piece edges */
       placement: {
         label: "Tab Placement",
         registry: TabPlacementStrategyRegistry,
-        name: SimpleTabPlacementStrategyName,
-        config: TabPlacementStrategyRegistry.getDefaultConfig(SimpleTabPlacementStrategyName, defaultWidth, defaultHeight),
+        name: initial?.generators.placement.name ?? SimpleTabPlacementStrategyName,
+        config: initial?.generators.placement ?? TabPlacementStrategyRegistry.getDefaultConfig(SimpleTabPlacementStrategyName, initialWidth, initialHeight),
       },
       /** Style of tabs to generate */
       tab: {
         label: "Tabs",
         registry: TabGeneratorRegistry,
-        name: defaultTabGenerator,
-        config: TabGeneratorRegistry.getDefaultConfig(defaultTabGenerator, defaultWidth, defaultHeight),
+        name: initial?.generators.tab.name ?? defaultTabGenerator,
+        config: initial?.generators.tab ?? TabGeneratorRegistry.getDefaultConfig(defaultTabGenerator, initialWidth, initialHeight),
       },
     },
     puzzle: undefined,
+    seedPoints: initial?.seedPoints,
+    seedPointMode: initial?.seedPointMode ?? 'generate',
     backgroundImageUrl: undefined,
     backgroundImageName: '',
-    customPieces: [],
+    customPieces: initial?.customPieces ?? [],
     selectedCustomPieceId: null,
     customPieceEditorOpen: false,
     editingCustomPieceId: undefined,
@@ -320,6 +344,140 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     alert('Whimsy positioning functionality will be available in Phase 5');
   }
 
+  // save/load handlers
+
+  function handleSaveConfig() {
+    const saveFile = createSaveData(state);
+    downloadPuzzleFile(saveFile);
+  }
+
+  function handleLoadConfig(file: File) {
+    readPuzzleFile(file)
+      .then((json) => {
+        const { data, warnings } = validateAndDeserialize(json);
+
+        if (warnings.length > 0) {
+          void confirm({
+            title: 'Load Warnings',
+            body: m('ul', warnings.map((w) => m('li', w))),
+            confirmLabel: 'OK',
+            cancelLabel: 'Close',
+          });
+        }
+
+        applyLoadedState(data);
+      })
+      .catch((err) => {
+        console.error('Failed to load puzzle config:', err);
+        void confirm({
+          title: 'Load Error',
+          body: (err as Error).message,
+          confirmLabel: 'OK',
+          cancelLabel: 'Close',
+        });
+      });
+  }
+
+  function applyLoadedState(data: PuzzleSaveData) {
+    state.seed = data.seed;
+    state.canvasWidth = data.dimensions.width;
+    state.canvasHeight = data.dimensions.height;
+    state.aspectRatio = data.dimensions.width / data.dimensions.height;
+    state.distance = data.pieceSize;
+    state.color = data.visual.color;
+    state.drawPoints = data.visual.drawPoints;
+    state.pointColor = data.visual.pointColor;
+    state.borderShape = data.border.shape;
+    state.borderCornerRadius = data.border.cornerRadius ?? 50;
+    state.customPieces = data.customPieces;
+    state.seedPoints = data.seedPoints;
+    state.seedPointMode = data.seedPointMode ?? 'generate';
+    state.selectedCustomPieceId = null;
+
+    // Rebuild generator state objects with labels and registries
+    state.generators.point = {
+      label: "Seed Points",
+      registry: PointGeneratorRegistry,
+      name: data.generators.point.name,
+      config: data.generators.point,
+    };
+    state.generators.piece = {
+      label: "Piece Generation",
+      registry: PieceGeneratorRegistry,
+      name: data.generators.piece.name,
+      config: data.generators.piece,
+    };
+    state.generators.placement = {
+      label: "Tab Placement",
+      registry: TabPlacementStrategyRegistry,
+      name: data.generators.placement.name,
+      config: data.generators.placement,
+    };
+    state.generators.tab = {
+      label: "Tabs",
+      registry: TabGeneratorRegistry,
+      name: data.generators.tab.name,
+      config: data.generators.tab,
+    };
+
+    state.dirty = true;
+    m.redraw();
+  }
+
+  function handleNewPuzzle() {
+    clearAutoSave();
+
+    state.seed = new Date().getTime() % 10240;
+    state.canvasWidth = defaultWidth;
+    state.canvasHeight = defaultHeight;
+    state.aspectRatio = defaultWidth / defaultHeight;
+    state.distance = 40;
+    state.color = isDarkMode ? "#DDDDDD" : "#333333";
+    state.drawPoints = false;
+    state.pointColor = isDarkMode ? "#FF0000" : "#0000FF";
+    state.borderShape = 'rectangle';
+    state.borderCornerRadius = 50;
+    state.customPieces = [];
+    state.seedPoints = undefined;
+    state.seedPointMode = 'generate';
+    state.selectedCustomPieceId = null;
+
+    state.generators.point = {
+      label: "Seed Points",
+      registry: PointGeneratorRegistry,
+      name: defaultPointGenerator,
+      config: PointGeneratorRegistry.getDefaultConfig(defaultPointGenerator, defaultWidth, defaultHeight),
+    };
+    state.generators.piece = {
+      label: "Piece Generation",
+      registry: PieceGeneratorRegistry,
+      name: defaultPieceGenerator,
+      config: PieceGeneratorRegistry.getDefaultConfig(defaultPieceGenerator, defaultWidth, defaultHeight),
+    };
+    state.generators.placement = {
+      label: "Tab Placement",
+      registry: TabPlacementStrategyRegistry,
+      name: SimpleTabPlacementStrategyName,
+      config: TabPlacementStrategyRegistry.getDefaultConfig(SimpleTabPlacementStrategyName, defaultWidth, defaultHeight),
+    };
+    state.generators.tab = {
+      label: "Tabs",
+      registry: TabGeneratorRegistry,
+      name: defaultTabGenerator,
+      config: TabGeneratorRegistry.getDefaultConfig(defaultTabGenerator, defaultWidth, defaultHeight),
+    };
+
+    // Clear background image
+    if (state.backgroundImageUrl) {
+      URL.revokeObjectURL(state.backgroundImageUrl);
+      state.backgroundImageUrl = undefined;
+      state.backgroundImageName = '';
+    }
+
+    state.dirty = true;
+    m.redraw();
+  }
+
   // utility to invoke the geometry checks
   function handleCheckGeometry() {
     if (!state.puzzle) return;
@@ -361,9 +519,11 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
         placementConfig: state.generators.placement.config,
         tabConfig: state.generators.tab.config,
         seed: state.seed,
+        seedPoints: state.seedPointMode === 'edit' ? state.seedPoints : undefined,
         customPieces: state.customPieces,
       }).then((puzzle) => {
         state.puzzle = puzzle;
+        state.seedPoints = puzzle.seedPoints; // Capture generated points
         m.redraw();
         if (state.geometryProblems.autoCheck) {
           handleCheckGeometry();
@@ -389,11 +549,13 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
           placementConfig: state.generators.placement.config,
           tabConfig: state.generators.tab.config,
           seed: state.seed,
+          seedPoints: state.seedPointMode === 'edit' ? state.seedPoints : undefined,
           customPieces: state.customPieces,
         }).then((puzzle) => {
           state.geometryProblems.problems = undefined;
           state.geometryProblems.progress = undefined;
           state.puzzle = puzzle;
+          state.seedPoints = puzzle.seedPoints; // Capture generated points
           m.redraw();
           if (state.geometryProblems.autoCheck) {
             handleCheckGeometry();
@@ -402,6 +564,9 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
           console.error(err);
         });
       }
+
+      // debounced auto-save on every redraw
+      scheduleAutoSave(state);
     },
 
     onremove: () => {
@@ -457,17 +622,20 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
                     height: state.canvasHeight,
                   },
                   border: createBorder(),
-                  seed: state.seed,
                   pieceSize: state.distance,
                   pointConfig: state.generators.point.config,
                   pieceConfig: state.generators.piece.config,
                   placementConfig: state.generators.placement.config,
                   tabConfig: state.generators.tab.config,
+                  seed: state.seed,
+                  seedPoints: state.seedPointMode === 'edit' ? state.seedPoints : undefined,
                   customPieces: state.customPieces,
+
                 }).then((puzzle) => {
                   state.geometryProblems.problems = undefined;
                   state.geometryProblems.progress = undefined;
                   state.puzzle = puzzle;
+                  state.seedPoints = puzzle.seedPoints; // Capture generated points
                   state.dirty = false;
                   m.redraw();
 
@@ -492,6 +660,8 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
                     state.geometryProblems.problems = undefined;
                     state.geometryProblems.progress = undefined;
                     state.puzzle = puzzle;
+                    state.seedPoints = puzzle.seedPoints;
+                    state.seedPointMode = 'edit';
                     m.redraw();
 
                     if (state.geometryProblems.autoCheck) {
@@ -512,6 +682,13 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
                 width: state.canvasWidth,
                 height: state.canvasHeight,
                 color: state.color,
+              }),
+
+              // Save/Load/New buttons
+              m(SaveLoadButtons, {
+                onSave: handleSaveConfig,
+                onLoad: handleLoadConfig,
+                onNew: handleNewPuzzle,
               }),
 
               // Geometry check display
@@ -553,6 +730,8 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
                   state.aspectRatio = width / height;
                   state.backgroundImageUrl = imageUrl;
                   state.backgroundImageName = filename;
+                  state.seedPointMode = 'generate';
+                  state.seedPoints = undefined;
                   state.dirty = true;
                   m.redraw();
                 },
@@ -563,6 +742,8 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
                   }
                   state.backgroundImageUrl = undefined;
                   state.backgroundImageName = '';
+                  state.seedPointMode = 'generate';
+                  state.seedPoints = undefined;
                   state.dirty = true;
                   m.redraw();
                 },
@@ -576,6 +757,8 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
               onChange: (ratio) => {
                 state.aspectRatio = ratio;
                 state.canvasWidth = state.canvasHeight * ratio;
+                state.seedPointMode = 'generate';
+                state.seedPoints = undefined;
                 state.dirty = true;
                 m.redraw();
               },
@@ -587,6 +770,8 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
               disabled: state.backgroundImageUrl !== undefined,
               onChange: (shape) => {
                 state.borderShape = shape;
+                state.seedPointMode = 'generate';
+                state.seedPoints = undefined;
                 state.dirty = true;
                 m.redraw();
               },
@@ -602,6 +787,8 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
               value: state.borderCornerRadius,
               onChange: (value) => {
                 state.borderCornerRadius = value ?? 50;
+                state.seedPointMode = 'generate';
+                state.seedPoints = undefined;
                 state.dirty = true;
                 m.redraw();
               },
@@ -617,6 +804,8 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
               value: state.seed,
               onChange: (value) => {
                 state.seed = value ?? 0;
+                state.seedPointMode = 'generate';
+                state.seedPoints = undefined;
                 state.dirty = true;
                 m.redraw();
               },
@@ -632,6 +821,8 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
               value: state.distance,
               onChange: (value) => {
                 state.distance = value ?? 0;
+                state.seedPointMode = 'generate';
+                state.seedPoints = undefined;
                 state.dirty = true;
                 m.redraw();
               },
@@ -688,8 +879,12 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
 
             // render a generator picker for each type of generator
             ...Object.entries(state.generators).map(([type, generator]) => {
+              const isPointGenerator = type === 'point';
+              const isEdited = isPointGenerator && state.seedPointMode === 'edit';
+
               return m("label", [
                 generator.label + ':',
+                isEdited && m('span.edited-badge', ' (Using edited points)'),
                 m(GeneratorPicker, {
                   generator: generator.name,
                   registry: generator.registry,
@@ -700,6 +895,12 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
                       generator.name = generatorName;
                       // generator changed, we need a new blank config
                       state.generators[type].config = generator.registry.getDefaultConfig(generatorName, state.canvasWidth, state.canvasHeight);
+
+                      if (type === 'point') {
+                        state.seedPointMode = 'generate';
+                        state.seedPoints = undefined;
+                      }
+
                       state.dirty = true;
                       m.redraw();
                     }
@@ -707,10 +908,27 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
                   onConfigChange: (key, value) => {
                     console.log(`${type} generator config "${key}" changed to ${String(value)}`);
                     generator.config[key] = value;
+
+                    if (type === 'point') {
+                      state.seedPointMode = 'generate';
+                      state.seedPoints = undefined;
+                    }
+
                     state.dirty = true;
                     m.redraw();
                   },
                 }),
+                isEdited && m('wa-button', {
+                  size: 'small',
+                  variant: 'text',
+                  onclick: (e: MouseEvent & MithrilViewEvent) => {
+                    e.redraw = false;
+                    state.seedPointMode = 'generate';
+                    state.seedPoints = undefined;
+                    state.dirty = true;
+                    m.redraw();
+                  },
+                }, 'Reset to Generator'),
               ]);
             }),
 
