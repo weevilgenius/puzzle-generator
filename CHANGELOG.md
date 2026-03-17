@@ -1,7 +1,7 @@
 Change Log
 ==========
 
-## Version 0.5.1 (unreleased)
+## Version 0.5.1
 
 Added the ability to save and load puzzle configurations as JSON files, allowing users
 to preserve and share their designs. This feature includes support for persistent
