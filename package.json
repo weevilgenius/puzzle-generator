@@ -54,7 +54,7 @@
     "vitest": "^4.1.2"
   },
   "dependencies": {
-    "@awesome.me/webawesome": "^3.4.0",
+    "@awesome.me/webawesome": "^3.5.0",
     "bezier-js": "^6.1.4",
     "d3-delaunay": "^6.0.4",
     "martinez-polygon-clipping": "^0.8.1",
