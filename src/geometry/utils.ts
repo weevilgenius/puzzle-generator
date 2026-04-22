@@ -1103,7 +1103,7 @@ export function clipPolygonAgainstBoundary(polygon: Vec2[], boundary: Vec2[]): V
   }
 
   if (isMartinezPolygon(clipped)) {
-    return clipped as Vec2[][];
+    return clipped;
   }
 
   // unwrap the result back to our Vec2[][] format.

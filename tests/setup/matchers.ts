@@ -144,5 +144,5 @@ class ResizeObserverStub implements ResizeObserver {
 }
 
 if (typeof globalThis.ResizeObserver === 'undefined') {
-  globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
+  globalThis.ResizeObserver = ResizeObserverStub;
 }

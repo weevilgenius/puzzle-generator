@@ -165,7 +165,7 @@ function validateGeneratorConfig(
     // Merge: defaults first, saved values override
     const defaults = registry.getDefaultConfig(savedName, width, height);
     return {
-      config: { ...defaults, ...savedObj, name: savedName } as GeneratorConfig,
+      config: { ...defaults, ...savedObj, name: savedName },
       warnings,
     };
   }

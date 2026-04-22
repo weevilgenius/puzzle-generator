@@ -16,7 +16,6 @@ import {
   PieceGeneratorRegistry,
   TabPlacementStrategyRegistry,
   TabGeneratorRegistry,
-  type GeneratorConfig,
 } from '../../geometry/generators/Generator';
 
 /** Creates a mock SaveableState for testing */
@@ -291,10 +290,10 @@ describe('file I/O helpers', () => {
         visual: { color: '#000', drawPoints: false, pointColor: '#000' },
         border: { shape: 'rectangle' },
         generators: {
-          point: { name: 'PoissonPointGenerator' } as GeneratorConfig,
-          piece: { name: 'VoronoiPieceGenerator' } as GeneratorConfig,
-          placement: { name: 'SimpleTabPlacementStrategy' } as GeneratorConfig,
-          tab: { name: 'TraditionalTabGenerator' } as GeneratorConfig,
+          point: { name: 'PoissonPointGenerator' },
+          piece: { name: 'VoronoiPieceGenerator' },
+          placement: { name: 'SimpleTabPlacementStrategy' },
+          tab: { name: 'TraditionalTabGenerator' },
         },
         customPieces: [],
       },
