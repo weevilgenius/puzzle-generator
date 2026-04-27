@@ -37,7 +37,7 @@
     "@types/node": "^24.12.2",
     "@types/poisson-disk-sampling": "^2.2.4",
     "@types/svg-arc-to-cubic-bezier": "^3.2.3",
-    "@typescript-eslint/utils": "^8.59.0",
+    "@typescript-eslint/utils": "^8.59.1",
     "@vitest/coverage-v8": "^4.1.5",
     "eslint": "^10.2.1",
     "eslint-plugin-unused-imports": "^4.4.1",
@@ -49,7 +49,7 @@
     "rollup-plugin-visualizer": "^7.0.1",
     "sinon": "^21.1.2",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.59.0",
+    "typescript-eslint": "^8.59.1",
     "vite": "^8.0.10",
     "vitest": "^4.1.5"
   },
