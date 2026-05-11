@@ -44,7 +44,7 @@
     "gh-pages": "^6.3.0",
     "globals": "^17.5.0",
     "happy-dom": "^20.9.0",
-    "jiti": "^2.6.1",
+    "jiti": "^2.7.0",
     "lit": "^3.3.2",
     "rollup-plugin-visualizer": "^7.0.1",
     "sinon": "^21.1.2",
