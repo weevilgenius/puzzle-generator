@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@awesome.me/webawesome':
-        specifier: ^3.5.0
-        version: 3.5.0(@floating-ui/utils@0.2.11)(@types/react@19.1.9)
+        specifier: ^3.7.0
+        version: 3.7.0(@floating-ui/utils@0.2.11)(@types/react@19.1.9)
       bezier-js:
         specifier: ^6.1.4
         version: 6.1.4
@@ -114,8 +114,8 @@ importers:
 
 packages:
 
-  '@awesome.me/webawesome@3.5.0':
-    resolution: {integrity: sha512-/hJOe5vsKu9GejyTB3xFyQvvGRzXCLqdOGtBa4a+ifDNPRwzQLR3bzxcEpJsLmVfOhhem1XGbyOD9cMwefuAlA==}
+  '@awesome.me/webawesome@3.7.0':
+    resolution: {integrity: sha512-rAhTpJsJShv/4JWWGh+d7yQZ3pmk9j+YbwZjWWbgnPQPA+9I2/BrTUgNY+bOLehUovIbDd11J6+myGwGh0hl2w==}
     engines: {node: '>=14.17.0'}
 
   '@babel/code-frame@7.29.0':
@@ -1542,7 +1542,7 @@ packages:
 
 snapshots:
 
-  '@awesome.me/webawesome@3.5.0(@floating-ui/utils@0.2.11)(@types/react@19.1.9)':
+  '@awesome.me/webawesome@3.7.0(@floating-ui/utils@0.2.11)(@types/react@19.1.9)':
     dependencies:
       '@ctrl/tinycolor': 4.1.0
       '@floating-ui/dom': 1.7.6
