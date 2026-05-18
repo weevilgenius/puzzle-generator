@@ -39,7 +39,7 @@
     "@types/svg-arc-to-cubic-bezier": "^3.2.3",
     "@typescript-eslint/utils": "^8.59.3",
     "@vitest/coverage-v8": "^4.1.6",
-    "eslint": "^10.3.0",
+    "eslint": "^10.4.0",
     "eslint-plugin-unused-imports": "^4.4.1",
     "gh-pages": "^6.3.0",
     "globals": "^17.6.0",
