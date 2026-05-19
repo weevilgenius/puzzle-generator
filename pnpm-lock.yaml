@@ -91,8 +91,8 @@ importers:
         specifier: ^2.7.0
         version: 2.7.0
       lit:
-        specifier: ^3.3.2
-        version: 3.3.2
+        specifier: ^3.3.3
+        version: 3.3.3
       rollup-plugin-visualizer:
         specifier: ^7.0.1
         version: 7.0.1(rolldown@1.0.1)
@@ -1067,8 +1067,8 @@ packages:
   lit-html@3.3.2:
     resolution: {integrity: sha512-Qy9hU88zcmaxBXcc10ZpdK7cOLXvXpRoBxERdtqV9QOrfpMZZ6pSYP91LhpPtap3sFMUiL7Tw2RImbe0Al2/kw==}
 
-  lit@3.3.2:
-    resolution: {integrity: sha512-NF9zbsP79l4ao2SNrH3NkfmFgN/hBYSQo90saIVI1o5GpjAdCPVstVzO1MrLOakHoEhYkrtRjPK6Ob521aoYWQ==}
+  lit@3.3.3:
+    resolution: {integrity: sha512-fycuvZg/hkpozL00lm1pEJH5nN/lr9ZXd6mJI2HSN4+Bzc+LDNdEApJ6HFbPkdFNHLvOplIIuJvxkS4XUxqirw==}
 
   locate-path@5.0.0:
     resolution: {integrity: sha512-t7hw9pI+WvuwNJXwk5zVHpyhIqzg2qTlklJOf0mVxGSbe3Fp2VieZcduNYjaLDoy6p9uGpQEGWG87WpMKlNq8g==}
@@ -1550,7 +1550,7 @@ snapshots:
       '@shoelace-style/animations': 1.2.0
       '@shoelace-style/localize': 3.2.2
       composed-offset-position: 0.0.6(@floating-ui/utils@0.2.11)
-      lit: 3.3.2
+      lit: 3.3.3
       marked: 11.2.0
       nanoid: 5.1.11
       qr-creator: 1.0.0
@@ -2451,7 +2451,7 @@ snapshots:
     dependencies:
       '@types/trusted-types': 2.0.7
 
-  lit@3.3.2:
+  lit@3.3.3:
     dependencies:
       '@lit/reactive-element': 2.1.2
       lit-element: 4.2.2
