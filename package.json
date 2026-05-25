@@ -38,7 +38,7 @@
     "@types/poisson-disk-sampling": "^2.2.4",
     "@types/svg-arc-to-cubic-bezier": "^3.2.3",
     "@typescript-eslint/utils": "^8.59.4",
-    "@vitest/coverage-v8": "^4.1.6",
+    "@vitest/coverage-v8": "^4.1.7",
     "eslint": "^10.4.0",
     "eslint-plugin-unused-imports": "^4.4.1",
     "gh-pages": "^6.3.0",
@@ -51,7 +51,7 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.4",
     "vite": "^8.0.13",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.7"
   },
   "dependencies": {
     "@awesome.me/webawesome": "^3.7.0",
