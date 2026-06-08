@@ -43,7 +43,7 @@
     "eslint-plugin-unused-imports": "^4.4.1",
     "gh-pages": "^6.3.0",
     "globals": "^17.6.0",
-    "happy-dom": "^20.10.1",
+    "happy-dom": "^20.10.2",
     "jiti": "^2.7.0",
     "lit": "^3.3.3",
     "rollup-plugin-visualizer": "^7.0.1",
