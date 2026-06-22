@@ -13,5 +13,12 @@ node_modules/
 # unit test coverage
 /coverage
 
+# playwright / screenshots
+/screenshots
+/test-results
+/playwright-report
+/blob-report
+/playwright/.cache
+
 # AI stuff
 .claude

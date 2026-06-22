@@ -7,6 +7,7 @@
   "repository": "github:weevilgenius/puzzle-generator",
   "license": "MIT",
   "scripts": {
+    "postinstall": "playwright install chromium",
     "typecheck": "tsc --noEmit --skipLibCheck",
     "lint": "eslint .",
     "dev": "vite",
@@ -18,6 +19,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "screenshot": "node scripts/screenshot.ts",
     "check": "pnpm typecheck && pnpm lint && pnpm test"
   },
   "packageManager": "pnpm@11.8.0+sha512.c1f5e7c4cb241c8f174b743851d82f42b802324afc8b0f116b96adb15aa06664948dde36960a3ba1079ba5b4b29dd0140135b94b5b5f5263592249d68e555f26",
@@ -27,6 +31,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.61.0",
     "@stylistic/eslint-plugin": "^5.10.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/user-event": "^14.6.1",

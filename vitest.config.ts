@@ -1,10 +1,12 @@
 import path from 'node:path';
-import { defineConfig } from 'vitest/config';
+import { defineConfig, configDefaults } from 'vitest/config';
 
 export default defineConfig({
   test: {
     // Use happy-dom for fast DOM emulation (needed for Mithril components)
     environment: 'happy-dom',
+    // Keep the Playwright e2e tests out of the Vitest run.
+    exclude: [...configDefaults.exclude, 'e2e/**'],
     // Run global setup (cleanup, ResizeObserver stub, custom matchers)
     setupFiles: ['./tests/setup/matchers.ts'],
     // Enable globals (describe, it, expect) without explicit imports

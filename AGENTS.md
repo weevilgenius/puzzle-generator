@@ -19,6 +19,43 @@ Ensure the project compiles, lint checks and unit tests pass when making changes
 - Check all three: `pnpm run check`
 - Build project: `pnpm run build`
 
+## Visual Validation (Screenshots)
+
+To inspect the rendered UI (light/dark mode, mobile layout, general layout),
+capture a screenshot and view the resulting PNG. Uses Playwright (Chromium).
+If a dev server is already running it is reused; otherwise a temporary one is
+started for the capture and stopped afterwards.
+
+- Capture a screenshot: `pnpm screenshot [options]`
+  - `--path <p>` route to capture (default `/`)
+  - `--out <file>` output path (default `screenshots/screenshot.png`)
+  - `--theme <light|dark>` color scheme (default `light`)
+  - `--device <name>` Playwright device, e.g. `"iPhone 15"`, `"Pixel 7"`
+  - `--width <n>` / `--height <n>` viewport size (ignored with `--device`)
+  - `--full-page` capture the full scrollable page
+  - `--wait <selector>` wait for a CSS selector before capturing
+  - `--delay <ms>` extra settle delay before capturing
+  - `--url <base>` target an explicit base URL (disables auto-start)
+
+  Examples:
+  ```sh
+  pnpm screenshot --theme dark --out screenshots/dark.png
+  pnpm screenshot --device "iPhone 15" --out screenshots/mobile.png
+  ```
+
+  Output goes to `screenshots/` (gitignored). After capturing, read the PNG
+  to inspect the layout.
+
+### End-to-end tests
+
+Functional Playwright tests live in `e2e/*.e2e.ts` (separate from the Vitest
+unit tests in `tests/`) and run on desktop + mobile viewports. They assert
+behaviour/structure, not pixels, so they are stable across platforms and need
+no committed baseline images. For visual checks, use `pnpm screenshot` above.
+
+- Run e2e tests: `pnpm test:e2e`
+- Interactive UI mode: `pnpm test:e2e:ui`
+
 ## Coding Conventions
 
 ### Naming Conventions
