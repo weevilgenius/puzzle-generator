@@ -43,7 +43,7 @@
     "@types/poisson-disk-sampling": "^2.2.4",
     "@types/svg-arc-to-cubic-bezier": "^3.2.3",
     "@typescript/native": "npm:typescript@^7.0.2",
-    "@typescript-eslint/utils": "^8.63.0",
+    "@typescript-eslint/utils": "^8.64.0",
     "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^10.7.0",
     "eslint-plugin-unused-imports": "^4.4.1",
