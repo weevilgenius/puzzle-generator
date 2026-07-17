@@ -8,7 +8,7 @@ updates:
     directory: "/" # location of package.json
     versioning-strategy: increase
     schedule:
-      interval: weekly
+      interval: daily
     cooldown:
       default-days: 1 # compatible with pnpm default minimumReleaseAge
     assignees:
