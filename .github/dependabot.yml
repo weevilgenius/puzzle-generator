@@ -9,6 +9,8 @@ updates:
     versioning-strategy: increase
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 1 # compatible with pnpm default minimumReleaseAge
     assignees:
       - weevilgenius
     commit-message:
