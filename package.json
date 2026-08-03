@@ -60,7 +60,7 @@
     "vitest": "^4.1.10"
   },
   "dependencies": {
-    "@awesome.me/webawesome": "^3.10.0",
+    "@awesome.me/webawesome": "^3.11.0",
     "bezier-js": "^6.1.4",
     "d3-delaunay": "^6.0.4",
     "martinez-polygon-clipping": "^0.8.1",

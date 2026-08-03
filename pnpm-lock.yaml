@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@awesome.me/webawesome':
-        specifier: ^3.10.0
-        version: 3.10.0(@floating-ui/utils@0.2.12)(@types/node@26.1.1)(@types/react@19.1.9)
+        specifier: ^3.11.0
+        version: 3.11.0(@floating-ui/utils@0.2.12)(@types/node@26.1.1)(@types/react@19.1.9)
       bezier-js:
         specifier: ^6.1.4
         version: 6.1.4
@@ -120,8 +120,8 @@ importers:
 
 packages:
 
-  '@awesome.me/webawesome@3.10.0':
-    resolution: {integrity: sha512-QrVKGTiz9OhtIoDic7RF6o1x5ShnJI7jgxK93uoSBh3INYlUyejKYXohXqpJ2cgjIJqfo0jMSQygd1Ty96QOMA==}
+  '@awesome.me/webawesome@3.11.0':
+    resolution: {integrity: sha512-WM8kyP+AdAT3/zwNpc/YzN3Nu5pRD6ksREFZAct/DIn6KMnQs8lPVfiPbJrOpKMk8OaSnQX19iiwFGjoswXVXw==}
     engines: {node: '>=14.17.0'}
 
   '@babel/code-frame@7.29.7':
@@ -244,8 +244,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@konnorr/qr-creator@1.0.1':
-    resolution: {integrity: sha512-EmRR9rny1ENBtQy7TLOguO/79h1EpzXUmqIdMTGp2BW8NkZtRRPr5hmQcE+n9QXYo4T8NjcaJ14hnZg+s/+K+A==}
+  '@konnorr/qr-creator@1.1.0':
+    resolution: {integrity: sha512-6Ae3AfG45MOqF9Qde+1YxIxKf/GUsRmcriV7iCb/HaR+Mk1YDFYP3RINDRMI8z8YMWW3BnSthOujX9RoOex/Kw==}
 
   '@lit-labs/ssr-client@1.1.8':
     resolution: {integrity: sha512-PjGh81oKsoI64m3IDjTqqjhC7dr2uC/o0jrllUb5gRAyp/RlAHxapgJrjq9kWz97faCHLQ8jUlTi6tGm+8fgyA==}
@@ -403,8 +403,8 @@ packages:
   '@shoelace-style/animations@1.2.0':
     resolution: {integrity: sha512-avvo1xxkLbv2dgtabdewBbqcJfV0e0zCwFqkPMnHFGbJbBHorRFfMAHh1NG9ymmXn0jW95ibUVH03E1NYXD6Gw==}
 
-  '@shoelace-style/localize@3.2.2':
-    resolution: {integrity: sha512-h3+2/cFWGaw3KQUwintkP4Cy3PtrVW//ysr9DM5nOfIXYekgrHwsELk/nyxc8hmjVP/Kcon7KCzvUtSwUBipfQ==}
+  '@shoelace-style/localize@3.2.3':
+    resolution: {integrity: sha512-pWoZywizMilenLfQcpE9bjaqi7WKiQXJB42cxvmSPwYS76U776wJ7B5QQ0P28yVit1vpHuFZzq1CtfVFv32jaQ==}
 
   '@sinonjs/commons@3.0.1':
     resolution: {integrity: sha512-K3mCHKQ9sVh8o1C9cxkwxaOmXoAMlDxC1mYyHrjqOWEcBjYr76t96zL2zlj5dUGZ3HSw240X1qgH3Mjf1yJWpQ==}
@@ -868,8 +868,8 @@ packages:
   emoji-regex@10.6.0:
     resolution: {integrity: sha512-toUI84YS5YmxW219erniWD0CIVOo46xGKColeNQRgOzDorgBi1v4D71/OFzgD9GO2UGKIv1C3Sp8DAn0+j5w7A==}
 
-  enhanced-resolve@5.24.2:
-    resolution: {integrity: sha512-rpsZEGT1jFuve6QlpyRp9ckQ+kN61hvF9BzCPyMdaKTm8UJce96KBn3sorXOFXlzjPrs3Vc4T1NsSroZ3PxlFw==}
+  enhanced-resolve@5.24.5:
+    resolution: {integrity: sha512-L1l8TNvomm6UVW5B253AGxQagSQr+vGwhMlrrfRS2qmhx46AMpMVJKQYLvWYbysTMY8VoicOvzHzoHMbyzB+4A==}
     engines: {node: '>=10.13.0'}
 
   entities@6.0.1:
@@ -1760,17 +1760,17 @@ packages:
 
 snapshots:
 
-  '@awesome.me/webawesome@3.10.0(@floating-ui/utils@0.2.12)(@types/node@26.1.1)(@types/react@19.1.9)':
+  '@awesome.me/webawesome@3.11.0(@floating-ui/utils@0.2.12)(@types/node@26.1.1)(@types/react@19.1.9)':
     dependencies:
       '@ctrl/tinycolor': 4.1.0
       '@floating-ui/dom': 1.8.0
-      '@konnorr/qr-creator': 1.0.1
+      '@konnorr/qr-creator': 1.1.0
       '@lit-labs/ssr': 4.1.0(@types/node@26.1.1)
       '@lit-labs/ssr-client': 1.1.8
       '@lit/context': 1.1.6
       '@lit/react': 1.0.8(@types/react@19.1.9)
       '@shoelace-style/animations': 1.2.0
-      '@shoelace-style/localize': 3.2.2
+      '@shoelace-style/localize': 3.2.3
       composed-offset-position: 0.0.6(@floating-ui/utils@0.2.12)
       lit: 3.3.3
       marked: 11.2.0
@@ -1891,7 +1891,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@konnorr/qr-creator@1.0.1': {}
+  '@konnorr/qr-creator@1.1.0': {}
 
   '@lit-labs/ssr-client@1.1.8':
     dependencies:
@@ -1907,7 +1907,7 @@ snapshots:
       '@lit-labs/ssr-dom-shim': 1.6.0
       '@lit/reactive-element': 2.1.2
       '@parse5/tools': 0.3.0
-      enhanced-resolve: 5.24.2
+      enhanced-resolve: 5.24.5
       lit: 3.3.3
       lit-element: 4.2.2
       lit-html: 3.3.3
@@ -2010,7 +2010,7 @@ snapshots:
 
   '@shoelace-style/animations@1.2.0': {}
 
-  '@shoelace-style/localize@3.2.2': {}
+  '@shoelace-style/localize@3.2.3': {}
 
   '@sinonjs/commons@3.0.1':
     dependencies:
@@ -2434,7 +2434,7 @@ snapshots:
 
   emoji-regex@10.6.0: {}
 
-  enhanced-resolve@5.24.2:
+  enhanced-resolve@5.24.5:
     dependencies:
       graceful-fs: 4.2.11
       tapable: 2.3.3
