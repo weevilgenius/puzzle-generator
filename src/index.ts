@@ -57,7 +57,7 @@ registerIconLibrary('material', {
   resolver: (name) => {
     const match = name.match(/^(.*?)(_(rounded|sharp))?$/);
     if (match) {
-      return `https://cdn.jsdelivr.net/npm/@material-symbols/svg-400@0.32.0/${match[3] ?? 'outlined'}/${match[1]}.svg`;
+      return `https://cdn.jsdelivr.net/npm/@material-symbols/svg-400@0.45.0/${match[3] ?? 'outlined'}/${match[1]}.svg`;
     }
     return '';
   },
