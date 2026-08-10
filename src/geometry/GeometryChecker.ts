@@ -3,6 +3,7 @@ import type {
   EdgeSegment,
   LineTo,
   Piece,
+  PieceID,
   PuzzleTopology,
   Vec2,
 } from "./types";
@@ -12,6 +13,7 @@ import {
   serializeTopology,
   doAABBsIntersect,
   isPointInBoundary,
+  isPointInPolygon,
 } from "./utils";
 import type { CheckGeometryWorkerInput, CheckGeometryWorkerOutput } from '../workers/CheckGeometryWorker';
 import { Bezier } from 'bezier-js';
@@ -324,6 +326,117 @@ function detectVerticesOutsideBoundary(puzzle: PuzzleTopology): Vec2[] {
 }
 
 /**
+ * Detects intersections between generated tabs on procedural pieces and custom (whimsy) pieces.
+ * To optimize performance, this check only evaluates tabs on procedural pieces that are directly
+ * adjacent to a whimsy piece in the half-edge graph topology.
+ *
+ * @param puzzle - The puzzle topology to check.
+ * @returns An array of Vec2 points where tabs intersect or overlap whimsy pieces.
+ */
+async function detectTabWhimsyIntersections(puzzle: PuzzleTopology): Promise<Vec2[]> {
+  const problemPoints: Vec2[] = [];
+
+  // 1. Identify all whimsy pieces in the puzzle topology
+  const whimsyPieces = Array.from(puzzle.pieces.values()).filter((p) => p.isCustomPiece);
+  if (whimsyPieces.length === 0) {
+    return problemPoints;
+  }
+
+  for (const whimsyPiece of whimsyPieces) {
+    // Get the whimsy's boundary segments and polygon representation
+    const whimsyBoundary = getPieceBoundary(whimsyPiece, puzzle);
+    if (whimsyBoundary.length === 0) continue;
+
+    // Convert boundary to simple polygon for point-in-polygon checks
+    const whimsyPolygon: Vec2[] = whimsyBoundary.map((b) => b.startPoint);
+
+    // 2. Find procedural pieces directly adjacent to this whimsy piece
+    const adjacentPieceIds = new Set<PieceID>();
+    const startHeId = whimsyPiece.halfEdge;
+    if (startHeId !== -1) {
+      let currentHeId = startHeId;
+      do {
+        const he = puzzle.halfEdges.get(currentHeId);
+        if (!he) break;
+
+        if (he.twin !== -1) {
+          const twinHe = puzzle.halfEdges.get(he.twin);
+          if (twinHe?.piece !== undefined) {
+            const neighborPiece = puzzle.pieces.get(twinHe.piece);
+            if (neighborPiece && !neighborPiece.isCustomPiece) {
+              adjacentPieceIds.add(neighborPiece.id);
+            }
+          }
+        }
+        currentHeId = he.next;
+      } while (currentHeId !== startHeId);
+    }
+
+    // 3. For each adjacent procedural piece, inspect its tab half-edges
+    for (const pieceId of adjacentPieceIds) {
+      const neighborPiece = puzzle.pieces.get(pieceId);
+      if (!neighborPiece) continue;
+
+      const neighborStartHeId = neighborPiece.halfEdge;
+      if (neighborStartHeId === -1) continue;
+
+      let currentHeId = neighborStartHeId;
+      do {
+        const he = puzzle.halfEdges.get(currentHeId);
+        if (!he) break;
+
+        // Check if this half-edge has custom tab segments
+        if (he.segments && he.segments.length > 0) {
+          // Build BoundarySegments for the tab
+          let startPoint = he.origin;
+          const tabSegments: BoundarySegment[] = [];
+          for (const segment of he.segments) {
+            tabSegments.push({
+              segment,
+              startPoint,
+              bbox: calculateSegmentsBounds(startPoint, [segment]),
+            });
+            startPoint = segment.type === 'line' ? segment.p : segment.p3;
+          }
+
+          // 4. Narrow-phase segment intersection check against whimsy boundary
+          for (const tabSeg of tabSegments) {
+            for (const whimsySeg of whimsyBoundary) {
+              if (!doAABBsIntersect(tabSeg.bbox, whimsySeg.bbox)) {
+                continue;
+              }
+
+              const potentialPoints = await narrowPhaseDetection(tabSeg, whimsySeg, false);
+              for (const point of potentialPoints) {
+                // Ignore touches at shared boundary vertices
+                const isSharedVertex = whimsyPolygon.some((v) => distanceSq(point, v) < 1e-6);
+                if (!isSharedVertex) {
+                  problemPoints.push(point);
+                }
+              }
+            }
+
+            // 5. Point-in-polygon check for tab peaks/endpoints inside the whimsy
+            const tabEndPoint = getEndPoint(tabSeg.segment);
+            if (isPointInPolygon(tabEndPoint, whimsyPolygon)) {
+              // Ensure it's not on the boundary vertex
+              const isBoundaryVertex = whimsyPolygon.some((v) => distanceSq(tabEndPoint, v) < 1e-6);
+              if (!isBoundaryVertex) {
+                problemPoints.push(tabEndPoint);
+              }
+            }
+          }
+        }
+
+        currentHeId = he.next;
+      } while (currentHeId !== neighborStartHeId);
+    }
+  }
+
+  return problemPoints;
+}
+
+/**
  * Checks a puzzle for geometry issues such as intersecting pieces or too narrow geometry.
  * @param puzzle - Geometry to check
  * @param onProgress - Optional callpack for managing a progress bar
@@ -340,8 +453,11 @@ export async function checkGeometry(
   // find vertices outside the boundary
   const outsideVertices = detectVerticesOutsideBoundary(puzzle);
 
-  // combine both types of problems
-  const allProblems = [...intersections, ...outsideVertices];
+  // find tabs on adjacent pieces that intersect whimsy pieces
+  const tabWhimsyIntersections = await detectTabWhimsyIntersections(puzzle);
+
+  // combine all types of problems
+  const allProblems = [...intersections, ...outsideVertices, ...tabWhimsyIntersections];
 
   if (allProblems.length < 2) {
     return allProblems;
