@@ -202,6 +202,12 @@
   border: 0;
 }
 
+.tray-help {
+  margin: 0;
+  color: var(--wa-color-text-quiet);
+  font-size: 0.875rem;
+}
+
 .seed-display-settings {
   display: flex;
   flex-direction: column;

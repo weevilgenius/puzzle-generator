@@ -35,7 +35,7 @@ test('settings rail opens one resizable tray at a time', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Seeds' }).click();
   await expect(page.getByRole('heading', { name: 'Seeds' })).toBeVisible();
-  await expect(page.getByText('Show seed points')).toBeVisible();
+  await expect(page.getByText('Draw seed points')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Canvas' })).not.toBeVisible();
 
   await page.getByRole('button', { name: 'Seeds' }).click();

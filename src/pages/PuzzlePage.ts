@@ -596,6 +596,8 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
   };
 
   const renderCanvasSettings = (): m.Children => [
+    m('p.tray-help',
+      'These settings apply to the puzzle as a whole.'),
     m('.background-image', [
       m(UploadImageButton, {
         label: 'Background Image',
@@ -643,7 +645,12 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
       },
     }),
     m(NumberInputControl, {
-      config: { name: 'pieceSize', label: 'Piece size', type: 'number' },
+      config: {
+        name: 'pieceSize',
+        label: 'Piece size',
+        type: 'number',
+        helpText: 'Determines the rough space between seed points which in turn drives the position and size of pieces.',
+      },
       value: state.distance,
       onChange: (value) => {
         state.distance = value ?? 0;
@@ -689,10 +696,11 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
   ];
 
   const renderSeedSettings = (): m.Children => [
-    renderGeneratorPicker('point'),
+    m('p.tray-help',
+      'Seed points guide where pieces are placed.'),
     m('.seed-display-settings', [
       m(BooleanInputControl, {
-        config: { name: 'drawPoints', label: 'Show seed points', type: 'boolean' },
+        config: { name: 'drawPoints', label: 'Draw seed points', type: 'boolean' },
         value: state.drawPoints,
         onChange: (value) => {
           state.drawPoints = value;
@@ -709,6 +717,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
         },
       }),
     ]),
+    renderGeneratorPicker('point'),
   ];
 
   const renderTrayContent = (): m.Children => {
@@ -726,9 +735,20 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
         onDelete: handleDeleteCustomPiece,
       });
     case 'point': return renderSeedSettings();
-    case 'piece': return renderGeneratorPicker('piece');
-    case 'placement': return renderGeneratorPicker('placement');
-    case 'tab': return renderGeneratorPicker('tab');
+    case 'piece': return [
+      m('p.tray-help',
+        'These algorithms turn seed points into puzzle piece shapes.'),
+      renderGeneratorPicker('piece'),
+    ];
+    case 'placement': return [
+      m('p.tray-help',
+        'Configure where tabs are placed between pieces and how they are oriented.'),
+      renderGeneratorPicker('placement'),
+    ];
+    case 'tab': return [
+      m('p.tray-help', 'Configure tab shapes.'),
+      renderGeneratorPicker('tab'),
+    ];
     default: return null;
     }
   };
