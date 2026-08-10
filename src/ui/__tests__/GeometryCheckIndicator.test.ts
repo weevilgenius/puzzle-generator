@@ -23,7 +23,10 @@ if (!customElements.get('wa-icon')) {
 describe('GeometryCheckIndicator', () => {
   it('renders unchecked, checking, success, and problem states', () => {
     const unchecked = renderComponent(GeometryCheckIndicator, { attrs: {} });
-    expect(screen.getByRole('button', { name: 'Check. Check geometry now' }).getAttribute('variant')).toBe('neutral');
+    const uncheckedBtn = screen.getByRole('button', { name: 'Check puzzle geometry for problems' });
+    expect(uncheckedBtn.getAttribute('variant')).toBe('neutral');
+    // Initial state is icon-only — no "Check" status text
+    expect(uncheckedBtn.querySelector('span[aria-live]')).toBeNull();
     unchecked.unmount();
 
     const checking = renderComponent(GeometryCheckIndicator, { attrs: { progressPercent: 42 } });
@@ -31,18 +34,24 @@ describe('GeometryCheckIndicator', () => {
     checking.unmount();
 
     const success = renderComponent(GeometryCheckIndicator, { attrs: { problems: 0 } });
-    expect(screen.getByRole('button', { name: 'OK. Check geometry now' }).getAttribute('variant')).toBe('success');
+    expect(screen.getByRole('button', { name: 'OK. Check puzzle geometry for problems' }).getAttribute('variant')).toBe('success');
     success.unmount();
 
     const problems = renderComponent(GeometryCheckIndicator, { attrs: { problems: 2 } });
-    expect(screen.getByRole('button', { name: '2 issues. Check geometry now' }).getAttribute('variant')).toBe('danger');
+    expect(screen.getByRole('button', { name: '2 puzzle geometry issues found. Click to hide.' }).getAttribute('variant')).toBe('danger');
     problems.unmount();
+  });
+
+  it('uses singular wording for one issue', () => {
+    const mounted = renderComponent(GeometryCheckIndicator, { attrs: { problems: 1 } });
+    expect(screen.getByRole('button', { name: '1 puzzle geometry issue found. Click to hide.' })).toBeTruthy();
+    mounted.unmount();
   });
 
   it('requests a manual check when clicked', () => {
     const onCheckRequested = vi.fn();
     const mounted = renderComponent(GeometryCheckIndicator, { attrs: { onCheckRequested } });
-    fireEvent.click(screen.getByRole('button', { name: 'Check. Check geometry now' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Check puzzle geometry for problems' }));
     expect(onCheckRequested).toHaveBeenCalledOnce();
     mounted.unmount();
   });

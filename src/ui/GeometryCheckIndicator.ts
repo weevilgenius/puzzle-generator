@@ -10,6 +10,8 @@ import '@awesome.me/webawesome/dist/components/tooltip/tooltip.js';
 // component CSS
 import './GeometryCheckIndicator.css';
 
+const HELP_TEXT = 'Check puzzle geometry for problems';
+
 // component attributes
 export interface GeometryCheckIndicatorAttrs extends m.Attributes {
   /** If present, represents the number of geometry problems found in the most recent check */
@@ -32,26 +34,38 @@ export const GeometryCheckIndicator: m.Component<GeometryCheckIndicatorAttrs> = 
       : attrs.problems === undefined
         ? 'editor_choice'
         : attrs.problems === 0 ? 'check' : 'error';
+    // Unchecked state is icon-only (no "Check" label); other states show status text
     const label = checking
       ? `${progress}%`
       : attrs.problems === undefined
-        ? 'Check'
+        ? ''
         : attrs.problems === 0 ? 'OK' : `${attrs.problems} issue${attrs.problems === 1 ? '' : 's'}`;
     const variant = checking
       ? 'neutral'
       : attrs.problems === undefined
         ? 'neutral'
         : attrs.problems === 0 ? 'success' : 'danger';
+    const hasIssues = attrs.problems !== undefined && attrs.problems > 0;
+    const helpText = hasIssues
+      ? `${attrs.problems} puzzle geometry issue${attrs.problems === 1 ? '' : 's'} found. Click to hide.`
+      : HELP_TEXT;
+    const ariaLabel = checking
+      ? `Checking geometry: ${progress}%`
+      : hasIssues
+        ? helpText
+        : label
+          ? `${label}. ${HELP_TEXT}`
+          : HELP_TEXT;
 
     return m('.geometry-check-indicator', [
-      m('wa-tooltip', { for: 'geometry-check-status' }, 'Check geometry now'),
+      m('wa-tooltip', { for: 'geometry-check-status' }, helpText),
       m('wa-button#geometry-check-status', {
         variant,
         appearance: 'filled',
         size: 's',
         pill: true,
         disabled: attrs.disabled === true ? true : checking,
-        'aria-label': checking ? `Checking geometry: ${progress}%` : `${label}. Check geometry now`,
+        'aria-label': ariaLabel,
         onclick: (e: Event & MithrilViewEvent) => {
           e.redraw = false;
           attrs.onCheckRequested?.();
@@ -62,7 +76,8 @@ export const GeometryCheckIndicator: m.Component<GeometryCheckIndicatorAttrs> = 
           name: icon,
           animation: checking ? 'spin' : undefined,
         }),
-        m('span[aria-live=polite]', label),
+        // Only render status text when there is something to show
+        label ? m('span[aria-live=polite]', label) : null,
       ]),
     ]);
   },

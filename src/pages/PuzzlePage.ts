@@ -496,6 +496,16 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     m.redraw();
   }
 
+  // Clear geometry check results from state and puzzle so the canvas re-renders clean
+  function clearGeometryCheckResults() {
+    state.geometryProblems.problems = undefined;
+    state.geometryProblems.progress = undefined;
+    if (state.puzzle) {
+      state.puzzle.problems = undefined;
+    }
+    m.redraw();
+  }
+
   // utility to invoke the geometry checks
   function handleCheckGeometry() {
     if (!state.puzzle || state.building) return;
@@ -519,6 +529,18 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
       console.error(err);
       m.redraw();
     });
+  }
+
+  /**
+   * Header check button: when issues are showing, first click clears results
+   * (gray/unchecked + re-render without problem highlights). Otherwise run a check.
+   */
+  function handleGeometryCheckClick() {
+    if ((state.geometryProblems.problems ?? 0) > 0) {
+      clearGeometryCheckResults();
+      return;
+    }
+    handleCheckGeometry();
   }
 
   const trayDefinitions = [
@@ -646,6 +668,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
         name: 'autoCheck',
         label: 'Check geometry automatically',
         type: 'boolean',
+        helpText: 'When checked, the puzzle geometry checker will run on each settings change. This can be slow, depending on the puzzle geometry.',
       },
       value: state.geometryProblems.autoCheck,
       onChange: (autoCheck) => {
@@ -837,7 +860,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
             problems: state.geometryProblems.problems,
             progressPercent: state.geometryProblems.progress,
             disabled: state.dirty || state.building,
-            onCheckRequested: handleCheckGeometry,
+            onCheckRequested: handleGeometryCheckClick,
           }),
           m('.header-actions', [
             m(SaveLoadButtons, {
