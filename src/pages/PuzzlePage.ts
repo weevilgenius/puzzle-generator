@@ -522,11 +522,11 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
 
   const trayDefinitions = [
     { name: 'canvas', label: 'Canvas', icon: 'tune' },
-    { name: 'whimsy', label: 'Whimsy', icon: 'pets' },
-    { name: 'point', label: 'Seeds', icon: 'scatter_plot' },
-    { name: 'piece', label: 'Pieces', icon: 'hub' },
-    { name: 'placement', label: 'Tab Placement', icon: 'location_on' },
-    { name: 'tab', label: 'Tab Shape', icon: 'extension' },
+    { name: 'whimsy', label: 'Whimsies', icon: 'raven' },
+    { name: 'point', label: 'Seeds', icon: 'grain' },
+    { name: 'piece', label: 'Piece Generation', icon: 'pentagon' },
+    { name: 'placement', label: 'Tab Placement', icon: 'brick' },
+    { name: 'tab', label: 'Tab Shape', icon: 'toys_and_games' },
   ] as const;
 
   const resetGeneratedSeedPoints = () => {
