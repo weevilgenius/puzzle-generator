@@ -1,6 +1,12 @@
 Change Log
 ==========
 
+## Version 0.6.0
+
+Overhauled the UI to make managing settings less awkward. Added a lot of help text.
+Better mobile support.
+
+
 ## Version 0.5.1
 
 Added the ability to save and load puzzle configurations as JSON files, allowing users
