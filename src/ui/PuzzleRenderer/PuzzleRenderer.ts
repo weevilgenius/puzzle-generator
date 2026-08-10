@@ -240,16 +240,17 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
     view: ({ attrs }) => {
       // Get current zoom as percentage string
       const currentZoomStr = getZoomPercentage();
+      const allowVerticalScrolling = attrs.allowVerticalScrolling === true;
 
-      return m('.puzzle-renderer-wrapper', [
+      return m('.puzzle-renderer-wrapper', {
+        class: allowVerticalScrolling ? undefined : 'fit-viewport',
+      }, [
         // Canvas for rendering the puzzle with Paper.js (background image is now inside Paper.js)
         m('canvas.puzzle-renderer', {
           key: 'puzzle-renderer-canvas', // Stable key to prevent Mithril from replacing the canvas
           width: attrs.width,
           height: attrs.height,
           style: {
-            width: '100%',
-            height: 'auto',
             touchAction: 'manipulation',
           },
 

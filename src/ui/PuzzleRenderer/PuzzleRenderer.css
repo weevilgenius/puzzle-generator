@@ -18,10 +18,33 @@
   box-sizing: border-box;
 }
 
+/* Fit entire puzzle in the available viewport (no vertical overflow) */
+.puzzle-renderer-wrapper.fit-viewport {
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  overflow: hidden;
+}
+
+.puzzle-renderer-wrapper.fit-viewport canvas.puzzle-renderer {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  /* Leave room for the zoom controls row below the canvas */
+  max-height: calc(100% - 4rem);
+  min-height: 0;
+  flex: 0 1 auto;
+  object-fit: contain;
+}
+
 /* Controls row below canvas */
 .puzzle-renderer-controls {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-top: 8px;
+  flex: none;
 }

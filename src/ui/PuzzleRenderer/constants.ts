@@ -49,6 +49,12 @@ export interface PuzzleRendererAttrs extends m.Attributes {
   onCustomPieceTransformed?: (id: string, transform: CustomPieceTransform) => void;
   /** Callback when a custom piece is selected */
   onCustomPieceSelected?: (id: string | null) => void;
+  /**
+   * When true, the canvas fills the available width and may scroll vertically.
+   * When false (default), the canvas is scaled to fit entirely within the
+   * available viewport both horizontally and vertically.
+   */
+  allowVerticalScrolling?: boolean;
 }
 
 /**

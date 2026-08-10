@@ -108,6 +108,11 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     drawPoints: boolean;
     /** Color of seed points */
     pointColor: string;
+    /**
+     * When true, the puzzle canvas fills available width and may scroll
+     * vertically. When false, the canvas is scaled to fit the viewport.
+     */
+    allowVerticalScrolling: boolean;
     /** Selected border shape */
     borderShape: BorderShapeType;
     /** Corner radius for rounded rectangle (pixels) */
@@ -161,6 +166,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     color: initial?.visual.color ?? (isDarkMode ? "#DDDDDD" : "#333333"),
     drawPoints: initial?.visual.drawPoints ?? false,
     pointColor: initial?.visual.pointColor ?? (isDarkMode ? "#FF0000" : "#0000FF"),
+    allowVerticalScrolling: false,
     borderShape: initial?.border.shape ?? 'rectangle',
     borderCornerRadius: initial?.border.cornerRadius ?? 50,
     geometryProblems: {
@@ -647,6 +653,19 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
         m.redraw();
       },
     }),
+    m(BooleanInputControl, {
+      config: {
+        name: 'allowVerticalScrolling',
+        label: 'Allow vertical scrolling',
+        type: 'boolean',
+        helpText: 'When checked, the puzzle is allowed to extend vertically off the bottom of the screen.',
+      },
+      value: state.allowVerticalScrolling,
+      onChange: (value) => {
+        state.allowVerticalScrolling = value;
+        m.redraw();
+      },
+    }),
   ];
 
   const renderSeedSettings = (): m.Children => [
@@ -834,7 +853,9 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
         ]),
 
         m('.workspace', [
-          state.puzzle && m('.puzzle-stack', [
+          state.puzzle && m('.puzzle-stack', {
+            class: state.allowVerticalScrolling ? undefined : 'fit-viewport',
+          }, [
             m(PuzzleRenderer, {
               width: state.canvasWidth,
               height: state.canvasHeight,
@@ -843,6 +864,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
               puzzle: state.puzzle,
               isDirty: state.dirty,
               pointColor: state.drawPoints ? state.pointColor : undefined,
+              allowVerticalScrolling: state.allowVerticalScrolling,
               customPieces: state.customPieces,
               selectedCustomPieceId: state.selectedCustomPieceId,
               onPuzzleChanged: (puzzle) => {

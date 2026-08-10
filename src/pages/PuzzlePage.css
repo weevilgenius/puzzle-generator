@@ -69,7 +69,11 @@
   min-width: 18rem;
   min-height: 0;
   flex: 1;
-  overflow: auto;
+  /* Always show a vertical scrollbar when scrolling is allowed */
+  overflow-x: auto;
+  overflow-y: scroll;
+  /* Reserve gutter space even when content does not overflow (classic bars) */
+  scrollbar-gutter: stable;
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -78,8 +82,65 @@
   background: var(--wa-color-surface-lowered);
 }
 
+/*
+ * macOS Chrome/Safari default to overlay scrollbars that only appear while
+ * scrolling. Setting width/height on ::-webkit-scrollbar forces a classic
+ * non-overlay bar that stays visible whenever overflow-y is scroll.
+ *
+ * Important: do NOT set scrollbar-width/scrollbar-color on this element in
+ * Chromium — those standard properties override ::-webkit-scrollbar and keep
+ * overlay behavior (so the bar disappears when not scrolling).
+ */
+.puzzle-stack::-webkit-scrollbar {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+}
+
+.puzzle-stack::-webkit-scrollbar-track {
+  background: var(--wa-color-surface-default);
+  border-left: 1px solid var(--wa-color-surface-border);
+}
+
+.puzzle-stack::-webkit-scrollbar-thumb {
+  background-color: var(--wa-color-gray-50);
+  border-radius: 6px;
+  border: 3px solid var(--wa-color-surface-default);
+  background-clip: padding-box;
+}
+
+.puzzle-stack::-webkit-scrollbar-thumb:hover {
+  background-color: var(--wa-color-gray-40);
+}
+
+.puzzle-stack::-webkit-scrollbar-corner {
+  background: var(--wa-color-surface-default);
+}
+
+/* Firefox (no ::-webkit-scrollbar): style the native thin scrollbar */
+@supports not selector(::-webkit-scrollbar) {
+  .puzzle-stack {
+    scrollbar-width: thin;
+    scrollbar-color: var(--wa-color-gray-50) var(--wa-color-surface-default);
+  }
+}
+
 .puzzle-stack .puzzle-renderer-wrapper {
   width: 100%;
+}
+
+/* Constrain the puzzle so it fits entirely without vertical scrolling */
+.puzzle-stack.fit-viewport {
+  overflow: hidden;
+  scrollbar-gutter: auto;
+  /* Stretch the renderer to the available height so max-height constraints work */
+  align-items: stretch;
+}
+
+.puzzle-stack.fit-viewport .puzzle-renderer-wrapper {
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
 }
 
 .settings-shell {
