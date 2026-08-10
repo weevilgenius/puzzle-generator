@@ -27,7 +27,7 @@ test('puzzle generator loads', async ({ page }) => {
 test('settings rail opens one resizable tray at a time', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page.locator('.settings-tray')).toHaveAttribute('aria-hidden', 'true');
+  await expect(page.getByRole('heading', { name: 'Help' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Canvas' }).click();
   await expect(page.getByRole('heading', { name: 'Canvas' })).toBeVisible();
@@ -40,4 +40,12 @@ test('settings rail opens one resizable tray at a time', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Seeds' }).click();
   await expect(page.locator('.settings-tray')).toHaveAttribute('aria-hidden', 'true');
+});
+
+test('help explains the generator flow', async ({ page }) => {
+  await page.goto('/');
+
+  await expect(page.getByRole('heading', { name: 'Help' })).toBeVisible();
+  await expect(page.getByText('How to use the generator')).toBeVisible();
+  await expect(page.getByText('Piece Generation:', { exact: false })).toBeVisible();
 });

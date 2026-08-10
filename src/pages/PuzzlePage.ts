@@ -14,6 +14,7 @@ import ColorPicker from '../ui/ColorPicker';
 import BorderShapePicker, { type BorderShapeType } from '../ui/BorderShapePicker';
 import WhimsyEditor from '../ui/WhimsyEditor';
 import WhimsyManager from '../ui/WhimsyManager';
+import HelpContent from '../ui/HelpContent';
 
 // geometry parts
 import type { CustomPiece, PuzzleGeometry, PathCommand, Vec2 } from '../geometry/types';
@@ -92,7 +93,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
 
   interface PageState {
     /** Settings tray currently shown beside the puzzle */
-    activeTray?: 'canvas' | 'whimsy' | 'point' | 'piece' | 'placement' | 'tab';
+    activeTray?: 'help' | 'canvas' | 'whimsy' | 'point' | 'piece' | 'placement' | 'tab';
     /** Random seed */
     seed: number;
     /** Width of canvas in pixels */
@@ -158,7 +159,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
   const initialHeight = initial?.dimensions.height ?? defaultHeight;
 
   const state: PageState = {
-    activeTray: undefined,
+    activeTray: 'help',
     seed: initial?.seed ?? new Date().getTime() % 10240,
     canvasWidth: initialWidth,
     canvasHeight: initialHeight,
@@ -544,6 +545,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
   }
 
   const trayDefinitions = [
+    { name: 'help', label: 'Help', icon: 'help' },
     { name: 'canvas', label: 'Canvas', icon: 'tune' },
     { name: 'whimsy', label: 'Whimsies', icon: 'raven' },
     { name: 'point', label: 'Seeds', icon: 'grain' },
@@ -718,6 +720,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
 
   const renderTrayContent = (): m.Children => {
     switch (state.activeTray) {
+    case 'help': return m(HelpContent);
     case 'canvas': return renderCanvasSettings();
     case 'whimsy':
       return m(WhimsyManager, {

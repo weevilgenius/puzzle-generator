@@ -1,0 +1,20 @@
+.help-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.help-content h3 {
+  margin: 0;
+  font-size: var(--wa-font-size-l);
+}
+
+.help-content p {
+  margin: 0;
+}
+
+.help-content .help-step strong {
+  background-color: var(--wa-color-brand-fill-normal);
+  padding: 4px;
+  border-radius: 3px;
+}
