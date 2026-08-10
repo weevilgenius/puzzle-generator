@@ -15,8 +15,7 @@ const HelpContent: m.Component = {
       'either the mouse wheel or the zoom selector below it, and you can pan ' +
       'while zoomed by holding down the space key while click dragging. Click ' +
       'the recenter button to reset the view to its default zoom and center. ' +
-      'The buttons along the right edge of the screen each open a different set ' +
-      'of configuration options.'),
+      'The settings controls each open a different set of configuration options.'),
     m('.help-step', [
       m('strong', 'Canvas:'),
       ' Settings that apply to the puzzle as a whole including shape, piece color, ' +

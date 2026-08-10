@@ -62,6 +62,7 @@ import './PuzzlePage.css';
 // detect light/dark mode
 let isDarkMode = false;
 const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+const mobileLayoutQuery = window.matchMedia('(max-width: 700px)');
 if (darkModeQuery.matches) {
   isDarkMode = true;
 }
@@ -92,6 +93,8 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
   }
 
   interface PageState {
+    /** Whether the compact mobile settings layout is active */
+    isMobileLayout: boolean;
     /** Settings tray currently shown beside the puzzle */
     activeTray?: 'help' | 'canvas' | 'whimsy' | 'point' | 'piece' | 'placement' | 'tab';
     /** Random seed */
@@ -159,7 +162,8 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
   const initialHeight = initial?.dimensions.height ?? defaultHeight;
 
   const state: PageState = {
-    activeTray: 'help',
+    isMobileLayout: mobileLayoutQuery.matches,
+    activeTray: mobileLayoutQuery.matches ? undefined : 'help',
     seed: initial?.seed ?? new Date().getTime() % 10240,
     canvasWidth: initialWidth,
     canvasHeight: initialHeight,
@@ -753,10 +757,16 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     }
   };
 
+  const handleMobileLayoutChange = (event: MediaQueryListEvent) => {
+    state.isMobileLayout = event.matches;
+    m.redraw();
+  };
+
   // Mithril component
   return {
 
     oncreate: () => {
+      mobileLayoutQuery.addEventListener('change', handleMobileLayoutChange);
       buildPuzzle({
         bounds: {
           width: state.canvasWidth,
@@ -829,6 +839,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     },
 
     onremove: () => {
+      mobileLayoutQuery.removeEventListener('change', handleMobileLayoutChange);
       if (state.backgroundImageUrl) {
         // clean up memory
         URL.revokeObjectURL(state.backgroundImageUrl);
@@ -1011,12 +1022,13 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
             m('nav.settings-rail', { 'aria-label': 'Puzzle settings' },
               m('wa-button-group', {
                 label: 'Puzzle settings',
-                orientation: 'vertical',
+                orientation: state.isMobileLayout ? 'horizontal' : 'vertical',
               }, trayDefinitions.map((tray) => {
                 const active = tray.name === state.activeTray;
                 const whimsyCount = tray.name === 'whimsy' ? state.customPieces.length : 0;
                 return m('wa-button.rail-button', {
                   'data-tray': tray.name,
+                  'aria-label': tray.label,
                   appearance: active ? 'filled' : 'plain',
                   variant: active ? 'brand' : 'neutral',
                   size: 's',

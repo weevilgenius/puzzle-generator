@@ -24,7 +24,8 @@ test('puzzle generator loads', async ({ page }) => {
   await expect(seed).not.toHaveValue(initialSeed);
 });
 
-test('settings rail opens one resizable tray at a time', async ({ page }) => {
+test('settings rail opens one resizable tray at a time', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile-chromium', 'Mobile uses a full-screen settings view.');
   await page.goto('/');
 
   await expect(page.getByRole('heading', { name: 'Help' })).toBeVisible();
@@ -42,10 +43,33 @@ test('settings rail opens one resizable tray at a time', async ({ page }) => {
   await expect(page.locator('.settings-tray')).toHaveAttribute('aria-hidden', 'true');
 });
 
-test('help explains the generator flow', async ({ page }) => {
+test('mobile settings open full-screen without horizontal overflow', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile-chromium', 'Mobile-only layout.');
   await page.goto('/');
+
+  await expect(page.locator('canvas.puzzle-renderer')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Help' })).not.toBeVisible();
+  await expect(page.locator('.settings-tray')).toHaveAttribute('aria-hidden', 'true');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+  await page.getByRole('button', { name: 'Canvas' }).click();
+  await expect(page.getByRole('heading', { name: 'Canvas' })).toBeVisible();
+  await expect(page.getByText('Check geometry automatically')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Close settings' }).click();
+  await expect(page.locator('.settings-tray')).toHaveAttribute('aria-hidden', 'true');
+  await expect(page.locator('canvas.puzzle-renderer')).toBeVisible();
+});
+
+test('help explains the generator flow', async ({ page }, testInfo) => {
+  await page.goto('/');
+
+  if (testInfo.project.name === 'mobile-chromium') {
+    await page.getByRole('button', { name: 'Help' }).click();
+  }
 
   await expect(page.getByRole('heading', { name: 'Help' })).toBeVisible();
   await expect(page.getByText('How to use the generator')).toBeVisible();
   await expect(page.getByText('Piece Generation:', { exact: false })).toBeVisible();
+  await expect(page.getByText('The settings controls each open a different set of configuration options.')).toBeVisible();
 });
