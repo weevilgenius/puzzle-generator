@@ -22,6 +22,9 @@
  *    --url <base>    Base URL to use; disables auto-start      *
  *    --wait <sel>    Wait for a CSS selector before capturing  *
  *    --delay <ms>    Extra settle delay before capturing       *
+ *    --tray <name>   Open a settings tray (help | canvas | whimsy |
+ *                    point | piece | placement | tab), or "none" to close
+ *                    whichever tray is open                    *
 \* ========================================================= */
 
 import { parseArgs } from 'node:util';
@@ -49,6 +52,7 @@ const { values } = parseArgs({
     url: { type: 'string' },
     wait: { type: 'string' },
     delay: { type: 'string' },
+    tray: { type: 'string' },
   },
 });
 
@@ -108,6 +112,17 @@ try {
   const page = await context.newPage();
 
   await page.goto(targetUrl, { waitUntil: 'networkidle' });
+
+  if (values.tray) {
+    const wanted = values.tray === 'none' ? null : values.tray;
+    const pressed = page.locator('.rail-button[aria-pressed="true"]');
+    const current = (await pressed.count()) ? await pressed.first().getAttribute('data-tray') : null;
+    if (current !== wanted) {
+      // The rail buttons toggle, so closing means clicking whichever one is open.
+      const button = wanted ? page.locator(`.rail-button[data-tray="${wanted}"]`) : pressed.first();
+      await button.click({ timeout: 5000 });
+    }
+  }
 
   if (values.wait) {
     await page.waitForSelector(values.wait);

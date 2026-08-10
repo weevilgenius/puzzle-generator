@@ -33,6 +33,8 @@ started for the capture and stopped afterwards.
   - `--device <name>` Playwright device, e.g. `"iPhone 15"`, `"Pixel 7"`
   - `--width <n>` / `--height <n>` viewport size (ignored with `--device`)
   - `--full-page` capture the full scrollable page
+  - `--tray <name>` open a settings tray: `help`, `canvas`, `whimsy`, `point`,
+    `piece`, `placement`, `tab`, or `none` to close it
   - `--wait <selector>` wait for a CSS selector before capturing
   - `--delay <ms>` extra settle delay before capturing
   - `--url <base>` target an explicit base URL (disables auto-start)

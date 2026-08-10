@@ -1016,6 +1016,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
                 const active = tray.name === state.activeTray;
                 const whimsyCount = tray.name === 'whimsy' ? state.customPieces.length : 0;
                 return m('wa-button.rail-button', {
+                  'data-tray': tray.name,
                   appearance: active ? 'filled' : 'plain',
                   variant: active ? 'brand' : 'neutral',
                   size: 's',
