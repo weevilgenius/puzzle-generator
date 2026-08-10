@@ -604,6 +604,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     m('.background-image', [
       m(UploadImageButton, {
         label: 'Background Image',
+        imageName: state.backgroundImageName,
         onUpload: (imageUrl, filename, width, height) => {
           if (state.backgroundImageUrl) URL.revokeObjectURL(state.backgroundImageUrl);
           state.canvasWidth = width;

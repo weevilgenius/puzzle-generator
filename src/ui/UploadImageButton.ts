@@ -16,6 +16,12 @@ export interface UploadImageAttrs extends m.Attributes {
   /** If true, the button will be disabled */
   disabled?: boolean;
   /**
+   * Filename of the currently loaded image (controlled by parent).
+   * Kept outside this component so it survives unmount/remount when
+   * the parent panel is closed and reopened.
+   */
+  imageName?: string;
+  /**
    * Called when the user uploads an image. The caller is responsible for
    * cleaning up the returned image URL.
    */
@@ -46,16 +52,17 @@ function calculateDisplayDimensions(originalWidth: number, originalHeight: numbe
 // component
 export const UploadImageButton: m.ClosureComponent<UploadImageAttrs> = () => {
 
-  // component state
+  // component state (only DOM refs — image name lives on the parent)
   const state = {
     inputElement: undefined as HTMLInputElement | undefined,
-    imageLoaded: false,
-    imageName: '',
   };
 
   return {
 
     view: ({ attrs }) => {
+      const imageName = attrs.imageName ?? '';
+      const hasImage = imageName.length > 0;
+
       return [
 
         // button for display
@@ -87,9 +94,7 @@ export const UploadImageButton: m.ClosureComponent<UploadImageAttrs> = () => {
                     const { width, height } = calculateDisplayDimensions(bitmap.width, bitmap.height);
                     const uploadUrl = URL.createObjectURL(file);
                     bitmap.close();
-                    state.imageName = file.name;
                     attrs.onUpload(uploadUrl, file.name, width, height);
-                    state.imageLoaded = true;
                   })
                   .catch((err) => {
                     console.error('could not create a bitmap image: ', err);
@@ -99,18 +104,16 @@ export const UploadImageButton: m.ClosureComponent<UploadImageAttrs> = () => {
           },
         }),
 
-        m('span.background-image-label', state.imageName),
+        m('span.background-image-label', imageName),
 
         // clear button
-        state.imageLoaded && m('wa-icon.clear-button', {
+        hasImage && m('wa-icon.clear-button', {
           library: 'material',
           name: 'close',
           label: 'Clear background image',
           onclick: (e: MithrilViewEvent) => {
             e.redraw = false;
             if (attrs.disabled) { return; }
-            state.imageName = '';
-            state.imageLoaded = false;
             attrs.onClear();
           },
         }, 'Clear'),
