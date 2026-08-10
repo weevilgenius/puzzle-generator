@@ -42,6 +42,11 @@ import "../geometry/generators/tab/TraditionalTabGenerator";
 
 // Web Awesome components
 import '@awesome.me/webawesome/dist/components/button/button.js';
+import '@awesome.me/webawesome/dist/components/button-group/button-group.js';
+import '@awesome.me/webawesome/dist/components/icon/icon.js';
+import '@awesome.me/webawesome/dist/components/input/input.js';
+import type WaInput from '@awesome.me/webawesome/dist/components/input/input.js';
+import '@awesome.me/webawesome/dist/components/tooltip/tooltip.js';
 
 // Save/load
 import { createSaveData, validateAndDeserialize, downloadPuzzleFile, readPuzzleFile } from '../save/puzzleSaveFile';
@@ -85,6 +90,8 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
   }
 
   interface PageState {
+    /** Settings tray currently shown beside the puzzle */
+    activeTray?: 'canvas' | 'whimsy' | 'point' | 'piece' | 'placement' | 'tab';
     /** Random seed */
     seed: number;
     /** Width of canvas in pixels */
@@ -116,6 +123,8 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     },
     /** Dirty flag that keeps us from hitting the puzzle generation function too hard */
     dirty: boolean;
+    /** Whether puzzle geometry is currently rebuilding */
+    building: boolean;
     /** Currently selected and configured generators for each part of puzzle generation */
     generators: Record<string, GeneratorState>;
     /** Generated puzzle geometry */
@@ -143,6 +152,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
   const initialHeight = initial?.dimensions.height ?? defaultHeight;
 
   const state: PageState = {
+    activeTray: undefined,
     seed: initial?.seed ?? new Date().getTime() % 10240,
     canvasWidth: initialWidth,
     canvasHeight: initialHeight,
@@ -159,6 +169,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
       progress: undefined,
     },
     dirty: true,
+    building: true,
     generators: {
       /** Strategy for creating points (which influences piece generation) */
       point: {
@@ -480,7 +491,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
 
   // utility to invoke the geometry checks
   function handleCheckGeometry() {
-    if (!state.puzzle) return;
+    if (!state.puzzle || state.building) return;
 
     state.geometryProblems.progress = 0;
     m.redraw();
@@ -503,6 +514,187 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     });
   }
 
+  const trayDefinitions = [
+    { name: 'canvas', label: 'Canvas', icon: 'tune' },
+    { name: 'whimsy', label: 'Whimsy', icon: 'pets' },
+    { name: 'point', label: 'Seeds', icon: 'scatter_plot' },
+    { name: 'piece', label: 'Pieces', icon: 'hub' },
+    { name: 'placement', label: 'Tab Placement', icon: 'location_on' },
+    { name: 'tab', label: 'Tab Shape', icon: 'extension' },
+  ] as const;
+
+  const resetGeneratedSeedPoints = () => {
+    state.seedPointMode = 'generate';
+    state.seedPoints = undefined;
+  };
+
+  const markPuzzleDirty = () => {
+    resetGeneratedSeedPoints();
+    state.dirty = true;
+    m.redraw();
+  };
+
+  const renderGeneratorPicker = (type: 'point' | 'piece' | 'placement' | 'tab'): m.Children => {
+    const generator = state.generators[type];
+    const isEdited = type === 'point' && state.seedPointMode === 'edit';
+
+    return [
+      isEdited && m('.edited-badge', 'Using edited points'),
+      m(GeneratorPicker, {
+        generator: generator.name,
+        registry: generator.registry,
+        config: generator.config,
+        onGeneratorChange: (generatorName) => {
+          if (generatorName === generator.name) return;
+
+          generator.name = generatorName;
+          generator.config = generator.registry.getDefaultConfig(generatorName, state.canvasWidth, state.canvasHeight);
+          if (type === 'point') resetGeneratedSeedPoints();
+          state.dirty = true;
+          m.redraw();
+        },
+        onConfigChange: (key, value) => {
+          generator.config[key] = value;
+          if (type === 'point') resetGeneratedSeedPoints();
+          state.dirty = true;
+          m.redraw();
+        },
+      }),
+      isEdited && m('wa-button', {
+        size: 's',
+        appearance: 'plain',
+        onclick: (e: MouseEvent & MithrilViewEvent) => {
+          e.redraw = false;
+          markPuzzleDirty();
+        },
+      }, 'Reset to Generator'),
+    ];
+  };
+
+  const renderCanvasSettings = (): m.Children => [
+    m('.background-image', [
+      m(UploadImageButton, {
+        label: 'Background Image',
+        onUpload: (imageUrl, filename, width, height) => {
+          if (state.backgroundImageUrl) URL.revokeObjectURL(state.backgroundImageUrl);
+          state.canvasWidth = width;
+          state.canvasHeight = height;
+          state.aspectRatio = width / height;
+          state.backgroundImageUrl = imageUrl;
+          state.backgroundImageName = filename;
+          markPuzzleDirty();
+        },
+        onClear: () => {
+          if (state.backgroundImageUrl) URL.revokeObjectURL(state.backgroundImageUrl);
+          state.backgroundImageUrl = undefined;
+          state.backgroundImageName = '';
+          markPuzzleDirty();
+        },
+      }),
+    ]),
+    m(AspectRatioPicker, {
+      ratio: state.aspectRatio,
+      disabled: state.backgroundImageUrl !== undefined,
+      onChange: (ratio) => {
+        state.aspectRatio = ratio;
+        state.canvasWidth = state.canvasHeight * ratio;
+        markPuzzleDirty();
+      },
+    }),
+    m(BorderShapePicker, {
+      shape: state.borderShape,
+      disabled: state.backgroundImageUrl !== undefined,
+      onChange: (shape) => {
+        state.borderShape = shape;
+        markPuzzleDirty();
+      },
+    }),
+    state.borderShape === 'rounded-rect' && m(NumberInputControl, {
+      config: { name: 'cornerRadius', label: 'Corner Radius', type: 'number' },
+      value: state.borderCornerRadius,
+      onChange: (value) => {
+        state.borderCornerRadius = value ?? 50;
+        markPuzzleDirty();
+      },
+    }),
+    m(NumberInputControl, {
+      config: { name: 'pieceSize', label: 'Piece size', type: 'number' },
+      value: state.distance,
+      onChange: (value) => {
+        state.distance = value ?? 0;
+        markPuzzleDirty();
+      },
+    }),
+    m(ColorPicker, {
+      label: 'Piece color',
+      color: state.color,
+      size: 'small',
+      onUpdate: (newColor) => {
+        state.color = newColor;
+        m.redraw();
+      },
+    }),
+    m(BooleanInputControl, {
+      config: {
+        name: 'autoCheck',
+        label: 'Check geometry automatically',
+        type: 'boolean',
+      },
+      value: state.geometryProblems.autoCheck,
+      onChange: (autoCheck) => {
+        state.geometryProblems.autoCheck = autoCheck;
+        if (autoCheck && !state.dirty && !state.building) handleCheckGeometry();
+        m.redraw();
+      },
+    }),
+  ];
+
+  const renderSeedSettings = (): m.Children => [
+    renderGeneratorPicker('point'),
+    m('.seed-display-settings', [
+      m(BooleanInputControl, {
+        config: { name: 'drawPoints', label: 'Show seed points', type: 'boolean' },
+        value: state.drawPoints,
+        onChange: (value) => {
+          state.drawPoints = value;
+          m.redraw();
+        },
+      }),
+      state.drawPoints && m(ColorPicker, {
+        label: 'Seed point color',
+        color: state.pointColor,
+        size: 'small',
+        onUpdate: (newColor) => {
+          state.pointColor = newColor;
+          m.redraw();
+        },
+      }),
+    ]),
+  ];
+
+  const renderTrayContent = (): m.Children => {
+    switch (state.activeTray) {
+    case 'canvas': return renderCanvasSettings();
+    case 'whimsy':
+      return m(WhimsyManager, {
+        pieces: state.customPieces,
+        selectedPieceId: state.selectedCustomPieceId,
+        pieceColor: state.color,
+        onAdd: handleOpenCustomPieceEditor,
+        onSelect: handleSelectCustomPiece,
+        onEdit: handleEditCustomPiece,
+        onDuplicate: handleDuplicateCustomPiece,
+        onDelete: handleDeleteCustomPiece,
+        onPosition: handlePositionCustomPiece,
+      });
+    case 'point': return renderSeedSettings();
+    case 'piece': return renderGeneratorPicker('piece');
+    case 'placement': return renderGeneratorPicker('placement');
+    case 'tab': return renderGeneratorPicker('tab');
+    default: return null;
+    }
+  };
+
   // Mithril component
   return {
 
@@ -524,18 +716,24 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
       }).then((puzzle) => {
         state.puzzle = puzzle;
         state.seedPoints = puzzle.seedPoints; // Capture generated points
+        state.building = false;
         m.redraw();
         if (state.geometryProblems.autoCheck) {
           handleCheckGeometry();
         }
       }).catch((err) => {
+        state.building = false;
         console.error(err);
+        m.redraw();
       });
     },
 
     onupdate: () => {
       if (state.dirty) {
         state.dirty = false;
+        state.building = true;
+        state.geometryProblems.problems = undefined;
+        state.geometryProblems.progress = undefined;
         // rebuild the puzzle geometry
         buildPuzzle({
           bounds: {
@@ -556,12 +754,15 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
           state.geometryProblems.progress = undefined;
           state.puzzle = puzzle;
           state.seedPoints = puzzle.seedPoints; // Capture generated points
+          state.building = false;
           m.redraw();
           if (state.geometryProblems.autoCheck) {
             handleCheckGeometry();
           }
         }).catch((err) => {
+          state.building = false;
           console.error(err);
+          m.redraw();
         });
       }
 
@@ -580,13 +781,60 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     // component lifecycle: render our output
     view: () => {
 
-      return m(".page", [
-        m("h1", "Puzzle Generator"),
-        m(".container", [
+      const activeTray = trayDefinitions.find((tray) => tray.name === state.activeTray);
 
+      return m('.page.puzzle-page', [
+        m('header.puzzle-header', [
+          m('h1', 'Puzzle'),
+          m('.seed-control', [
+            m('wa-input', {
+              label: 'Seed',
+              type: 'number',
+              inputmode: 'numeric',
+              size: 's',
+              value: state.seed,
+              onchange: (e: Event & MithrilViewEvent) => {
+                e.redraw = false;
+                state.seed = Number((e.target as WaInput).value) || 0;
+                markPuzzleDirty();
+              },
+            }),
+            m('wa-tooltip', { for: 'randomize-seed' }, 'Randomize seed'),
+            m('wa-button#randomize-seed', {
+              appearance: 'plain',
+              size: 's',
+              'aria-label': 'Randomize seed',
+              onclick: (e: MouseEvent & MithrilViewEvent) => {
+                e.redraw = false;
+                state.seed = (state.seed + 1 + Math.floor(Math.random() * 10239)) % 10240;
+                markPuzzleDirty();
+              },
+            }, m('wa-icon', { library: 'material', name: 'casino', label: 'Randomize seed' })),
+          ]),
+          m('.header-spacer'),
+          m(GeometryCheckIndicator, {
+            problems: state.geometryProblems.problems,
+            progressPercent: state.geometryProblems.progress,
+            disabled: state.dirty || state.building,
+            onCheckRequested: handleCheckGeometry,
+          }),
+          m('.header-actions', [
+            m(SaveLoadButtons, {
+              onSave: handleSaveConfig,
+              onLoad: handleLoadConfig,
+              onNew: handleNewPuzzle,
+            }),
+            state.puzzle && m(DownloadPuzzleButton, {
+              puzzle: state.puzzle,
+              width: state.canvasWidth,
+              height: state.canvasHeight,
+              color: state.color,
+            }),
+          ]),
+        ]),
+
+        m('.workspace', [
           state.puzzle && m('.puzzle-stack', [
-
-            // main puzzle display
             m(PuzzleRenderer, {
               width: state.canvasWidth,
               height: state.canvasHeight,
@@ -614,6 +862,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
 
                 // Trigger puzzle regeneration with updated custom pieces
                 state.dirty = true;
+                state.building = true;
                 m.redraw();
 
                 buildPuzzle({
@@ -637,6 +886,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
                   state.puzzle = puzzle;
                   state.seedPoints = puzzle.seedPoints; // Capture generated points
                   state.dirty = false;
+                  state.building = false;
                   m.redraw();
 
                   if (state.geometryProblems.autoCheck) {
@@ -646,12 +896,14 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
                   .catch((err) => {
                     console.error('Failed to rebuild puzzle with custom pieces:', err);
                     state.dirty = false;
+                    state.building = false;
                     m.redraw();
                   });
               },
               onSeedPointMoved: (pieceId, newPosition) => {
                 // user dragged a seed point to a new position
                 state.dirty = false; // Prevent double-regeneration
+                state.building = true;
 
                 if (!state.puzzle) return;
 
@@ -662,6 +914,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
                     state.puzzle = puzzle;
                     state.seedPoints = puzzle.seedPoints;
                     state.seedPointMode = 'edit';
+                    state.building = false;
                     m.redraw();
 
                     if (state.geometryProblems.autoCheck) {
@@ -669,272 +922,52 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
                     }
                   })
                   .catch((err) => {
+                    state.building = false;
                     console.error('Failed to rebuild puzzle with updated seed point:', err);
+                    m.redraw();
                   });
               },
             }),
-
-            m('.actions', [
-
-              // SVG download button
-              m(DownloadPuzzleButton, {
-                puzzle: state.puzzle,
-                width: state.canvasWidth,
-                height: state.canvasHeight,
-                color: state.color,
-              }),
-
-              // Save/Load/New buttons
-              m(SaveLoadButtons, {
-                onSave: handleSaveConfig,
-                onLoad: handleLoadConfig,
-                onNew: handleNewPuzzle,
-              }),
-
-              // Geometry check display
-              m(GeometryCheckIndicator, {
-                autoCheck: state.geometryProblems.autoCheck,
-                problems: state.geometryProblems.problems,
-                progressPercent: state.geometryProblems.progress,
-                onCheckRequested: () => {
-                  if (!state.dirty) {
-                    handleCheckGeometry();
-                  }
-                  m.redraw();
-                },
-                onAutocheckChanged: (autocheck) => {
-                  if (autocheck !== state.geometryProblems.autoCheck) {
-                    state.geometryProblems.autoCheck = autocheck;
-                    m.redraw();
-                  }
-                },
-              }),
-
-            ]),
           ]),
-
-          // puzzle generation controls
-          m(".controls", [
-
-            // background image
-            m('.background-image', [
-              m(UploadImageButton, {
-                label: "Background Image",
-                onUpload: (imageUrl, filename, width, height) => {
-                  // clear any previous image
-                  if (state.backgroundImageUrl) {
-                    URL.revokeObjectURL(state.backgroundImageUrl);
-                  }
-                  state.canvasWidth = width;
-                  state.canvasHeight = height;
-                  state.aspectRatio = width / height;
-                  state.backgroundImageUrl = imageUrl;
-                  state.backgroundImageName = filename;
-                  state.seedPointMode = 'generate';
-                  state.seedPoints = undefined;
-                  state.dirty = true;
-                  m.redraw();
-                },
-                onClear: () => {
-                  // clear any previous image
-                  if (state.backgroundImageUrl) {
-                    URL.revokeObjectURL(state.backgroundImageUrl);
-                  }
-                  state.backgroundImageUrl = undefined;
-                  state.backgroundImageName = '';
-                  state.seedPointMode = 'generate';
-                  state.seedPoints = undefined;
-                  state.dirty = true;
-                  m.redraw();
-                },
-              }),
+          m('.settings-shell', { class: state.activeTray ? 'tray-open' : '' }, [
+            m('aside.settings-tray', {
+              'aria-hidden': state.activeTray ? undefined : 'true',
+            }, state.activeTray && [
+              m('.tray-header', [
+                m('h2', activeTray?.label),
+                m('wa-button', {
+                  appearance: 'plain',
+                  size: 's',
+                  'aria-label': 'Close settings',
+                  onclick: () => {
+                    state.activeTray = undefined;
+                  },
+                }, m('wa-icon', { library: 'material', name: 'close', label: 'Close settings' })),
+              ]),
+              m('.tray-content', renderTrayContent()),
             ]),
-
-            // Puzzle aspect ratio
-            m(AspectRatioPicker, {
-              ratio: state.aspectRatio,
-              disabled: state.backgroundImageUrl !== undefined,
-              onChange: (ratio) => {
-                state.aspectRatio = ratio;
-                state.canvasWidth = state.canvasHeight * ratio;
-                state.seedPointMode = 'generate';
-                state.seedPoints = undefined;
-                state.dirty = true;
-                m.redraw();
-              },
-            }),
-
-            // Border shape
-            m(BorderShapePicker, {
-              shape: state.borderShape,
-              disabled: state.backgroundImageUrl !== undefined,
-              onChange: (shape) => {
-                state.borderShape = shape;
-                state.seedPointMode = 'generate';
-                state.seedPoints = undefined;
-                state.dirty = true;
-                m.redraw();
-              },
-            }),
-
-            // Corner radius for rounded rectangle
-            state.borderShape === 'rounded-rect' && m(NumberInputControl, {
-              config: {
-                name: 'cornerRadius',
-                label: 'Corner Radius',
-                type: 'number',
-              },
-              value: state.borderCornerRadius,
-              onChange: (value) => {
-                state.borderCornerRadius = value ?? 50;
-                state.seedPointMode = 'generate';
-                state.seedPoints = undefined;
-                state.dirty = true;
-                m.redraw();
-              },
-            }),
-
-            // Random number seed
-            m(NumberInputControl, {
-              config: {
-                name: 'seed',
-                label: 'Seed',
-                type: 'number',
-              },
-              value: state.seed,
-              onChange: (value) => {
-                state.seed = value ?? 0;
-                state.seedPointMode = 'generate';
-                state.seedPoints = undefined;
-                state.dirty = true;
-                m.redraw();
-              },
-            }),
-
-            // Piece size
-            m(NumberInputControl, {
-              config: {
-                name: 'pieceSize',
-                label: 'Piece size',
-                type: 'number',
-              },
-              value: state.distance,
-              onChange: (value) => {
-                state.distance = value ?? 0;
-                state.seedPointMode = 'generate';
-                state.seedPoints = undefined;
-                state.dirty = true;
-                m.redraw();
-              },
-            }),
-
-            // Piece color
-            m(ColorPicker, {
-              label: 'Piece color',
-              color: state.color,
-              size: "small",
-              onUpdate: (newColor) => {
-                state.color = newColor;
-                m.redraw();
-              },
-            }),
-
-            // draw seed points?
-            m('.draw-points', [
-              m(BooleanInputControl, {
-                config: {
-                  name: 'drawPoints',
-                  label: 'Draw seed points',
-                  type: 'boolean',
-                },
-                value: state.drawPoints,
-                onChange: (value) => {
-                  state.drawPoints = value;
-                  m.redraw();
-                },
-              }),
-              state.drawPoints && m(ColorPicker, {
-                label: 'Seed points color',
-                color: state.pointColor,
-                size: "small",
-                onUpdate: (newColor) => {
-                  state.pointColor = newColor;
-                  m.redraw();
-                },
-              }),
-            ]),
-
-            // Whimsies section
-            m(WhimsyManager, {
-              pieces: state.customPieces,
-              selectedPieceId: state.selectedCustomPieceId,
-              pieceColor: state.color,
-              onAdd: handleOpenCustomPieceEditor,
-              onSelect: handleSelectCustomPiece,
-              onEdit: handleEditCustomPiece,
-              onDuplicate: handleDuplicateCustomPiece,
-              onDelete: handleDeleteCustomPiece,
-              onPosition: handlePositionCustomPiece,
-            }),
-
-            // render a generator picker for each type of generator
-            ...Object.entries(state.generators).map(([type, generator]) => {
-              const isPointGenerator = type === 'point';
-              const isEdited = isPointGenerator && state.seedPointMode === 'edit';
-
-              return m("label", [
-                generator.label + ':',
-                isEdited && m('span.edited-badge', ' (Using edited points)'),
-                m(GeneratorPicker, {
-                  generator: generator.name,
-                  registry: generator.registry,
-                  config: generator.config,
-                  onGeneratorChange: (generatorName) => {
-                    if (generatorName != generator.name) {
-                      console.log(`${type} generator changed to ${generatorName}`);
-                      generator.name = generatorName;
-                      // generator changed, we need a new blank config
-                      state.generators[type].config = generator.registry.getDefaultConfig(generatorName, state.canvasWidth, state.canvasHeight);
-
-                      if (type === 'point') {
-                        state.seedPointMode = 'generate';
-                        state.seedPoints = undefined;
-                      }
-
-                      state.dirty = true;
-                      m.redraw();
-                    }
+            m('nav.settings-rail', { 'aria-label': 'Puzzle settings' },
+              m('wa-button-group', {
+                label: 'Puzzle settings',
+                orientation: 'vertical',
+              }, trayDefinitions.map((tray) => {
+                const active = tray.name === state.activeTray;
+                return m('wa-button.rail-button', {
+                  appearance: active ? 'filled' : 'plain',
+                  variant: active ? 'brand' : 'neutral',
+                  size: 's',
+                  'aria-pressed': active ? 'true' : 'false',
+                  onclick: () => {
+                    state.activeTray = active ? undefined : tray.name;
                   },
-                  onConfigChange: (key, value) => {
-                    console.log(`${type} generator config "${key}" changed to ${String(value)}`);
-                    generator.config[key] = value;
-
-                    if (type === 'point') {
-                      state.seedPointMode = 'generate';
-                      state.seedPoints = undefined;
-                    }
-
-                    state.dirty = true;
-                    m.redraw();
-                  },
-                }),
-                isEdited && m('wa-button', {
-                  size: 'small',
-                  variant: 'text',
-                  onclick: (e: MouseEvent & MithrilViewEvent) => {
-                    e.redraw = false;
-                    state.seedPointMode = 'generate';
-                    state.seedPoints = undefined;
-                    state.dirty = true;
-                    m.redraw();
-                  },
-                }, 'Reset to Generator'),
-              ]);
-            }),
-
-          ]), // .controls
-
-        ]), // .container
+                }, [
+                  m('wa-icon', { library: 'material', name: tray.icon }),
+                  m('span', tray.label),
+                ]);
+              }))
+            ),
+          ]),
+        ]),
 
         // Custom Piece Editor Modal
         m(WhimsyEditor, {

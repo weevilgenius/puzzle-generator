@@ -1,5 +1,22 @@
 import { afterEach } from 'vitest';
 
+// Node 26 exposes an unavailable localStorage getter that blocks happy-dom's global.
+if (Object.getOwnPropertyDescriptor(globalThis, 'localStorage')?.get) {
+  const values = new Map<string, string>();
+  const localStorage: Storage = {
+    get length() { return values.size; },
+    clear: () => values.clear(),
+    getItem: (key) => values.get(key) ?? null,
+    key: (index) => [...values.keys()][index] ?? null,
+    removeItem: (key) => values.delete(key),
+    setItem: (key, value) => values.set(key, String(value)),
+  };
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: localStorage,
+  });
+}
+
 const noop = () => undefined;
 const canvasContextMap = new WeakMap<HTMLCanvasElement, CanvasRenderingContext2D>();
 let canvasPatched = false;

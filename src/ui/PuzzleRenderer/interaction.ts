@@ -88,7 +88,12 @@ export function setupPanZoomHandling(
 
     if (newZoom !== state.zoom) {
       // Get mouse position in view coordinates
-      const mousePos = new paperScope.Point(event.offsetX, event.offsetY);
+      const rect = state.canvas?.getBoundingClientRect();
+      if (!state.canvas || !rect) return;
+      const mousePos = new paperScope.Point(
+        event.offsetX * state.canvas.width / rect.width,
+        event.offsetY * state.canvas.height / rect.height
+      );
 
       // Zoom centered on mouse position
       const viewPos = paperScope.view.viewToProject(mousePos);
@@ -131,8 +136,10 @@ export function setupPanZoomHandling(
 
       const paperScope = state.paperCtx.scope;
 
-      const dx = event.clientX - lastPanPoint.x;
-      const dy = event.clientY - lastPanPoint.y;
+      const rect = state.canvas?.getBoundingClientRect();
+      if (!state.canvas || !rect) return;
+      const dx = (event.clientX - lastPanPoint.x) * state.canvas.width / rect.width;
+      const dy = (event.clientY - lastPanPoint.y) * state.canvas.height / rect.height;
 
       // Scale delta by inverse of zoom to maintain 1:1 mouse tracking
       // Paper.js translate() expects project coordinates, not view coordinates
@@ -280,8 +287,8 @@ function getViewPoint(
   }
 
   const point = new paperScope.Point(
-    clientX - rect.left,
-    clientY - rect.top
+    (clientX - rect.left) * canvas.width / rect.width,
+    (clientY - rect.top) * canvas.height / rect.height
   );
   return paperScope.view.viewToProject(point);
 }

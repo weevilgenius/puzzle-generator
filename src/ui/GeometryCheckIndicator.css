@@ -1,16 +1,7 @@
 .geometry-check-indicator {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5em;
+  flex: none;
 }
 
-.geometry-check-indicator #check-geometry-now wa-icon {
-  font-size: 24px;
-  color: var(--wa-color-text-normal);
-}
-
-.geometry-check-indicator wa-progress-bar {
-  min-width: 200px;
-  --track-height: 4px;
+.geometry-check-indicator wa-icon {
+  font-size: 1.2rem;
 }

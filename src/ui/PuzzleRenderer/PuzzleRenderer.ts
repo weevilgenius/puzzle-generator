@@ -248,8 +248,8 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
           width: attrs.width,
           height: attrs.height,
           style: {
-            width: `${attrs.width}px`,
-            height: `${attrs.height}px`,
+            width: '100%',
+            height: 'auto',
             touchAction: 'manipulation',
           },
 

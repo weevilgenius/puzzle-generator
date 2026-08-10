@@ -8,6 +8,7 @@ import { confirm } from './Confirm';
 // Web Awesome components
 import '@awesome.me/webawesome/dist/components/button/button.js';
 import '@awesome.me/webawesome/dist/components/icon/icon.js';
+import '@awesome.me/webawesome/dist/components/tooltip/tooltip.js';
 
 /** Attributes for the SaveLoadButtons component */
 export interface SaveLoadButtonsAttrs extends m.Attributes {
@@ -26,54 +27,12 @@ export const SaveLoadButtons: m.ClosureComponent<SaveLoadButtonsAttrs> = () => {
   };
 
   return {
-    view: ({ attrs }) => [
-
-      // Save Puzzle button
-      m('wa-button', {
-        size: 'small',
-        onclick: (e: MouseEvent & MithrilViewEvent) => {
-          e.redraw = false;
-          attrs.onSave();
-        },
-      }, [
-        m('wa-icon', { name: 'download', slot: 'prefix', library: 'material' }),
-        'Save Puzzle',
-      ]),
-
-      // Load Puzzle button + hidden file input
-      m('wa-button', {
-        size: 'small',
-        onclick: () => {
-          state.inputElement?.click();
-        },
-      }, [
-        m('wa-icon', { name: 'upload_file', slot: 'prefix', library: 'material' }),
-        'Load Puzzle',
-      ]),
-
-      m('input[type=file]', {
-        style: { display: 'none' },
-        accept: '.json,application/json',
-        oncreate: ({ dom }: m.VnodeDOM) => {
-          state.inputElement = dom as HTMLInputElement;
-        },
-        onchange: (e: Event & MithrilViewEvent) => {
-          e.redraw = false;
-          const file = state.inputElement?.files?.[0];
-          if (file) {
-            attrs.onLoad(file);
-            // Reset input so the same file can be re-loaded
-            if (state.inputElement) {
-              state.inputElement.value = '';
-            }
-          }
-        },
-      }),
-
-      // New Puzzle button
-      m('wa-button', {
-        size: 'small',
-        variant: 'text',
+    view: ({ attrs }) => m('.save-load-buttons', [
+      m('wa-tooltip', { for: 'new-puzzle' }, 'New puzzle'),
+      m('wa-button#new-puzzle', {
+        size: 's',
+        appearance: 'plain',
+        'aria-label': 'New puzzle',
         onclick: (e: MouseEvent & MithrilViewEvent) => {
           e.redraw = false;
           void confirm({
@@ -86,11 +45,45 @@ export const SaveLoadButtons: m.ClosureComponent<SaveLoadButtonsAttrs> = () => {
             }
           });
         },
-      }, [
-        m('wa-icon', { name: 'note_add', slot: 'prefix', library: 'material' }),
-        'New Puzzle',
-      ]),
-    ],
+      }, m('wa-icon', { name: 'note_add', library: 'material', label: 'New puzzle' })),
+
+      m('wa-tooltip', { for: 'save-puzzle' }, 'Save puzzle settings'),
+      m('wa-button#save-puzzle', {
+        size: 's',
+        appearance: 'plain',
+        'aria-label': 'Save puzzle settings',
+        onclick: (e: MouseEvent & MithrilViewEvent) => {
+          e.redraw = false;
+          attrs.onSave();
+        },
+      }, m('wa-icon', { name: 'save', library: 'material', label: 'Save puzzle settings' })),
+
+      m('wa-tooltip', { for: 'load-puzzle' }, 'Load puzzle settings'),
+      m('wa-button#load-puzzle', {
+        size: 's',
+        appearance: 'plain',
+        'aria-label': 'Load puzzle settings',
+        onclick: () => {
+          state.inputElement?.click();
+        },
+      }, m('wa-icon', { name: 'folder_open', library: 'material', label: 'Load puzzle settings' })),
+
+      m('input[type=file]', {
+        style: { display: 'none' },
+        accept: '.json,application/json',
+        oncreate: ({ dom }: m.VnodeDOM) => {
+          state.inputElement = dom as HTMLInputElement;
+        },
+        onchange: (e: Event & MithrilViewEvent) => {
+          e.redraw = false;
+          const file = state.inputElement?.files?.[0];
+          if (file) {
+            attrs.onLoad(file);
+            if (state.inputElement) state.inputElement.value = '';
+          }
+        },
+      }),
+    ]),
   };
 };
 

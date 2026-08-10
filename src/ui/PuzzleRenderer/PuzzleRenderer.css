@@ -3,14 +3,19 @@
  */
 
 .puzzle-renderer-wrapper {
+  width: 100%;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
 }
 
 .puzzle-renderer-wrapper canvas.puzzle-renderer {
+  width: 100%;
+  height: auto;
   display: block;
   border: 1px solid #ccc;
   cursor: default;
+  box-sizing: border-box;
 }
 
 /* Controls row below canvas */

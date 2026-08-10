@@ -5,6 +5,8 @@ import type { PuzzleTopology } from '../geometry/types';
 
 // Webawesome components
 import '@awesome.me/webawesome/dist/components/button/button.js';
+import '@awesome.me/webawesome/dist/components/icon/icon.js';
+import '@awesome.me/webawesome/dist/components/tooltip/tooltip.js';
 
 export interface DownloadPuzzleButtonAttrs extends m.Attributes {
   /** Generated puzzle geometry */
@@ -21,15 +23,18 @@ export interface DownloadPuzzleButtonAttrs extends m.Attributes {
 
 export const DownloadPuzzleButton: m.Component<DownloadPuzzleButtonAttrs> = {
   view: ({ attrs }) => {
-    return m('wa-button.download-svg', {
-      size: 'small',
-      onclick: () => {
-        // convert the puzzle geometry into a SVG string
-        const svg = createSVG(attrs.puzzle, attrs.width, attrs.height, attrs.color);
-        // offer it as a download
-        downloadSvg(svg, attrs.filename ?? 'puzzle.svg');
-      },
-    }, 'Download SVG');
+    return [
+      m('wa-tooltip', { for: 'download-svg' }, 'Download SVG'),
+      m('wa-button#download-svg.download-svg', {
+        size: 's',
+        appearance: 'plain',
+        'aria-label': 'Download SVG',
+        onclick: () => {
+          const svg = createSVG(attrs.puzzle, attrs.width, attrs.height, attrs.color);
+          downloadSvg(svg, attrs.filename ?? 'puzzle.svg');
+        },
+      }, m('wa-icon', { library: 'material', name: 'download', label: 'Download SVG' })),
+    ];
   },
 };
 export default DownloadPuzzleButton;

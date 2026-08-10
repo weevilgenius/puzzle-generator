@@ -1,54 +1,217 @@
-.page {
+.page.puzzle-page {
+  width: 100%;
   height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: 1em;
+  align-items: stretch;
+  gap: 1rem;
+  padding: 1rem;
   box-sizing: border-box;
+  color: var(--wa-color-text-normal);
+  background: var(--wa-color-surface-lowered);
 }
 
-.page > h1 {
-  flex-shrink: 0;
-  margin: 0 0 1em 0;
-}
-
-.container {
+.puzzle-header {
+  flex: none;
+  min-height: 4.5rem;
   display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  gap: 1em;
-  flex-grow: 1;
-  overflow: hidden;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 5rem 0.75rem 1rem;
+  border: 1px solid var(--wa-color-surface-border);
+  border-radius: var(--wa-border-radius-l);
+  background: var(--wa-color-surface-default);
+}
+
+.puzzle-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.seed-control {
+  width: 12rem;
+  display: flex;
+  align-items: end;
+  gap: 0.25rem;
+}
+
+.seed-control wa-input {
+  min-width: 0;
+}
+
+.header-spacer {
+  flex: 1;
+}
+
+.header-actions,
+.save-load-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.seed-control wa-icon,
+.header-actions wa-icon {
+  font-size: 1.25rem;
+}
+
+.workspace {
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  overflow-x: auto;
+  border: 1px solid var(--wa-color-surface-border);
+  border-radius: var(--wa-border-radius-l);
+  background: var(--wa-color-surface-default);
 }
 
 .puzzle-stack {
-  flex-shrink: 0;
+  min-width: 18rem;
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+  background: var(--wa-color-surface-lowered);
 }
 
-.container > .controls {
-  z-index: 3; /* always visible */
+.puzzle-stack .puzzle-renderer-wrapper {
+  width: 100%;
+}
+
+.settings-shell {
+  --tray-width: clamp(22rem, 36vw, 36rem);
+  flex: none;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 0 6rem;
+  transition: grid-template-columns var(--wa-transition-normal) var(--wa-transition-easing);
+}
+
+.settings-shell.tray-open {
+  grid-template-columns: var(--tray-width) 6rem;
+}
+
+.settings-tray {
+  min-width: 0;
+  overflow: hidden;
+  border-left: 1px solid var(--wa-color-surface-border);
+  background: var(--wa-color-surface-default);
+}
+
+.tray-header,
+.tray-content {
+  width: var(--tray-width);
+  box-sizing: border-box;
+}
+
+.tray-header {
+  height: 4.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--wa-color-surface-border);
+}
+
+.tray-header h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.tray-content {
+  height: calc(100% - 4.5rem);
   display: flex;
   flex-direction: column;
-  align-items: stretch; /* Make controls fill width */
-  gap: 1em;
+  gap: 1rem;
+  padding: 1rem;
   overflow-y: auto;
-  height: 100%;
-  padding-right: 1em; /* For scrollbar */
-  flex-basis: 400px; /* Give controls a base width */
-  flex-shrink: 0;
 }
 
-.container > .controls .background-image-label {
-  padding: 2px 0.5em;
-  color: var(--wa-color-text-quiet);
+.tray-content .generator-picker {
+  max-width: none;
 }
 
-.container button {
-  margin: 0.5em 1em;
+.tray-content .whimsy-manager {
+  padding: 0;
+  border: 0;
 }
 
-.container .actions {
-  margin-top: 1em;
+.seed-display-settings {
   display: flex;
-  flex-direction: row;
-  gap: 1em;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--wa-color-surface-border);
+}
+
+.edited-badge {
+  color: var(--wa-color-warning-on-quiet);
+}
+
+.settings-rail {
+  min-height: 0;
+  overflow-y: auto;
+  border-left: 1px solid var(--wa-color-surface-border);
+  background: var(--wa-color-surface-default);
+}
+
+.settings-rail wa-button-group {
+  width: 100%;
+}
+
+.settings-rail .rail-button {
+  width: 100%;
+}
+
+.settings-rail .rail-button::part(button) {
+  width: 100%;
+  min-height: 5.25rem;
+  border-radius: 0;
+  padding: 0.5rem 0.25rem;
+}
+
+.settings-rail .rail-button::part(label) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: normal;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.settings-rail .rail-button wa-icon {
+  font-size: 1.6rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-shell {
+    transition: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .page {
+    min-width: 0;
+    padding: 0.5rem;
+    gap: 0.5rem;
+  }
+
+  .puzzle-header {
+    padding-right: 4rem;
+    flex-wrap: wrap;
+  }
+
+  .header-spacer {
+    display: none;
+  }
+
+  .header-actions {
+    margin-left: auto;
+  }
 }

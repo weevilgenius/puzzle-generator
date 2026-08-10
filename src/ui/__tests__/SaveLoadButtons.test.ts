@@ -4,6 +4,7 @@ import { screen, fireEvent } from '@testing-library/dom';
 // Mock Web Awesome component imports BEFORE importing SaveLoadButtons
 vi.mock('@awesome.me/webawesome/dist/components/button/button.js', () => ({}));
 vi.mock('@awesome.me/webawesome/dist/components/icon/icon.js', () => ({}));
+vi.mock('@awesome.me/webawesome/dist/components/tooltip/tooltip.js', () => ({}));
 
 import { renderComponent } from '../../../tests/utils/mithrilTestHarness';
 import SaveLoadButtons from '../SaveLoadButtons';
@@ -37,7 +38,7 @@ describe('SaveLoadButtons', () => {
       attrs: { onSave, onLoad, onNew },
     });
 
-    const saveButton = screen.getByText('Save Puzzle');
+    const saveButton = screen.getByRole('button', { name: 'Save puzzle settings' });
     fireEvent.click(saveButton);
 
     expect(onSave).toHaveBeenCalled();
@@ -54,7 +55,7 @@ describe('SaveLoadButtons', () => {
       attrs: { onSave, onLoad, onNew },
     });
 
-    const newButton = screen.getByText('New Puzzle');
+    const newButton = screen.getByRole('button', { name: 'New puzzle' });
     fireEvent.click(newButton);
 
     // Wait for the async confirm and following microtasks
