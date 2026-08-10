@@ -138,3 +138,9 @@
   flex: 1;
   min-width: 100px;
 }
+
+.whimsy-help {
+  margin: 0;
+  color: var(--wa-color-text-quiet);
+  font-size: 0.875rem;
+}

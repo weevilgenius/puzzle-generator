@@ -356,13 +356,6 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     m.redraw();
   }
 
-  function handlePositionCustomPiece(id: string) {
-    // TODO: This will be implemented in Phase 5
-    // For now, just show a message
-    console.log(`Position custom piece: ${id}`);
-    alert('Whimsy positioning functionality will be available in Phase 5');
-  }
-
   // save/load handlers
 
   function handleSaveConfig() {
@@ -726,13 +719,11 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
       return m(WhimsyManager, {
         pieces: state.customPieces,
         selectedPieceId: state.selectedCustomPieceId,
-        pieceColor: state.color,
         onAdd: handleOpenCustomPieceEditor,
         onSelect: handleSelectCustomPiece,
         onEdit: handleEditCustomPiece,
         onDuplicate: handleDuplicateCustomPiece,
         onDelete: handleDeleteCustomPiece,
-        onPosition: handlePositionCustomPiece,
       });
     case 'point': return renderSeedSettings();
     case 'piece': return renderGeneratorPicker('piece');

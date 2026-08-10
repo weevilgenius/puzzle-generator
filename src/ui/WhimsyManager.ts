@@ -37,11 +37,6 @@ export interface WhimsyManagerAttrs extends m.Attributes {
   selectedPieceId?: string | null;
 
   /**
-   * Color to use for rendering piece thumbnails (CSS color string).
-   */
-  pieceColor: string;
-
-  /**
    * Called when the user clicks the "Add" button to create a new custom piece.
    */
   onAdd: () => void;
@@ -70,11 +65,6 @@ export interface WhimsyManagerAttrs extends m.Attributes {
    */
   onDelete: (id: string) => void;
 
-  /**
-   * Called when the user clicks the "Position" button.
-   * @param id - ID of the piece to position on the canvas
-   */
-  onPosition: (id: string) => void;
 }
 
 /* ========================================================= *\
@@ -114,6 +104,12 @@ export const WhimsyManager: m.ClosureComponent<WhimsyManagerAttrs> = () => {
         : null;
 
       return m('.whimsy-manager', [
+        m('p.whimsy-help',
+          'A whimsy is a custom piece, usually with a recognizable silhouette. ' +
+          'Whimsy pieces can be drawn using a simple editor or loaded from a ' +
+          'SVG file. Select whimsies to position them on the canvas. Dragging the ' +
+          'blue handles allows you to resize and rotate them.'),
+
         // Header with Add button
         m('.whimsy-manager-header', [
           m('h3', 'Whimsy Pieces'),
@@ -140,7 +136,10 @@ export const WhimsyManager: m.ClosureComponent<WhimsyManagerAttrs> = () => {
             ])
             : attrs.pieces.map((piece) => {
               const isSelected = piece.id === attrs.selectedPieceId;
-              const thumbnail = getThumbnail(piece, attrs.pieceColor);
+              const thumbnail = getThumbnail(
+                piece,
+                document.documentElement.classList.contains('wa-dark') ? '#ffffff' : '#000000'
+              );
 
               return m(CustomPieceTile, {
                 key: piece.id,
@@ -214,20 +213,8 @@ export const WhimsyManager: m.ClosureComponent<WhimsyManagerAttrs> = () => {
             'Delete',
           ]),
 
-          m('wa-button', {
-            size: 's',
-            disabled: !hasSelection,
-            onclick: (e: Event & MithrilViewEvent) => {
-              e.redraw = false;
-              if (selectedPiece) {
-                attrs.onPosition(selectedPiece.id);
-              }
-            },
-          }, [
-            m('wa-icon', { name: 'arrows-up-down-left-right', slot: 'prefix' }),
-            'Position',
-          ]),
         ]),
+
       ]);
     },
   };
