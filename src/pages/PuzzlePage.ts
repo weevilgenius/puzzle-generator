@@ -41,6 +41,7 @@ import "../geometry/generators/tab/TriangleTabGenerator";
 import "../geometry/generators/tab/TraditionalTabGenerator";
 
 // Web Awesome components
+import '@awesome.me/webawesome/dist/components/badge/badge.js';
 import '@awesome.me/webawesome/dist/components/button/button.js';
 import '@awesome.me/webawesome/dist/components/button-group/button-group.js';
 import '@awesome.me/webawesome/dist/components/icon/icon.js';
@@ -974,6 +975,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
                 orientation: 'vertical',
               }, trayDefinitions.map((tray) => {
                 const active = tray.name === state.activeTray;
+                const whimsyCount = tray.name === 'whimsy' ? state.customPieces.length : 0;
                 return m('wa-button.rail-button', {
                   appearance: active ? 'filled' : 'plain',
                   variant: active ? 'brand' : 'neutral',
@@ -985,6 +987,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
                 }, [
                   m('wa-icon', { library: 'material', name: tray.icon }),
                   m('span', tray.label),
+                  whimsyCount > 0 && m('wa-badge', { pill: true, variant: 'brand' }, String(whimsyCount)),
                 ]);
               }))
             ),

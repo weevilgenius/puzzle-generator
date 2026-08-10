@@ -250,6 +250,12 @@
   font-size: 1.6rem;
 }
 
+/* Keep count badges fully inside rail buttons (WA defaults hang half outside) */
+.settings-rail .rail-button wa-badge {
+  font-size: var(--wa-font-size-xs);
+  translate: -0.15rem 0.15rem;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .settings-shell {
     transition: none;
