@@ -31,7 +31,7 @@ export const NumberInputControl: m.ClosureComponent<NumberInputControlAttr> = ()
         hint: attrs.config.helpText,
         type: "number",
         inputmode: "numeric",
-        size: "small",
+        size: "s",
         disabled: attrs.disabled,
         value: attrs.value,
         min: attrs.config.min,

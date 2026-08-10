@@ -276,7 +276,7 @@ export const WhimsyEditor: m.ClosureComponent<WhimsyEditorAttrs> = () => {
           // m('wa-input.name-field', {
           //   label: 'Piece Name (optional)',
           //   type: 'text',
-          //   size: 'small',
+          //   size: 's',
           //   value: state.name,
           //   placeholder: 'Enter a name for this piece',
           //   oninput: (e: Event & MithrilViewEvent) => {
@@ -343,7 +343,7 @@ export const WhimsyEditor: m.ClosureComponent<WhimsyEditorAttrs> = () => {
             }),
             m('wa-button', {
               variant: 'default',
-              size: 'small',
+              size: 's',
               onclick: (e: Event & MithrilViewEvent) => {
                 e.redraw = false;
                 fileInputRef?.click();

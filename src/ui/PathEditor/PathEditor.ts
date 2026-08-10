@@ -363,7 +363,7 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
           // End Drawing button (only visible in draw mode)
           state.mode === 'draw' && m('wa-button.end-drawing-button', {
             variant: 'success',
-            size: 'small',
+            size: 's',
             onclick: () => endDrawing(attrs),
           }, 'End Drawing'),
 
@@ -384,7 +384,7 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
             m('wa-button', {
               slot: 'trigger',
               'with-caret': true,
-              size: 'small',
+              size: 's',
               value: state.zoom,
             }, currentZoomStr),
             ...PRESET_ZOOM_LEVELS.map((level, index) =>
@@ -400,7 +400,7 @@ export const PathEditor: m.ClosureComponent<PathEditorAttrs> = () => {
           m('wa-tooltip', { for: "recenter-button" }, "Recenter view"),
           m('wa-button#recenter-button', {
             appearance: 'plain',
-            size: 'large',
+            size: 'l',
             onclick: () => {
               if (!state.paperCtx) return;
 

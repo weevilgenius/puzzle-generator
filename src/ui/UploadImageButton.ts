@@ -60,7 +60,7 @@ export const UploadImageButton: m.ClosureComponent<UploadImageAttrs> = () => {
 
         // button for display
         m('wa-button.upload-button', {
-          size: 'small',
+          size: 's',
           disabled: attrs.disabled === true,
           onclick: () => {
             if (state.inputElement) {

@@ -290,7 +290,7 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
             m('wa-button', {
               slot: 'trigger',
               'with-caret': true,
-              size: 'small',
+              size: 's',
               value: state.zoom,
             }, currentZoomStr),
             ...PRESET_ZOOM_LEVELS.map((level, index) =>
@@ -306,7 +306,7 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
           m('wa-tooltip', { for: "recenter-button" }, "Recenter view"),
           m('wa-button#recenter-button', {
             appearance: 'plain',
-            size: 'large',
+            size: 'l',
             onclick: () => {
               recenter();
             },

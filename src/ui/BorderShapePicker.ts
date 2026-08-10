@@ -41,7 +41,7 @@ export const BorderShapePicker: m.Component<BorderShapePickerAttr> = {
 
     return m('wa-select', {
       label: 'Border Shape',
-      size: 'small',
+      size: 's',
       disabled: attrs.disabled,
       value: attrs.shape,
       onchange: (e: Event & MithrilViewEvent) => {

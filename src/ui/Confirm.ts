@@ -78,7 +78,7 @@ export function confirm(opts: ConfirmOptions): Promise<boolean> {
           m('.confirm-actions', { slot: 'footer' }, [
             m('wa-button.btn-cancel', {
               variant: 'neutral',
-              size: 'small',
+              size: 's',
               'data-dialog': 'close',   // WA will close; we’ll see onStateChanged(false)
               onclick: (e: MouseEvent & MithrilViewEvent) => {
                 e.redraw = false;
@@ -88,7 +88,7 @@ export function confirm(opts: ConfirmOptions): Promise<boolean> {
 
             m('wa-button.btn-confirm', {
               variant: 'brand',
-              size: 'small',
+              size: 's',
               'data-dialog': 'close',
               onclick: (e: MouseEvent & MithrilViewEvent) => {
                 e.redraw = false;

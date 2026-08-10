@@ -16,7 +16,7 @@ export interface ColorPickerAttrs extends m.Attributes {
   /** Current color */
   color: string;
   /** Optional size of picker trigger area */
-  size?: "small" | "medium" | "large";
+  size?: "s" | "m" | "l";
   /** Called when the user changes the color */
   onUpdate: (newColor: string) => void;
 };
@@ -27,7 +27,7 @@ export const ColorPicker: m.Component<ColorPickerAttrs> = {
     return m('wa-color-picker', {
       label: attrs.label,
       value: attrs.color,
-      size: attrs.size ?? "medium",
+      size: attrs.size ?? "m",
       format: 'rgb',
       onchange: (e: Event & MithrilViewEvent) => {
         e.redraw = false;

@@ -67,7 +67,7 @@ export const AspectRatioPicker: m.Component<AspectRatioPickerAttr> = {
       // drop down with common ratios
       m('wa-select', {
         label: 'Aspect Ratio',
-        size: 'small',
+        size: 's',
         disabled: attrs.disabled,
         value: isCustom ? 'custom' : String(attrs.ratio),
         onchange: (e: Event & MithrilViewEvent) => {
@@ -89,7 +89,7 @@ export const AspectRatioPicker: m.Component<AspectRatioPickerAttr> = {
         max: 4,
         step: 0.01,
         'with-tooltip': true,
-        size: 'small',
+        size: 's',
         disabled: attrs.disabled,
         value: attrs.ratio,
         onchange: (e: Event & MithrilViewEvent) => {

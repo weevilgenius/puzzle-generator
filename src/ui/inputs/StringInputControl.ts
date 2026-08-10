@@ -31,7 +31,7 @@ export const StringInputControl: m.ClosureComponent<StringInputControlAttr> = ()
         label: attrs.config.label,
         hint: attrs.config.helpText,
         type: "text",
-        size: "small",
+        size: "s",
         disabled: attrs.disabled,
         value: attrs.value,
         oninput: (e: Event & MithrilViewEvent) => {

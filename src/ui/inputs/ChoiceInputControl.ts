@@ -43,7 +43,7 @@ export const ChoiceInputControl: m.ClosureComponent<ChoiceInputControlAttr> = ()
         m('wa-select.choice-input', {
           label: attrs.config.label,
           hint: attrs.config.helpText,
-          size: 'small',
+          size: 's',
           disabled: attrs.disabled,
           value: currentValue,
           onchange: (e: Event & MithrilViewEvent) => {

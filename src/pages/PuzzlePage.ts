@@ -634,7 +634,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     m(ColorPicker, {
       label: 'Piece color',
       color: state.color,
-      size: 'small',
+      size: 's',
       onUpdate: (newColor) => {
         state.color = newColor;
         m.redraw();
@@ -682,7 +682,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
       state.drawPoints && m(ColorPicker, {
         label: 'Seed point color',
         color: state.pointColor,
-        size: 'small',
+        size: 's',
         onUpdate: (newColor) => {
           state.pointColor = newColor;
           m.redraw();

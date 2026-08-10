@@ -119,7 +119,7 @@ export const WhimsyManager: m.ClosureComponent<WhimsyManagerAttrs> = () => {
           m('h3', 'Whimsy Pieces'),
           m('wa-button', {
             variant: 'primary',
-            size: 'small',
+            size: 's',
             onclick: (e: Event & MithrilViewEvent) => {
               e.redraw = false;
               attrs.onAdd();
@@ -165,7 +165,7 @@ export const WhimsyManager: m.ClosureComponent<WhimsyManagerAttrs> = () => {
         // Action buttons
         m('.whimsy-actions', [
           m('wa-button', {
-            size: 'small',
+            size: 's',
             disabled: !hasSelection,
             onclick: (e: Event & MithrilViewEvent) => {
               e.redraw = false;
@@ -179,7 +179,7 @@ export const WhimsyManager: m.ClosureComponent<WhimsyManagerAttrs> = () => {
           ]),
 
           m('wa-button', {
-            size: 'small',
+            size: 's',
             disabled: !hasSelection,
             onclick: (e: Event & MithrilViewEvent) => {
               e.redraw = false;
@@ -193,7 +193,7 @@ export const WhimsyManager: m.ClosureComponent<WhimsyManagerAttrs> = () => {
           ]),
 
           m('wa-button', {
-            size: 'small',
+            size: 's',
             variant: 'danger',
             disabled: !hasSelection,
             onclick: async (e: Event & MithrilViewEvent) => {
@@ -215,7 +215,7 @@ export const WhimsyManager: m.ClosureComponent<WhimsyManagerAttrs> = () => {
           ]),
 
           m('wa-button', {
-            size: 'small',
+            size: 's',
             disabled: !hasSelection,
             onclick: (e: Event & MithrilViewEvent) => {
               e.redraw = false;
