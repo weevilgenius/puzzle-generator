@@ -5,7 +5,7 @@ import './HelpContent.css';
 const HelpContent: m.Component = {
   view: () => m('.help-content', [
     m('p',
-      'This tool creates jigsaw puzzle designs in your browser using various' +
+      'This tool creates jigsaw puzzle designs in your browser using various ' +
       'generative algorithms. You can preview the puzzle, tweak the settings, ' +
       'adjust its shape and style, then download an SVG file for use with a ' +
       'laser cutter or CNC machine.'),
