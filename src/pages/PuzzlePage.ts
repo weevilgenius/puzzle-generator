@@ -805,31 +805,32 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
 
       return m('.page.puzzle-page', [
         m('header.puzzle-header', [
-          m('h1', 'Puzzle'),
+          m('h1', 'Puzzle Generator'),
           m('.seed-control', [
-            m('wa-input', {
-              label: 'Seed',
+            m('wa-tooltip', { for: 'seed-input' }, 'This is the puzzle seed. Change it to get a different set of random numbers.'),
+            m('wa-input#seed-input', {
               type: 'number',
               inputmode: 'numeric',
               size: 's',
               value: state.seed,
+              'aria-label': 'Seed',
               onchange: (e: Event & MithrilViewEvent) => {
                 e.redraw = false;
                 state.seed = Number((e.target as WaInput).value) || 0;
                 markPuzzleDirty();
               },
             }),
-            m('wa-tooltip', { for: 'randomize-seed' }, 'Randomize seed'),
+            m('wa-tooltip', { for: 'randomize-seed' }, 'Random seed'),
             m('wa-button#randomize-seed', {
               appearance: 'plain',
               size: 's',
-              'aria-label': 'Randomize seed',
+              'aria-label': 'Random seed',
               onclick: (e: MouseEvent & MithrilViewEvent) => {
                 e.redraw = false;
                 state.seed = (state.seed + 1 + Math.floor(Math.random() * 10239)) % 10240;
                 markPuzzleDirty();
               },
-            }, m('wa-icon', { library: 'material', name: 'casino', label: 'Randomize seed' })),
+            }, m('wa-icon', { library: 'material', name: 'casino', label: 'Random seed' })),
           ]),
           m('.header-spacer'),
           m(GeometryCheckIndicator, {

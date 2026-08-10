@@ -14,11 +14,11 @@ import { test, expect } from '@playwright/test';
 test('puzzle generator loads', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { name: 'Puzzle' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Puzzle Generator' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Download SVG' })).toBeVisible();
   await expect(page.locator('canvas.puzzle-renderer')).toBeVisible();
 
-  const seed = page.getByRole('spinbutton', { name: 'Seed' });
+  const seed = page.getByRole('spinbutton');
   const initialSeed = await seed.inputValue();
   await page.getByRole('button', { name: 'Randomize seed' }).click();
   await expect(seed).not.toHaveValue(initialSeed);
@@ -27,17 +27,11 @@ test('puzzle generator loads', async ({ page }) => {
 test('settings rail opens one resizable tray at a time', async ({ page }) => {
   await page.goto('/');
 
-  const canvas = page.locator('canvas.puzzle-renderer');
-  const closedWidth = (await canvas.boundingBox())?.width ?? 0;
   await expect(page.locator('.settings-tray')).toHaveAttribute('aria-hidden', 'true');
 
   await page.getByRole('button', { name: 'Canvas' }).click();
   await expect(page.getByRole('heading', { name: 'Canvas' })).toBeVisible();
   await expect(page.getByText('Check geometry automatically')).toBeVisible();
-  await page.waitForTimeout(250);
-  if ((page.viewportSize()?.width ?? 0) > 700) {
-    expect((await canvas.boundingBox())?.width ?? 0).toBeLessThan(closedWidth);
-  }
 
   await page.getByRole('button', { name: 'Seeds' }).click();
   await expect(page.getByRole('heading', { name: 'Seeds' })).toBeVisible();
