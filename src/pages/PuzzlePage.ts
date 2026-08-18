@@ -270,7 +270,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     } else {
       // Create new piece with initial transform that centers and scales it
       const newPiece: CustomPiece = {
-        id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
         name,
         path,
         transform: createInitialTransform(
@@ -333,7 +333,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
         : undefined;
 
       const duplicatedPiece: CustomPiece = {
-        id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
         name: duplicateName,
         path: [...piece.path],
         transform: {

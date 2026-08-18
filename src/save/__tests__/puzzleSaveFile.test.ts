@@ -269,16 +269,8 @@ describe('file I/O helpers', () => {
     const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:foo');
     const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(vi.fn());
 
-    // Mock click on anchor element
-    const clickSpy = vi.fn();
-    const originalCreateElement = document.createElement.bind(document);
-    const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
-      const el = originalCreateElement(tagName);
-      if (tagName === 'a') {
-        el.click = clickSpy;
-      }
-      return el;
-    });
+    // Mock click on the download anchor
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(vi.fn());
 
     const saveFile: PuzzleSaveFile = {
       version: '1.0.0',
@@ -307,6 +299,6 @@ describe('file I/O helpers', () => {
     // Clean up
     createObjectURLSpy.mockRestore();
     revokeObjectURLSpy.mockRestore();
-    createElementSpy.mockRestore();
+    clickSpy.mockRestore();
   });
 });
