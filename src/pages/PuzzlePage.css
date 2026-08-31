@@ -364,8 +364,14 @@
     gap: 0;
   }
 
+  /* Hidden visually but kept for the button's accessible name */
   .settings-rail .rail-button > span {
-    display: none;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   .settings-rail .rail-button wa-icon {
