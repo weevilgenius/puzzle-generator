@@ -24,7 +24,7 @@ test('puzzle generator loads', async ({ page }) => {
   await expect(seed).not.toHaveValue(initialSeed);
 });
 
-test('settings rail opens one resizable tray at a time', async ({ page }, testInfo) => {
+test('desktop: settings rail opens one resizable tray at a time', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'mobile-chromium', 'Mobile uses a full-screen settings view.');
   await page.goto('/');
 
@@ -43,7 +43,7 @@ test('settings rail opens one resizable tray at a time', async ({ page }, testIn
   await expect(page.locator('.settings-tray')).toHaveAttribute('aria-hidden', 'true');
 });
 
-test('mobile settings open full-screen without horizontal overflow', async ({ page }, testInfo) => {
+test('mobile: settings open full-screen without horizontal overflow', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile-chromium', 'Mobile-only layout.');
   await page.goto('/');
 
