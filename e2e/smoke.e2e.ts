@@ -20,7 +20,7 @@ test('puzzle generator loads', async ({ page }) => {
 
   const seed = page.getByRole('spinbutton');
   const initialSeed = await seed.inputValue();
-  await page.getByRole('button', { name: 'Randomize seed' }).click();
+  await page.getByRole('button', { name: 'Random seed' }).click();
   await expect(seed).not.toHaveValue(initialSeed);
 });
 
