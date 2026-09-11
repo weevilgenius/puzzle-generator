@@ -46,6 +46,19 @@ function applyTransformToPoint(point: Vec2, center: Vec2, transform: CustomPiece
   return [translatedX, translatedY];
 }
 
+/** Transform a whimsy path around the outline's center, preserving curve controls. */
+export function transformCustomPiecePath(piece: CustomPiece, path: PathCommand[]): PathCommand[] {
+  const [xmin, ymin, xmax, ymax] = computePathBounds(piece.path);
+  const center: Vec2 = [(xmin + xmax) / 2, (ymin + ymax) / 2];
+  const transform = (point: Vec2): Vec2 => applyTransformToPoint(point, center, piece.transform);
+  return path.map((command): PathCommand => command.type === 'bezier'
+    ? { type: 'bezier', p1: transform(command.p1), p2: transform(command.p2), p3: transform(command.p3) }
+    : command.type === 'arc'
+      // Match the existing whimsy renderer's arc approximation.
+      ? { type: 'line', p: transform(command.p) }
+      : { ...command, p: transform(command.p) });
+}
+
 /**
  * Flattens a path command array to a polygon (array of Vec2 points).
  * Bezier curves and arcs are approximated with line segments.

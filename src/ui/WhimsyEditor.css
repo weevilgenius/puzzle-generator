@@ -1,0 +1,11 @@
+.custom-piece-editor .whimsy-preview {
+  display: block;
+  width: 100%;
+  max-height: 40vh;
+}
+
+.custom-piece-editor .import-warning {
+  color: var(--wa-color-warning-on-quiet);
+  background: var(--wa-color-warning-fill-quiet);
+  padding: 0.75rem;
+}

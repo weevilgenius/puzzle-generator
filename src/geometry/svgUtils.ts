@@ -3,7 +3,7 @@
  * Converts SVG path data to PathCommand[] format
  */
 
-import type { PathCommand } from './types';
+import type { PathCommand, WhimsyInternalPath } from './types';
 
 /**
  * Result of parsing an SVG file
@@ -11,12 +11,14 @@ import type { PathCommand } from './types';
 export interface SVGParseResult {
   /** The parsed path commands */
   commands: PathCommand[];
+  /** Independent detail paths after the outline, with optional operation colors. */
+  internalPaths?: WhimsyInternalPath[];
   /** Optional warning message for the user if something went wrong during parsing */
   warning?: string;
 }
 
 /**
- * Parse an SVG file and extract path commands from the first path element
+ * Parse the first SVG path as an outline and subsequent paths as cut details.
  *
  * @param svgContent - The SVG file content as a string
  * @returns SVGParseResult with commands and optional warning, or null if parsing fails
@@ -57,8 +59,22 @@ export function parseSVGFile(svgContent: string): SVGParseResult {
       };
     }
 
-    // Parse the path data
-    return parseSVGPath(dAttr);
+    const outline = parseSVGPath(dAttr);
+    const warnings = new Set<string>();
+    if (outline.warning) warnings.add(outline.warning);
+    if (doc.querySelector('[transform]')) {
+      warnings.add('SVG transforms are ignored. Apply transforms to the paths before importing.');
+    }
+    if (doc.querySelector('style, link') || svgContent.includes('<?xml-stylesheet')) {
+      warnings.add('Stylesheet-based colors are not imported. Use inline stroke colors for internal details.');
+    }
+
+    const internalPaths = Array.from(doc.querySelectorAll('path')).slice(1).map((element) => {
+      const result = parseSVGPath(element.getAttribute('d') ?? '');
+      if (result.warning) warnings.add(result.warning);
+      return { path: result.commands, strokeColor: readDetailColor(element, warnings) };
+    });
+    return { ...outline, internalPaths, warning: warnings.size > 0 ? [...warnings].join(' ') : undefined };
   } catch (error) {
     console.error('[SVGParser] Error parsing SVG:', error);
     return {
@@ -67,6 +83,34 @@ export function parseSVGFile(svgContent: string): SVGParseResult {
     };
   }
 }
+
+const readDetailColor = (element: Element, warnings: Set<string>): string | undefined => {
+  let stroke = '';
+  for (let current: Element | null = element; current; current = current.parentElement) {
+    const style = document.createElement('span').style;
+    style.cssText = current.getAttribute('style') ?? '';
+    const inlineStroke = style.getPropertyValue('stroke');
+    stroke = (inlineStroke.length > 0 ? inlineStroke : current.getAttribute('stroke') ?? '').trim();
+    if (stroke && !['inherit', 'unset'].includes(stroke.toLowerCase())) break;
+    stroke = '';
+  }
+  if (!stroke || ['none', 'initial'].includes(stroke.toLowerCase())) return undefined;
+
+  // Resolve only a color, never attach any imported SVG markup to the document.
+  const probe = document.createElement('span');
+  probe.style.color = stroke;
+  if (!probe.style.color || /url\(|var\(|currentcolor|context-|revert|inherit|unset/i.test(stroke)) {
+    warnings.add('An unsupported detail stroke color was ignored; that detail will use the global piece color.');
+    return undefined;
+  }
+  probe.style.display = 'none';
+  document.body.appendChild(probe);
+  const color = getComputedStyle(probe).color;
+  probe.remove();
+  return /^(black|#0{3}(?:0{3})?|rgba?\(0[, ]+0[, ]+0(?:[, /]+[\d.]+)?\))$/i.test(color)
+    ? undefined
+    : color;
+};
 
 /**
  * Parse an SVG path d attribute into PathCommand[] format
@@ -107,11 +151,13 @@ export function parseSVGPath(d: string): SVGParseResult {
 
   const parseNumber = (): number => {
     const num = parseFloat(tokens[i]);
+    if (!Number.isFinite(num)) throw new Error('Invalid SVG path coordinate');
     i++;
     return num;
   };
 
   while (i < tokens.length) {
+    const startIndex = i;
     let command = tokens[i];
 
     // Handle implicit commands (coordinates following a command)
@@ -436,6 +482,7 @@ export function parseSVGPath(d: string): SVGParseResult {
       // Unknown command - skip it
       break;
     }
+    if (i === startIndex) throw new Error('Invalid SVG path command');
   }
 
   const result: SVGParseResult = { commands };

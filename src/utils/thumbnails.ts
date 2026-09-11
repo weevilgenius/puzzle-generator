@@ -2,7 +2,8 @@
  * Thumbnail generation utilities for custom pieces
  */
 
-import type { PathCommand } from '../geometry/types';
+import type { PathCommand, WhimsyInternalPath } from '../geometry/types';
+import { pathCommandsToSVG } from './svg';
 
 /**
  * Generates a thumbnail image for a custom piece path.
@@ -12,6 +13,7 @@ import type { PathCommand } from '../geometry/types';
  * @param height - Height of the thumbnail in pixels
  * @param color - Color for the outline (CSS color string)
  * @param padding - Padding around the shape in pixels (default: 10)
+ * @param internalPaths - Independent cut details and their operation colors.
  * @returns Data URL of the thumbnail image
  */
 export function generateCustomPieceThumbnail(
@@ -19,7 +21,8 @@ export function generateCustomPieceThumbnail(
   width: number,
   height: number,
   color: string,
-  padding: number = 10
+  padding: number = 10,
+  internalPaths: WhimsyInternalPath[] = []
 ): string {
   // Create off-screen canvas
   const canvas = document.createElement('canvas');
@@ -102,6 +105,13 @@ export function generateCustomPieceThumbnail(
   ctx.strokeStyle = color;
   ctx.lineWidth = 2;
   ctx.stroke();
+
+  ctx.setTransform(scale, 0, 0, scale, offsetX, offsetY);
+  ctx.lineWidth = 2 / scale;
+  for (const detail of internalPaths) {
+    ctx.strokeStyle = detail.strokeColor ?? color;
+    ctx.stroke(new Path2D(pathCommandsToSVG(detail.path)));
+  }
 
   // Convert to data URL
   return canvas.toDataURL('image/png');

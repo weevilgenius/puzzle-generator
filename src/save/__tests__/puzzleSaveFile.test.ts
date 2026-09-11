@@ -70,6 +70,16 @@ function createMockState(): SaveableState {
 }
 
 describe('createSaveData', () => {
+  it('round-trips independent whimsy paths and their operation colors', () => {
+    const state = createMockState();
+    state.customPieces[0].internalPaths = [{
+      path: [{ type: 'move', p: [2, 3] }, { type: 'line', p: [4, 5] }],
+      strokeColor: '#ff0000',
+    }];
+    const restored = validateAndDeserialize(JSON.parse(JSON.stringify(createSaveData(state))));
+    expect(restored.data.customPieces).toEqual(state.customPieces);
+  });
+
   it('serializes state into a PuzzleSaveFile structure', () => {
     const state = createMockState();
     const result = createSaveData(state);

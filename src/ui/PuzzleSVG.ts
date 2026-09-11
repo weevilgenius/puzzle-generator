@@ -18,8 +18,7 @@ export const PuzzleSVG: m.ClosureComponent<PuzzleSVGAttrs> = () => {
 
   // component state
   const state = {
-    // tracks the seed so that we avoid heavy computation when the puzzle data hasn't changed
-    previousSeed: 0,
+    previousPuzzle: undefined as PuzzleGeometry | undefined,
     previousWidth: 0,
     previousHeight: 0,
     previousColor: '',
@@ -28,15 +27,15 @@ export const PuzzleSVG: m.ClosureComponent<PuzzleSVGAttrs> = () => {
 
   return {
     view: ({ attrs }) => {
-      if (attrs.puzzle.seed !== state.previousSeed
+      if (attrs.puzzle !== state.previousPuzzle
         || attrs.width !== state.previousWidth
         || attrs.height !== state.previousHeight
         || attrs.color !== state.previousColor) {
-        state.previousSeed = attrs.puzzle.seed;
+        state.previousPuzzle = attrs.puzzle;
         state.previousWidth = attrs.width;
         state.previousHeight = attrs.height;
         state.previousColor = attrs.color;
-        state.svg = createSVG(attrs.puzzle, attrs.width, attrs.height, attrs.color);
+        state.svg = createSVG(attrs.puzzle, attrs.width, attrs.height, attrs.color, attrs.puzzle.customPieces);
       }
 
       return m('.svg-container', {

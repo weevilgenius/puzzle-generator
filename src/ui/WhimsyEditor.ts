@@ -3,11 +3,12 @@
  */
 
 import m from 'mithril';
-import type { PathCommand, CustomPiece } from '../geometry/types';
+import type { PathCommand, CustomPiece, WhimsyInternalPath } from '../geometry/types';
 import { PathEditor } from './PathEditor';
 import { validateCustomPiece, isPathClosed, type ValidationResult } from '../utils/pathValidation';
 import { parseSVGFile } from '../geometry/svgUtils';
 import { fitPathToCanvas } from '../geometry/utils';
+import { pathCommandsToSVG } from '../utils/svg';
 import Dialog from './Dialog';
 import StringInputControl from './inputs/StringInputControl';
 import type MithrilViewEvent from '../utils/MithrilViewEvent';
@@ -38,6 +39,9 @@ export interface WhimsyEditorAttrs extends m.Attributes {
    */
   piece?: CustomPiece;
 
+  /** Global cut-line color used for outlines and uncolored details. */
+  color?: string;
+
   /**
    * Width of the PathEditor canvas in pixels.
    * Default: 600
@@ -56,7 +60,7 @@ export interface WhimsyEditorAttrs extends m.Attributes {
    *
    * @param piece - The saved custom piece (may be partial for caller to complete)
    */
-  onSave: (path: PathCommand[], name?: string) => void;
+  onSave: (path: PathCommand[], name?: string, internalPaths?: WhimsyInternalPath[]) => void;
 
   /**
    * Callback invoked when the user cancels editing.
@@ -73,6 +77,12 @@ interface WhimsyEditorState {
   initialPath: PathCommand[];
   /** Current path being edited (for validation) */
   path: PathCommand[];
+  /** Imported cut details, edited externally. */
+  internalPaths: WhimsyInternalPath[];
+  /** Visible warnings from the latest import. */
+  importWarning?: string;
+  /** Reload the drawing editor even when a replacement has the same command count. */
+  importRevision: number;
   /** Current piece name */
   name: string;
   /** Current validation result */
@@ -98,6 +108,8 @@ export const WhimsyEditor: m.ClosureComponent<WhimsyEditorAttrs> = () => {
   const state: WhimsyEditorState = {
     initialPath: [],
     path: [],
+    internalPaths: [],
+    importRevision: 0,
     name: '',
     validation: { isValid: false, errors: [] },
     importDialogOpen: false,
@@ -113,6 +125,8 @@ export const WhimsyEditor: m.ClosureComponent<WhimsyEditorAttrs> = () => {
    * Initialize state from attrs when dialog opens or piece changes
    */
   const initializeState = (attrs: WhimsyEditorAttrs) => {
+    state.importWarning = undefined;
+    state.internalPaths = attrs.piece?.internalPaths ?? [];
     if (attrs.piece) {
       // Editing existing piece - use piece ID as content key
       state.contentKey = attrs.piece.id;
@@ -169,7 +183,7 @@ export const WhimsyEditor: m.ClosureComponent<WhimsyEditorAttrs> = () => {
     }
     // Call the onSave callback with path and name
     // The caller is responsible for generating id, transform, and timestamp
-    attrs.onSave(state.path, state.name.length > 0 ? state.name : undefined);
+    attrs.onSave(state.path, state.name.length > 0 ? state.name : undefined, state.internalPaths);
   };
 
   /**
@@ -191,6 +205,7 @@ export const WhimsyEditor: m.ClosureComponent<WhimsyEditorAttrs> = () => {
       const svgContent = e.target?.result as string;
       if (svgContent) {
         const parseResult = parseSVGFile(svgContent);
+        state.importWarning = parseResult.warning;
 
         if (parseResult.warning) {
           console.warn('SVG import warning:', parseResult.warning);
@@ -198,11 +213,20 @@ export const WhimsyEditor: m.ClosureComponent<WhimsyEditorAttrs> = () => {
 
         if (parseResult.commands.length > 0) {
           // Fit the path to the canvas size
-          const fittedPath = fitPathToCanvas(
-            parseResult.commands,
+          const details = parseResult.internalPaths ?? [];
+          const fittedCommands = fitPathToCanvas(
+            [...parseResult.commands, ...details.flatMap((detail) => detail.path)],
             editorWidth,
             editorHeight
           );
+          const fittedPath = fittedCommands.slice(0, parseResult.commands.length);
+          let offset = parseResult.commands.length;
+          state.internalPaths = details.map((detail) => {
+            const path = fittedCommands.slice(offset, offset + detail.path.length);
+            offset += detail.path.length;
+            return { ...detail, path };
+          });
+          state.importRevision++;
 
           // Update both initialPath (to reload PathEditor) and path (for validation)
           state.initialPath = fittedPath;
@@ -219,6 +243,7 @@ export const WhimsyEditor: m.ClosureComponent<WhimsyEditorAttrs> = () => {
           m.redraw();
         } else {
           console.error('Failed to parse SVG file');
+          m.redraw();
         }
       }
     };
@@ -248,7 +273,7 @@ export const WhimsyEditor: m.ClosureComponent<WhimsyEditorAttrs> = () => {
         open: attrs.open,
         title: attrs.piece ? 'Edit Whimsy' : 'Create Whimsy',
         className: 'custom-piece-editor',
-        width: '50vw',
+        width: 'min(800px, calc(100vw - 2rem))',
         contentKey: state.contentKey,
         onStateChanged: (open) => {
           if (!open) {
@@ -314,8 +339,25 @@ export const WhimsyEditor: m.ClosureComponent<WhimsyEditorAttrs> = () => {
           ),
 
           // PathEditor
+          state.importWarning && m('p.import-warning', { role: 'alert' }, state.importWarning),
           m('.editor-canvas', [
-            m(PathEditor, {
+            state.internalPaths.length > 0 ? [
+              m('svg.whimsy-preview', {
+                viewBox: `0 0 ${editorWidth} ${editorHeight}`,
+                role: 'img',
+                'aria-label': 'Whimsy outline and internal cut details',
+                fill: 'none',
+                'stroke-width': 1,
+              }, [
+                m('path', { d: pathCommandsToSVG(state.path), stroke: attrs.color ?? '#333333' }),
+                ...state.internalPaths.map((detail) => m('path', {
+                  d: pathCommandsToSVG(detail.path),
+                  stroke: detail.strokeColor ?? attrs.color ?? '#333333',
+                })),
+              ]),
+              m('p', 'This whimsy contains internal cut details. To edit its geometry, edit the file externally and reimport the SVG.'),
+            ] : m(PathEditor, {
+              key: state.importRevision,
               initialPath: state.initialPath,
               onPathChanged: handlePathChanged,
               width: editorWidth,

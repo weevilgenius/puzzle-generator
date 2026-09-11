@@ -26,6 +26,8 @@ import './WhimsyManager.css';
  * Attributes for the WhimsyManager component.
  */
 export interface WhimsyManagerAttrs extends m.Attributes {
+  /** Global cut-line color for thumbnails. */
+  color: string;
   /**
    * Array of custom pieces to display.
    */
@@ -88,7 +90,7 @@ export const WhimsyManager: m.ClosureComponent<WhimsyManagerAttrs> = () => {
     const cacheKey = `${piece.id}-${timestamp}-${color}`;
 
     if (!thumbnailCache.has(cacheKey)) {
-      const thumbnail = generateCustomPieceThumbnail(piece.path, 100, 100, color);
+      const thumbnail = generateCustomPieceThumbnail(piece.path, 100, 100, color, 10, piece.internalPaths);
       thumbnailCache.set(cacheKey, thumbnail);
     }
 
@@ -138,7 +140,7 @@ export const WhimsyManager: m.ClosureComponent<WhimsyManagerAttrs> = () => {
               const isSelected = piece.id === attrs.selectedPieceId;
               const thumbnail = getThumbnail(
                 piece,
-                document.documentElement.classList.contains('wa-dark') ? '#ffffff' : '#000000'
+                attrs.color
               );
 
               return m(CustomPieceTile, {

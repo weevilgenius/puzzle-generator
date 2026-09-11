@@ -17,7 +17,7 @@ import WhimsyManager from '../ui/WhimsyManager';
 import HelpContent from '../ui/HelpContent';
 
 // geometry parts
-import type { CustomPiece, PuzzleGeometry, PathCommand, Vec2 } from '../geometry/types';
+import type { CustomPiece, PuzzleGeometry, PathCommand, Vec2, WhimsyInternalPath } from '../geometry/types';
 import type { GeneratorConfig, GeneratorName, GeneratorRegistry } from '../geometry/generators/Generator';
 import { PointGeneratorRegistry, PieceGeneratorRegistry, TabPlacementStrategyRegistry, TabGeneratorRegistry } from '../geometry/generators/Generator';
 import { Name as PoissonGeneratorName } from '../geometry/generators/point/PoissonPointGenerator';
@@ -250,7 +250,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
   }
 
   // utility to handle saving a custom piece
-  function handleSaveCustomPiece(path: PathCommand[], name?: string) {
+  function handleSaveCustomPiece(path: PathCommand[], name?: string, internalPaths?: WhimsyInternalPath[]) {
     const now = new Date().toISOString();
 
     // Check if we're editing an existing piece
@@ -262,6 +262,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
             ...piece,
             name,
             path,
+            internalPaths,
             modified: now,
           };
         }
@@ -273,6 +274,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
         id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
         name,
         path,
+        internalPaths,
         transform: createInitialTransform(
           path,
           state.canvasWidth,
@@ -336,6 +338,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
         id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
         name: duplicateName,
         path: [...piece.path],
+        internalPaths: piece.internalPaths?.map((detail) => ({ ...detail, path: [...detail.path] })),
         transform: {
           position: [piece.transform.position[0] + 20, piece.transform.position[1] + 20],
           rotation: piece.transform.rotation,
@@ -730,6 +733,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     case 'canvas': return renderCanvasSettings();
     case 'whimsy':
       return m(WhimsyManager, {
+        color: state.color,
         pieces: state.customPieces,
         selectedPieceId: state.selectedCustomPieceId,
         onAdd: handleOpenCustomPieceEditor,
@@ -1049,6 +1053,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
         // Custom Piece Editor Modal
         m(WhimsyEditor, {
           open: state.customPieceEditorOpen,
+          color: state.color,
           piece: state.editingCustomPieceId
             ? state.customPieces.find((p) => p.id === state.editingCustomPieceId)
             : undefined,

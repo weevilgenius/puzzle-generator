@@ -11,6 +11,7 @@ import {
 import type { PuzzleGeometry, CustomPiece, PathCommand } from '../../geometry/types';
 import type { PuzzleRendererState } from './constants';
 import { measureSync } from '../../utils/performance';
+import { computePathBounds, transformCustomPiecePath } from '../../geometry/customPieces';
 
 /**
  * Initialize Paper.js on a canvas element with an isolated scope
@@ -367,7 +368,8 @@ export function renderCustomPieces(
       const { position, rotation, scale } = customPiece.transform;
 
       // Center the path at origin (same as handle rendering does with tempPath)
-      path.position = new paperScope.Point(0, 0);
+      const [xmin, ymin, xmax, ymax] = computePathBounds(customPiece.path);
+      path.translate(new paperScope.Point(-(xmin + xmax) / 2, -(ymin + ymax) / 2));
 
       // Build transformation matrix to apply: scale, then rotate, then translate
       // Paper.js uses post-multiplication: matrix.op() does matrix = matrix * op
@@ -400,6 +402,14 @@ export function renderCustomPieces(
       // Store custom piece ID in path data for hit testing
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       path.data.customPieceId = customPiece.id;
+
+      for (const detail of customPiece.internalPaths ?? []) {
+        const detailPath = pathCommandsToPath(transformCustomPiecePath(customPiece, detail.path), paperScope);
+        detailPath.strokeColor = new paperScope.Color(detail.strokeColor ?? color);
+        detailPath.strokeWidth = 1;
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        detailPath.data.customPieceId = customPiece.id;
+      }
     }
   });
 }
@@ -426,7 +436,8 @@ export function renderCustomPieceHandles(
 
     // Create a temporary path to get the unscaled, unrotated bounds
     const tempPath = pathCommandsToPath(customPiece.path, paperScope);
-    tempPath.position = new paperScope.Point(0, 0);
+    const [xmin, ymin, xmax, ymax] = computePathBounds(customPiece.path);
+    tempPath.translate(new paperScope.Point(-(xmin + xmax) / 2, -(ymin + ymax) / 2));
     const baseBounds = tempPath.bounds;
     tempPath.remove(); // Clean up temporary path
 

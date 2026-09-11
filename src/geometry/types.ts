@@ -207,6 +207,9 @@ export interface CustomPiece {
   /** The path defining the piece shape (must be closed and non-self-intersecting) */
   path: PathCommand[];
 
+  /** Independent cut lines, excluded from outline validation and topology. */
+  internalPaths?: WhimsyInternalPath[];
+
   /** Spatial transformation applied to the piece */
   transform: CustomPieceTransform;
 
@@ -215,6 +218,14 @@ export interface CustomPiece {
 
   /** Last modification timestamp (optional for backward compatibility) */
   modified?: DateString;
+}
+
+/** An independent cut detail within a whimsy. */
+export interface WhimsyInternalPath {
+  /** Open or closed path in the outline's coordinate system. */
+  path: PathCommand[];
+  /** Non-black laser operation color; absent means use the global piece color. */
+  strokeColor?: string;
 }
 
 /* ========================================================= *\
@@ -267,4 +278,3 @@ export interface PuzzleGeometry extends PuzzleTopology {
   /** Custom pieces defined for this puzzle */
   customPieces?: CustomPiece[];
 }
-

@@ -1,4 +1,21 @@
-import type { PuzzleTopology, Vec2 } from "../geometry/types";
+import type { PuzzleTopology, Vec2, PathCommand, CustomPiece } from "../geometry/types";
+import { transformCustomPiecePath } from '../geometry/customPieces';
+
+/** Serialize a path without closing or joining independent cut lines. */
+export function pathCommandsToSVG(commands: PathCommand[]): string {
+  const point = (p: Vec2): string => p.map((value) => value.toFixed(3)).join(' ');
+  return commands.map((command) => {
+    switch (command.type) {
+    case 'move': return `M ${point(command.p)}`;
+    case 'line': return `L ${point(command.p)}`;
+    case 'bezier': return `C ${point(command.p1)} ${point(command.p2)} ${point(command.p3)}`;
+    case 'arc': return `L ${point(command.p)}`;
+    }
+  }).join(' ');
+}
+
+const escapeAttribute = (value: string): string => value.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+  .replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /**
  * Generates an SVG string representation of the puzzle's cut lines.
@@ -7,9 +24,10 @@ import type { PuzzleTopology, Vec2 } from "../geometry/types";
  * @param width - The width of the SVG viewport.
  * @param height - The height of the SVG viewport.
  * @param pieceColor - Optional color to draw the pieces (default black)
+ * @param customPieces - Whimsies whose independent cut details should be included.
  * @returns A string containing the complete SVG markup.
  */
-export function createSVG(topology: PuzzleTopology, width: number, height: number, pieceColor = "black"): string {
+export function createSVG(topology: PuzzleTopology, width: number, height: number, pieceColor = "black", customPieces: CustomPiece[] = []): string {
   // how many digits to preserve when converting decimal numbers to SVG string
   const precisionDigits = 3;
 
@@ -60,6 +78,10 @@ export function createSVG(topology: PuzzleTopology, width: number, height: numbe
 
   // Join all path commands into a single string for the 'd' attribute.
   const pathD = pathData.join(' ');
+  const details = customPieces.flatMap((piece) => (piece.internalPaths ?? []).map((detail) =>
+    `  <path d="${pathCommandsToSVG(transformCustomPiecePath(piece, detail.path))}" fill="none" ` +
+    `stroke="${escapeAttribute(detail.strokeColor ?? pieceColor)}" stroke-width="1" vector-effect="non-scaling-stroke" />`
+  )).join('\n');
 
   // Construct the final SVG markup.
   // The <path> element uses vector-effect="non-scaling-stroke" which is a best
@@ -78,10 +100,11 @@ export function createSVG(topology: PuzzleTopology, width: number, height: numbe
   <path
     d="${pathD}"
     fill="none"
-    stroke="${pieceColor}"
+    stroke="${escapeAttribute(pieceColor)}"
     stroke-width="1"
     vector-effect="non-scaling-stroke"
   />
+${details}
 </svg>`
     .trim() // strip leading and trailing whitespace
     .replace(/\r\n/g, '\n'); // use unix line endings for max compatibility
