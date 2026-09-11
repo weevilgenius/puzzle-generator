@@ -26,6 +26,7 @@ import {
 } from "./PieceGeneratorHelpers";
 import {
   customPieceToPolygon,
+  registerCustomPieceEdges,
 } from '../../customPieces';
 import * as martinez from 'martinez-polygon-clipping';
 import type { GeneratorUIMetadata } from '../../ui_types';
@@ -390,6 +391,7 @@ export const RectangularPieceGeneratorFactory: GeneratorFactory<PieceGenerator> 
         const pieceId = pieceIdCounter++;
 
         const piece = createPieceFromPolygon(pieceId, splitPolygon, topology);
+        piece.isCustomPiece = true;
         topology.pieces.set(pieceId, piece);
 
         // Collect the half-edges for this piece to link them with neighbors
@@ -438,6 +440,8 @@ export const RectangularPieceGeneratorFactory: GeneratorFactory<PieceGenerator> 
         const merged = onProgress?.(processed, total);
         if (merged) await merged;
       }
+
+      if (customPieces.length > 0) registerCustomPieceEdges(topology);
 
       const done = onProgress?.(total, total);
       if (done) await done;

@@ -32,6 +32,7 @@ import {
   subtractCustomPieces,
   createPieceFromCustom,
   customPieceToPolygon,
+  registerCustomPieceEdges,
 } from '../../customPieces';
 
 
@@ -622,7 +623,7 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
 
         // Link edges to neighbors or mark them as part of the boundary
         // Custom piece edges that touch procedural pieces should link to them
-        // Custom piece edges that don't touch anything are treated as boundary edges
+        // Unmatched outline cuts are registered after fragment merging.
         linkAndCreateEdges(pieceHalfEdges, topology, halfEdgeTwinMap, (p1, p2) => {
           // Check if this edge is on the puzzle boundary
           const onBoundary = isPointNearBoundary(p1, boundaryContext) &&
@@ -663,6 +664,8 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
         }
       }
       topology.vertices = Array.from(vertexSet.values());
+
+      if (customPieces.length > 0) registerCustomPieceEdges(topology);
 
       const done = onProgress?.(total, total);
       if (done) await done;

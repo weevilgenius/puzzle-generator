@@ -3,7 +3,7 @@ import { parseSVGFile } from '../svgUtils';
 import { validateCustomPiece } from '../../utils/pathValidation';
 import { fitPathToCanvas } from '../utils';
 import { createRectangleBorder } from '../borderShapes';
-import { transformCustomPiecePath } from '../customPieces';
+import { transformCustomPiecePath, registerCustomPieceEdges } from '../customPieces';
 import { createSVG } from '../../utils/svg';
 import type { CustomPiece, PuzzleTopology, Vec2 } from '../types';
 import { PieceGeneratorRegistry } from '../generators/Generator';
@@ -19,6 +19,7 @@ describe('whimsy cut details', () => {
     ['teddy-bear.svg', 0],
     ['old-fashioned-key.svg', 0],
     ['goofy-dog.svg', 56],
+    ['simple_star.svg', 5],
   ])('imports %s as one valid outline and %i independent details', (filename, detailCount) => {
     const result = parseSVGFile(readFileSync(`tests/fixtures/whimsies/${filename}`, 'utf8'));
     expect(result.warning).toBeUndefined();
@@ -39,6 +40,50 @@ describe('whimsy cut details', () => {
     expect(result.warning).toMatch(/Stylesheet-based colors/);
     expect(result.warning).toMatch(/unsupported detail stroke/);
     expect(parseSVGFile('<svg><path d="0 0"/></svg>').warning).toBe('Failed to parse SVG');
+  });
+
+  it.each(['VoronoiPieceGenerator', 'RectangularPieceGenerator'])('%s exports an isolated star outline once with its colored details', async (name) => {
+    const imported = parseSVGFile(readFileSync('tests/fixtures/whimsies/simple_star.svg', 'utf8'));
+    const custom: CustomPiece = {
+      id: 'star', created: '', path: imported.commands, internalPaths: imported.internalPaths,
+      transform: { position: [100, 100], rotation: 0.3, scale: [0.2, 0.3] },
+    };
+    const border = createRectangleBorder(400, 400);
+    const bounds = { width: 400, height: 400 };
+    const generator = PieceGeneratorRegistry.create(border, bounds, {
+      ...PieceGeneratorRegistry.getDefaultConfig(name, 400, 400), whimsyMode: 'simple',
+    });
+    const topology = await generator.generatePieces([[100, 100], [300, 100], [100, 300], [300, 300]], {
+      bounds, border, pieceSize: 200, random: mulberry32(42), customPieces: [custom],
+    });
+    const exported = new DOMParser().parseFromString(createSVG(topology, 400, 400, '#008000', [custom]), 'image/svg+xml');
+    const paths = [...exported.querySelectorAll('path')];
+    expect(paths).toHaveLength(6);
+    expect(paths[0].getAttribute('stroke')).toBe('#008000');
+    expect(paths.slice(1).map((path) => path.getAttribute('stroke'))).toEqual(imported.internalPaths!.map((detail) => detail.strokeColor));
+    const outlineData = paths[0].getAttribute('d')!;
+    const points = transformCustomPiecePath(custom, custom.path).map((command) => {
+      if (command.type === 'bezier') throw new Error('The star fixture should contain only straight segments');
+      return command.p.map((value) => value.toFixed(3)).join(' ');
+    });
+    for (let i = 1; i < points.length; i++) {
+      expect(outlineData.split(`M ${points[i - 1]} L ${points[i]}`).length - 1).toBe(1);
+    }
+    const edgeCount = topology.edges.size;
+    registerCustomPieceEdges(topology);
+    expect(topology.edges.size).toBe(edgeCount);
+
+    // Crossing cell boundaries exercises outlines that already have paired edges.
+    custom.transform.position = [200, 200];
+    const crossing = await generator.generatePieces([[100, 100], [300, 100], [100, 300], [300, 300]], {
+      bounds, border, pieceSize: 200, random: mulberry32(42), customPieces: [custom],
+    });
+    for (const he of crossing.halfEdges.values()) {
+      if (!crossing.pieces.get(he.piece)?.isCustomPiece) continue;
+      const next = crossing.halfEdges.get(he.next)!;
+      if (he.origin[0] === next.origin[0] && he.origin[1] === next.origin[1]) continue;
+      expect([...crossing.edges.values()].filter((edge) => edge.heLeft === he.id || edge.heRight === he.id)).toHaveLength(1);
+    }
   });
 
   it('transforms independent curves and exports their colors without additional closing cuts', () => {

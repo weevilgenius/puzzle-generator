@@ -1,10 +1,27 @@
 import type { CustomPiece, CustomPieceTransform, Vec2, PathCommand, PuzzleTopology, Piece } from "./types";
 import { polygonBounds, isPointInPolygon, doAABBsIntersect, createHalfEdgeLoop } from "./utils";
 import * as martinez from 'martinez-polygon-clipping';
+import { getUniqueId } from '../utils/UniqueId';
 
 /* ========================================================= *\
  *  Custom Piece Helper Functions                           *
 \* ========================================================= */
+
+/** Register remaining whimsy cuts after all neighbor linking and fragment merging. */
+export function registerCustomPieceEdges(topology: PuzzleTopology): void {
+  const registered = new Set(Array.from(topology.edges.values()).flatMap((edge) => [edge.heLeft, edge.heRight]));
+  for (const he of topology.halfEdges.values()) {
+    if (!topology.pieces.get(he.piece)?.isCustomPiece || registered.has(he.id)) continue;
+    const next = topology.halfEdges.get(he.next)!;
+    if (he.origin[0] === next.origin[0] && he.origin[1] === next.origin[1]) continue;
+
+    // An isolated or partially matched outline is still a cut, but not the puzzle's outer border.
+    const id = getUniqueId();
+    topology.edges.set(id, { id, heLeft: he.id, heRight: he.twin, bounds: polygonBounds([he.origin, next.origin]) });
+    registered.add(he.id);
+    if (he.twin !== -1) registered.add(he.twin);
+  }
+}
 
 /**
  * Applies a transform to a point relative to a center point.
