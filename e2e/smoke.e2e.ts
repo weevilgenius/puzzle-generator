@@ -61,6 +61,65 @@ test('mobile: settings open full-screen without horizontal overflow', async ({ p
   await expect(page.locator('canvas.puzzle-renderer')).toBeVisible();
 });
 
+test('a restored complicated puzzle shows the canvas before generation finishes', async ({ page }, testInfo) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('puzzleGenerator:autoSave', JSON.stringify({
+      version: '1.0.0',
+      created: new Date().toISOString(),
+      puzzle: {
+        seed: 1,
+        dimensions: { width: 800, height: 600 },
+        pieceSize: 8,
+        visual: { color: '#333333', drawPoints: false, pointColor: '#0000FF' },
+        border: { shape: 'rectangle', cornerRadius: 50 },
+        generators: {
+          point: { name: 'PoissonPointGenerator' },
+          piece: { name: 'VoronoiPieceGenerator' },
+          placement: { name: 'SimpleTabPlacementStrategy' },
+          tab: { name: 'TraditionalTabGenerator' },
+        },
+        customPieces: [],
+      },
+    }));
+  });
+
+  await page.goto('/');
+  await expect(page.locator('canvas.puzzle-renderer')).toBeVisible({ timeout: 2000 });
+  const overlay = page.locator('.rebuild-progress-overlay');
+  await expect(overlay).toBeVisible({ timeout: 15000 });
+  await page.screenshot({ path: `screenshots/rebuild-initial-overlay-${testInfo.project.name}.png` });
+  await expect(overlay).toHaveCount(0, { timeout: 120000 });
+  await expect(page.locator('canvas.puzzle-renderer')).toBeVisible();
+});
+
+test('rebuild overlay is not shown after a completed load', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('canvas.puzzle-renderer')).toBeVisible();
+  await expect(page.locator('.rebuild-progress-overlay')).toHaveCount(0);
+});
+
+test('slow rebuilds show a progress overlay that clears when done', async ({ page }, testInfo) => {
+  await page.goto('/');
+  await expect(page.locator('canvas.puzzle-renderer')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Canvas' }).click();
+  await page.getByLabel('Piece size').evaluate((el) => {
+    const host = (el.closest('wa-input') ?? el) as HTMLInputElement;
+    host.value = '8';
+    host.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  if (testInfo.project.name === 'mobile-chromium') {
+    await page.getByRole('button', { name: 'Close settings' }).click();
+  }
+
+  const overlay = page.locator('.rebuild-progress-overlay');
+  await expect(overlay).toBeVisible({ timeout: 15000 });
+  await expect(overlay.locator('wa-progress-bar')).toBeVisible();
+  await page.screenshot({ path: `screenshots/rebuild-overlay-${testInfo.project.name}.png` });
+  await expect(overlay).toHaveCount(0, { timeout: 120000 });
+  await expect(page.locator('canvas.puzzle-renderer')).toBeVisible();
+});
+
 test('help explains the generator flow', async ({ page }, testInfo) => {
   await page.goto('/');
 

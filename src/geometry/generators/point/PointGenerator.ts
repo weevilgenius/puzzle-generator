@@ -1,4 +1,5 @@
 import type { PathCommand, RandomFn, Vec2 } from "../../types";
+import type { ProgressCallback } from "../Generator";
 
 
 /** Options passed to all Point Generators at run time. */
@@ -13,6 +14,8 @@ export interface PointGenerationRuntimeOptions {
   random: RandomFn;
   /** The boundary path that defines the puzzle's outer shape */
   border: PathCommand[];
+  /** Optional best-effort progress callback for this generation step */
+  onProgress?: ProgressCallback;
 }
 
 /**
@@ -20,5 +23,5 @@ export interface PointGenerationRuntimeOptions {
  * Implement this to create new ways of distributing puzzle piece centers.
  */
 export interface PointGenerator {
-  generatePoints(runtimeOpts: PointGenerationRuntimeOptions): Vec2[];
+  generatePoints(runtimeOpts: PointGenerationRuntimeOptions): Promise<Vec2[]>;
 }

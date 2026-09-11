@@ -88,6 +88,9 @@ buildPuzzle({
     tabConfig: myTabConfig,
     pieceConfig: myPieceConfig,
     pointConfig: myPointConfig,
+    onProgress: (event) => {
+        // event.stage, event.processed, event.total, event.fraction (0–1)
+    },
 }).then((puzzle) => {
     // Do something with the final puzzle geometry
     const canvas = document.getElementById('canvas') as HTMLCanvasElement;

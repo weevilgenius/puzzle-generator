@@ -7,6 +7,7 @@ import type {
   PuzzleTopology,
   Vec2,
 } from "./types";
+import type { ProgressCallback } from "./generators/Generator";
 import {
   distanceSq,
   calculateSegmentsBounds,
@@ -219,7 +220,7 @@ function narrowPhaseDetection(s1: BoundarySegment, s2: BoundarySegment, adjacent
  */
 async function detectIntersections(
   puzzle: PuzzleTopology,
-  onProgress?: (processed: number, total: number) => void
+  onProgress?: ProgressCallback
 ): Promise<Vec2[]> {
 
   const intersections: Vec2[] = [];
@@ -233,7 +234,8 @@ async function detectIntersections(
   for (const piece of puzzle.pieces.values()) {
 
     // report progress
-    onProgress?.(processedCount, totalPieces);
+    const progress = onProgress?.(processedCount, totalPieces);
+    if (progress) await progress;
 
     const boundary = getPieceBoundary(piece, puzzle);
     const numSegments = boundary.length;
@@ -286,7 +288,8 @@ async function detectIntersections(
   }
 
   // final call to signify completion
-  onProgress?.(totalPieces, totalPieces);
+  const done = onProgress?.(totalPieces, totalPieces);
+  if (done) await done;
 
   console.log(`detected ${intersections.length} intersections in ${puzzle.pieces.size} pieces`);
   return intersections;
@@ -444,7 +447,7 @@ async function detectTabWhimsyIntersections(puzzle: PuzzleTopology): Promise<Vec
  */
 export async function checkGeometry(
   puzzle: PuzzleTopology,
-  onProgress?: (processed: number, total: number) => void
+  onProgress?: ProgressCallback
 ): Promise<Vec2[]> {
 
   // find points where pieces intersect/overlap
@@ -489,7 +492,7 @@ export async function checkGeometry(
  */
 export function checkGeometryInWorker(
   puzzle: PuzzleTopology,
-  onProgress?: (processed: number, total: number) => void
+  onProgress?: ProgressCallback
 ): Promise<Vec2[]> {
   return new Promise((resolve, reject) => {
     const worker = new CheckGeometryWorker();
@@ -500,7 +503,7 @@ export function checkGeometryInWorker(
 
       switch (data.type) {
       case 'progress':
-        onProgress?.(data.processed, data.total);
+        void onProgress?.(data.processed, data.total);
         break;
       case 'done':
         resolve(data.results);

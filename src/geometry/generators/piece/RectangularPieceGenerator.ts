@@ -74,8 +74,8 @@ export const RectangularPieceGeneratorFactory: GeneratorFactory<PieceGenerator> 
      * @param runtimeOpts Runtime configuration for generation.
      * @returns A `PuzzleTopology` data structure.
      */
-    generatePieces(_points: Vec2[], runtimeOpts: PieceGeneratorRuntimeOptions): PuzzleTopology {
-      const { pieceSize, border, customPieces = [] } = runtimeOpts;
+    async generatePieces(_points: Vec2[], runtimeOpts: PieceGeneratorRuntimeOptions): Promise<PuzzleTopology> {
+      const { pieceSize, border, customPieces = [], onProgress } = runtimeOpts;
 
       const topology: PuzzleTopology = {
         vertices: [],
@@ -211,6 +211,12 @@ export const RectangularPieceGeneratorFactory: GeneratorFactory<PieceGenerator> 
         return { original: cp, polygon: cpSplit };
       });
 
+      const mergeUnits = customPieces.length > 0 ? 1 : 0;
+      const total = Math.max(1, rows * cols + gridSplitCustomPieces.length + mergeUnits);
+      let processed = 0;
+      const started = onProgress?.(0, total);
+      if (started) await started;
+
       // build each piece
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
@@ -227,6 +233,9 @@ export const RectangularPieceGeneratorFactory: GeneratorFactory<PieceGenerator> 
 
           if (!pieceVertices) {
             // Cell is completely outside the boundary, skip it
+            processed++;
+            const skipped = onProgress?.(processed, total);
+            if (skipped) await skipped;
             continue;
           }
 
@@ -305,6 +314,9 @@ export const RectangularPieceGeneratorFactory: GeneratorFactory<PieceGenerator> 
 
               if (!remainingPolygons || remainingPolygons.length === 0) {
                 // Cell is fully contained in custom pieces, skip it
+                processed++;
+                const contained = onProgress?.(processed, total);
+                if (contained) await contained;
                 continue;
               }
 
@@ -336,6 +348,9 @@ export const RectangularPieceGeneratorFactory: GeneratorFactory<PieceGenerator> 
                 });
               }
               // Skip the normal piece creation below since we handled it with clipping
+              processed++;
+              const clipped = onProgress?.(processed, total);
+              if (clipped) await clipped;
               continue;
             }
             // Fall through to create piece normally if no overlap
@@ -364,6 +379,9 @@ export const RectangularPieceGeneratorFactory: GeneratorFactory<PieceGenerator> 
             return onBoundary;
           });
 
+          processed++;
+          const cellDone = onProgress?.(processed, total);
+          if (cellDone) await cellDone;
         }
       }
 
@@ -391,6 +409,10 @@ export const RectangularPieceGeneratorFactory: GeneratorFactory<PieceGenerator> 
           const onBoundary = isPointNearBoundary(p1) && isPointNearBoundary(p2);
           return onBoundary;
         });
+
+        processed++;
+        const customDone = onProgress?.(processed, total);
+        if (customDone) await customDone;
       }
 
       // --- 5. Post-processing: Merge fragments ---
@@ -412,8 +434,13 @@ export const RectangularPieceGeneratorFactory: GeneratorFactory<PieceGenerator> 
             return onBoundary;
           }
         );
+        processed++;
+        const merged = onProgress?.(processed, total);
+        if (merged) await merged;
       }
 
+      const done = onProgress?.(total, total);
+      if (done) await done;
       return topology;
     },
   };

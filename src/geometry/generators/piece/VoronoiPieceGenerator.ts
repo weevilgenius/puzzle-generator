@@ -209,11 +209,12 @@ function distanceToPolygon(point: Vec2, polygon: Vec2[]): number {
  * @param eliminationThreshold Distance from whimsy boundary to eliminate seed points.
  * @returns The adjusted seed points.
  */
-function adjustSeedPointsForWhimsies(
+async function adjustSeedPointsForWhimsies(
   points: Vec2[],
   customPieces: CustomPiece[],
-  eliminationThreshold: number
-): Vec2[] {
+  eliminationThreshold: number,
+  onItem?: () => void | Promise<void>
+): Promise<Vec2[]> {
   const adjustedPoints: Vec2[] = [];
 
   // Convert custom pieces to polygons once
@@ -241,6 +242,8 @@ function adjustSeedPointsForWhimsies(
     if (shouldKeep) {
       adjustedPoints.push(point);
     }
+    const item = onItem?.();
+    if (item) await item;
   }
 
   return adjustedPoints;
@@ -281,7 +284,7 @@ function voronoiCellToPolygon(
  * @param options Configuration options for fragment filtering.
  * @returns The filtered seed points.
  */
-function eliminateSeedsCausingSmallFragments(
+async function eliminateSeedsCausingSmallFragments(
   seedPoints: Vec2[],
   customPieces: CustomPiece[],
   bounds: { width: number; height: number },
@@ -289,8 +292,9 @@ function eliminateSeedsCausingSmallFragments(
   options: {
     minFragmentSizeRatio: number;
     maxIterations: number;
-  }
-): Vec2[] {
+  },
+  onItem?: () => void | Promise<void>
+): Promise<Vec2[]> {
   const { minFragmentSizeRatio, maxIterations } = options;
 
   // Calculate minimum area threshold
@@ -316,6 +320,9 @@ function eliminateSeedsCausingSmallFragments(
     let eliminatedCount = 0;
 
     for (let i = 0; i < currentSeeds.length; i++) {
+      const item = onItem?.();
+      if (item) await item;
+
       // Get the Voronoi cell
       const cellPolygon = voronoiCellToPolygon(voronoi, i);
       if (!cellPolygon) {
@@ -402,8 +409,8 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
      * @param _runtimeOpts Runtime configuration for generation.
      * @returns A `PuzzleTopology` data structure.
      */
-    generatePieces(points: Vec2[], runtimeOpts: PieceGeneratorRuntimeOptions): PuzzleTopology {
-      const { border, customPieces = [] } = runtimeOpts;
+    async generatePieces(points: Vec2[], runtimeOpts: PieceGeneratorRuntimeOptions): Promise<PuzzleTopology> {
+      const { border, customPieces = [], onProgress } = runtimeOpts;
 
       // Note: Lloyd's relaxation could be performed here to create more uniform
       // piece shapes. This would involve creating the Voronoi diagram, calculating
@@ -412,24 +419,49 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
 
       console.log(`VoronoiPieceGenerator using dimensions ${width}x${height}`);
 
+      const doAdjust = customPieces.length > 0 && (whimsyMode === 'flow' || whimsyMode === 'adaptive');
+      const doFilter = doAdjust && whimsyMode === 'adaptive';
+      const doMerge = customPieces.length > 0 && whimsyMode === 'simple+merge';
+      const adjustTotal = doAdjust ? points.length : 0;
+      const filterTotal = doFilter ? points.length * maxIterations : 0;
+      const cellTotal = Math.max(1, points.length);
+      const customTotal = customPieces.length;
+      const mergeTotal = doMerge ? 1 : 0;
+      const total = adjustTotal + filterTotal + cellTotal + customTotal + mergeTotal;
+      let processed = 0;
+      const report = (): void | Promise<void> => onProgress?.(processed, total);
+      const tick = (): void | Promise<void> => {
+        processed = Math.min(processed + 1, total);
+        return report();
+      };
+      const snapTo = (value: number): void | Promise<void> => {
+        processed = value;
+        return report();
+      };
+      const started = onProgress?.(0, total);
+      if (started) await started;
+
       // Adjust seed points based on whimsy mode
       let adjustedPoints = points;
-      if (customPieces.length > 0 && (whimsyMode === 'flow' || whimsyMode === 'adaptive')) {
+      if (doAdjust) {
         // Step 1: Apply Algorithm 1 (seed point elimination near whimsies)
         console.log(`${whimsyMode === 'adaptive' ? 'Adaptive' : 'Flow'} mode: adjusting ${points.length} seed points for ${customPieces.length} custom pieces (threshold: ${eliminationThreshold}px)`);
-        adjustedPoints = adjustSeedPointsForWhimsies(
+        adjustedPoints = await adjustSeedPointsForWhimsies(
           points,
           customPieces,
-          eliminationThreshold
+          eliminationThreshold,
+          tick
         );
         const eliminated = points.length - adjustedPoints.length;
         const eliminatedPercent = ((eliminated / points.length) * 100).toFixed(1);
         console.log(`Seed elimination: ${adjustedPoints.length} seed points remaining (eliminated ${eliminated} / ${eliminatedPercent}%)`);
+        const adjusted = snapTo(adjustTotal);
+        if (adjusted) await adjusted;
 
         // Step 2: Apply Algorithm 5 (fragment filtering) for adaptive mode
-        if (whimsyMode === 'adaptive') {
+        if (doFilter) {
           console.log(`Adaptive mode: filtering seeds that would create small fragments`);
-          adjustedPoints = eliminateSeedsCausingSmallFragments(
+          adjustedPoints = await eliminateSeedsCausingSmallFragments(
             adjustedPoints,
             customPieces,
             bounds,
@@ -437,13 +469,16 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
             {
               minFragmentSizeRatio,
               maxIterations,
-            }
+            },
+            tick
           );
           const totalEliminated = points.length - adjustedPoints.length;
           const totalEliminatedPercent = ((totalEliminated / points.length) * 100).toFixed(1);
           console.log(`Adaptive mode: ${adjustedPoints.length} seed points remaining after all filtering (total eliminated ${totalEliminated} / ${totalEliminatedPercent}%)`);
         }
       }
+      const afterPrep = snapTo(adjustTotal + filterTotal);
+      if (afterPrep) await afterPrep;
 
       // 1. Generate Voronoi diagram from points, clipped to the rectangular bounds.
       const delaunay = Delaunay.from(adjustedPoints);
@@ -465,6 +500,8 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
       // 3. For each Voronoi cell, clip it against the puzzle boundary and create a piece
       let pieceIdCounter = 0;
       for (let i = 0; i < adjustedPoints.length; i++) {
+        const cellTick = tick();
+        if (cellTick) await cellTick;
         const site = adjustedPoints[i];
         const cellPolygon = voronoi.cellPolygon(i);
 
@@ -559,9 +596,13 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
           return onBoundary;
         });
       }
+      const afterCells = snapTo(adjustTotal + filterTotal + cellTotal);
+      if (afterCells) await afterCells;
 
       // 4. Add custom pieces as their own pieces in the topology
       for (const customPiece of customPieces) {
+        const customTick = tick();
+        if (customTick) await customTick;
         const pieceId = pieceIdCounter++;
         const piece = createPieceFromCustom(customPiece, pieceId, topology);
 
@@ -589,6 +630,8 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
           return onBoundary;
         });
       }
+      const afterCustom = snapTo(adjustTotal + filterTotal + cellTotal + customTotal);
+      if (afterCustom) await afterCustom;
 
       // 5. Post-processing: Merge fragments for simple+merge mode
       if (customPieces.length > 0 && whimsyMode === 'simple+merge') {
@@ -607,6 +650,8 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
             return onBoundary;
           }
         );
+        const mergeTick = tick();
+        if (mergeTick) await mergeTick;
       }
 
       // 6. Final step: Collect all unique vertices.
@@ -619,6 +664,8 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
       }
       topology.vertices = Array.from(vertexSet.values());
 
+      const done = onProgress?.(total, total);
+      if (done) await done;
       return topology;
     },
   };

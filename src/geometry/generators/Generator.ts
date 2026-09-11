@@ -4,6 +4,13 @@ import type { PathCommand } from '../types';
 /** The name of a particular generator implementation. Must be unique. */
 export type GeneratorName = string;
 
+/**
+ * Best-effort progress for a long-running generator step.
+ * `processed`/`total` are advisory work units, not exact costs.
+ * Return a Promise to yield (for example so the UI can paint a progress bar).
+ */
+export type ProgressCallback = (processed: number, total: number) => void | Promise<void>;
+
 /** Base configuration for any generator */
 export interface GeneratorConfig {
   /** The name of the generator to which this config belongs */

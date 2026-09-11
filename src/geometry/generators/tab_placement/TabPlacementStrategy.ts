@@ -1,4 +1,5 @@
 import type { RandomFn, PuzzleTopology, Edge } from "../../types";
+import type { ProgressCallback } from "../Generator";
 
 /** Options passed to a TabPlacementStrategy at runtime */
 export interface TabPlacementStrategyRuntimeOptions {
@@ -6,6 +7,8 @@ export interface TabPlacementStrategyRuntimeOptions {
   topology: PuzzleTopology;
   /** A function for generating random numbers. */
   random: RandomFn;
+  /** Optional best-effort progress callback for this generation step */
+  onProgress?: ProgressCallback;
 }
 
 /** Interface for a module that decides on tab placement for each piece and edge */
@@ -14,11 +17,11 @@ export interface TabPlacementStrategy {
    * Examines the puzzle topology and adds tab placement information
    * to the edges. This method modifies the topology in place.
    */
-  placeTabs(runtimeOpts: TabPlacementStrategyRuntimeOptions): void;
+  placeTabs(runtimeOpts: TabPlacementStrategyRuntimeOptions): Promise<void>;
 
   /**
    * Re-evaluates and updates tab placements for a specific set of edges.
    * This is used for dynamic updates, like after a vertex is moved.
    */
-  updateTabPlacements(edges: Edge[], runtimeOpts: TabPlacementStrategyRuntimeOptions): void;
+  updateTabPlacements(edges: Edge[], runtimeOpts: TabPlacementStrategyRuntimeOptions): Promise<void>;
 }

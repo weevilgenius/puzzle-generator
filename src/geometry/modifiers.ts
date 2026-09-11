@@ -145,7 +145,7 @@ export function regenerateAffectedTabs(
   }
 
   // re-run the placement strategy in case it needs to make a change
-  placementStrategy.updateTabPlacements(Array.from(affectedEdges), { topology: puzzle, random });
+  void placementStrategy.updateTabPlacements(Array.from(affectedEdges), { topology: puzzle, random });
 
   const affectedPieces = new Set<Piece>();
 

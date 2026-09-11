@@ -115,16 +115,40 @@ export const SimpleTabPlacementStrategyFactory: GeneratorFactory<TabPlacementStr
   const placementConfig = { tabSize, minEdgeLength, maxTabSize };
 
   return {
-    placeTabs(runtimeOpts: TabPlacementStrategyRuntimeOptions): void {
-      const { topology, random } = runtimeOpts;
+    async placeTabs(runtimeOpts: TabPlacementStrategyRuntimeOptions): Promise<void> {
+      const { topology, random, onProgress } = runtimeOpts;
+      const total = topology.edges.size;
+      if (total === 0) {
+        const done = onProgress?.(1, 1);
+        if (done) await done;
+        return;
+      }
+      const started = onProgress?.(0, total);
+      if (started) await started;
+      let processed = 0;
       for (const edge of topology.edges.values()) {
         placeTabOnEdge(edge, topology, placementConfig, random);
+        processed++;
+        const progress = onProgress?.(processed, total);
+        if (progress) await progress;
       }
     },
-    updateTabPlacements(edges: Edge[], runtimeOpts: TabPlacementStrategyRuntimeOptions): void {
-      const { topology, random } = runtimeOpts;
+    async updateTabPlacements(edges: Edge[], runtimeOpts: TabPlacementStrategyRuntimeOptions): Promise<void> {
+      const { topology, random, onProgress } = runtimeOpts;
+      const total = edges.length;
+      if (total === 0) {
+        const done = onProgress?.(1, 1);
+        if (done) await done;
+        return;
+      }
+      const started = onProgress?.(0, total);
+      if (started) await started;
+      let processed = 0;
       for (const edge of edges) {
         placeTabOnEdge(edge, topology, placementConfig, random);
+        processed++;
+        const progress = onProgress?.(processed, total);
+        if (progress) await progress;
       }
     },
   };

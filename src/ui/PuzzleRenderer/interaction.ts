@@ -309,6 +309,8 @@ function regeneratePuzzleWithoutTabs(
   pieceId: PieceID,
   newPosition: Vec2
 ): void {
+  if (!attrs.puzzle) return;
+
   // Update seed points array
   const updatedPoints = [...attrs.puzzle.seedPoints];
   let pointIndex = 0;
@@ -353,7 +355,7 @@ export function handleMouseMove(
   e.redraw = false;
 
   // Don't change cursor while dragging or panning
-  if (state.isDragging || state.isSpacebarPressed || !state.canvas) return;
+  if (state.isDragging || state.isSpacebarPressed || !state.canvas || !attrs.puzzle) return;
 
   const viewPoint = getViewPoint(e, state.canvas, state);
   if (!viewPoint) return;
@@ -522,7 +524,7 @@ export function handleDragStart(
 ): void {
   e.redraw = false;
 
-  if (!state.canvas) return;
+  if (!state.canvas || !attrs.puzzle) return;
 
   // Skip when panning with spacebar
   if (state.isSpacebarPressed) return;
@@ -726,7 +728,7 @@ export function handleDragMove(
 ): void {
   e.redraw = false;
 
-  if (!state.canvas) return;
+  if (!state.canvas || !attrs.puzzle) return;
 
   const viewPoint = getViewPoint(e, state.canvas, state);
   if (!viewPoint) return;
@@ -806,7 +808,7 @@ export function handleDragEnd(
 ): void {
   e.redraw = false;
 
-  if (!state.canvas) return;
+  if (!state.canvas || !attrs.puzzle) return;
 
   // Clear any pending regeneration
   if (state.pendingRegeneration) {

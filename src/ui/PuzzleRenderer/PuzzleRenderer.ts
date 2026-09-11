@@ -159,7 +159,7 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
       previousImageUrl = attrs.imageUrl;
 
       // Initial render
-      if (!attrs.isDirty) {
+      if (attrs.puzzle && !attrs.isDirty) {
         renderPuzzle(state, attrs.puzzle, attrs.color, attrs.pointColor);
       }
 
@@ -193,7 +193,7 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
       }
 
       // Re-render if puzzle is not being regenerated
-      if (!attrs.isDirty) {
+      if (attrs.puzzle && !attrs.isDirty) {
         renderPuzzle(state, attrs.puzzle, attrs.color, attrs.pointColor);
       }
 
@@ -252,6 +252,7 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
           height: attrs.height,
           style: {
             touchAction: 'manipulation',
+            aspectRatio: `${attrs.width} / ${attrs.height}`,
           },
 
           // Mouse events

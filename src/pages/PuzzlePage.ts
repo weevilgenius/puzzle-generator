@@ -24,7 +24,16 @@ import { Name as PoissonGeneratorName } from '../geometry/generators/point/Poiss
 import { Name as VoronoiGeneratorName } from '../geometry/generators/piece/VoronoiPieceGenerator';
 import { Name as SimpleTabPlacementStrategyName } from '../geometry/generators/tab_placement/SimpleTabPlacementStrategy';
 import { Name as TraditionalTabGeneratorName } from '../geometry/generators/tab/TraditionalTabGenerator';
-import { buildPuzzle, rebuildPuzzleWithUpdatedSeedPoint } from '../geometry/PuzzleMaker';
+import {
+  buildPuzzle,
+  rebuildPuzzleWithUpdatedSeedPoint,
+  type PuzzleGenerationOptions,
+  type PuzzleProgressEvent,
+} from '../geometry/PuzzleMaker';
+import {
+  REBUILD_OVERLAY_YIELD_MS,
+  shouldShowRebuildOverlay,
+} from './rebuildProgress';
 import { checkGeometryInWorker } from '../geometry/GeometryChecker';
 import { createRectangleBorder, createCircleBorder, createEllipseBorder, createRoundedRectBorder } from '../geometry/borderShapes';
 import { createInitialTransform } from '../geometry/customPieces';
@@ -49,6 +58,7 @@ import '@awesome.me/webawesome/dist/components/icon/icon.js';
 import '@awesome.me/webawesome/dist/components/input/input.js';
 import type WaInput from '@awesome.me/webawesome/dist/components/input/input.js';
 import '@awesome.me/webawesome/dist/components/tooltip/tooltip.js';
+import '@awesome.me/webawesome/dist/components/progress-bar/progress-bar.js';
 
 // Save/load
 import { createSaveData, validateAndDeserialize, downloadPuzzleFile, readPuzzleFile } from '../save/puzzleSaveFile';
@@ -135,6 +145,10 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     dirty: boolean;
     /** Whether puzzle geometry is currently rebuilding */
     building: boolean;
+    /** True when the slow-rebuild overlay is visible */
+    showRebuildProgress: boolean;
+    /** Best-effort rebuild completion, 0–100 */
+    rebuildProgressPercent: number;
     /** Currently selected and configured generators for each part of puzzle generation */
     generators: Record<string, GeneratorState>;
     /** Generated puzzle geometry */
@@ -182,6 +196,8 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     },
     dirty: true,
     building: true,
+    showRebuildProgress: false,
+    rebuildProgressPercent: 0,
     generators: {
       /** Strategy for creating points (which influences piece generation) */
       point: {
@@ -565,6 +581,105 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     m.redraw();
   };
 
+  let rebuildGeneration = 0;
+  let lastRebuildYieldAt = 0;
+
+  const hideRebuildOverlay = (): void => {
+    state.showRebuildProgress = false;
+    state.rebuildProgressPercent = 0;
+  };
+
+  const handleRebuildProgress = (
+    generation: number,
+    startedAt: number,
+    event: PuzzleProgressEvent,
+  ): void | Promise<void> => {
+    if (generation !== rebuildGeneration) {
+      return;
+    }
+    state.rebuildProgressPercent = Math.round(Math.min(1, Math.max(0, event.fraction)) * 100);
+    const elapsed = performance.now() - startedAt;
+    state.showRebuildProgress = shouldShowRebuildOverlay(
+      elapsed,
+      event.fraction,
+      state.showRebuildProgress,
+    );
+    if (!state.showRebuildProgress) {
+      return;
+    }
+    const now = performance.now();
+    if (now - lastRebuildYieldAt < REBUILD_OVERLAY_YIELD_MS) {
+      return;
+    }
+    lastRebuildYieldAt = now;
+    m.redraw();
+    return new Promise((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+  };
+
+  const finishRebuild = (generation: number, puzzle: PuzzleGeometry): void => {
+    if (generation !== rebuildGeneration) {
+      return;
+    }
+    hideRebuildOverlay();
+    state.geometryProblems.problems = undefined;
+    state.geometryProblems.progress = undefined;
+    state.puzzle = puzzle;
+    state.seedPoints = puzzle.seedPoints;
+    state.building = false;
+    m.redraw();
+    if (state.geometryProblems.autoCheck) {
+      handleCheckGeometry();
+    }
+  };
+
+  const failRebuild = (generation: number, err: unknown, message: string): void => {
+    if (generation !== rebuildGeneration) {
+      return;
+    }
+    hideRebuildOverlay();
+    state.building = false;
+    console.error(message, err);
+    m.redraw();
+  };
+
+  const beginRebuild = (): { generation: number; startedAt: number } => {
+    const generation = ++rebuildGeneration;
+    lastRebuildYieldAt = 0;
+    hideRebuildOverlay();
+    state.building = true;
+    state.geometryProblems.problems = undefined;
+    state.geometryProblems.progress = undefined;
+    return { generation, startedAt: performance.now() };
+  };
+
+  const startPuzzleRebuild = (overrides: Partial<PuzzleGenerationOptions> = {}): void => {
+    const { generation, startedAt } = beginRebuild();
+    state.dirty = false;
+    buildPuzzle({
+      bounds: {
+        width: state.canvasWidth,
+        height: state.canvasHeight,
+      },
+      border: createBorder(),
+      pieceSize: state.distance,
+      pointConfig: state.generators.point.config,
+      pieceConfig: state.generators.piece.config,
+      placementConfig: state.generators.placement.config,
+      tabConfig: state.generators.tab.config,
+      seed: state.seed,
+      seedPoints: state.seedPointMode === 'edit' ? state.seedPoints : undefined,
+      customPieces: state.customPieces,
+      ...overrides,
+      onProgress: (event) => handleRebuildProgress(generation, startedAt, event),
+    }).then((puzzle) => {
+      finishRebuild(generation, puzzle);
+    }).catch((err: unknown) => {
+      failRebuild(generation, err, 'Failed to rebuild puzzle:');
+    });
+  };
+
   const renderGeneratorPicker = (type: 'point' | 'piece' | 'placement' | 'tab'): m.Children => {
     const generator = state.generators[type];
     const isEdited = type === 'point' && state.seedPointMode === 'edit';
@@ -771,71 +886,16 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
 
     oncreate: () => {
       mobileLayoutQuery.addEventListener('change', handleMobileLayoutChange);
-      buildPuzzle({
-        bounds: {
-          width: state.canvasWidth,
-          height: state.canvasHeight,
-        },
-        border: createBorder(),
-        pieceSize: state.distance,
-        pointConfig: state.generators.point.config,
-        pieceConfig: state.generators.piece.config,
-        placementConfig: state.generators.placement.config,
-        tabConfig: state.generators.tab.config,
-        seed: state.seed,
-        seedPoints: state.seedPointMode === 'edit' ? state.seedPoints : undefined,
-        customPieces: state.customPieces,
-      }).then((puzzle) => {
-        state.puzzle = puzzle;
-        state.seedPoints = puzzle.seedPoints; // Capture generated points
-        state.building = false;
-        m.redraw();
-        if (state.geometryProblems.autoCheck) {
-          handleCheckGeometry();
-        }
-      }).catch((err) => {
-        state.building = false;
-        console.error(err);
-        m.redraw();
+      // Let the canvas paint at the restored aspect ratio before generation starts
+      // so a slow first rebuild has somewhere to put the progress overlay.
+      requestAnimationFrame(() => {
+        startPuzzleRebuild();
       });
     },
 
     onupdate: () => {
       if (state.dirty) {
-        state.dirty = false;
-        state.building = true;
-        state.geometryProblems.problems = undefined;
-        state.geometryProblems.progress = undefined;
-        // rebuild the puzzle geometry
-        buildPuzzle({
-          bounds: {
-            width: state.canvasWidth,
-            height: state.canvasHeight,
-          },
-          border: createBorder(),
-          pieceSize: state.distance,
-          pointConfig: state.generators.point.config,
-          pieceConfig: state.generators.piece.config,
-          placementConfig: state.generators.placement.config,
-          tabConfig: state.generators.tab.config,
-          seed: state.seed,
-          seedPoints: state.seedPointMode === 'edit' ? state.seedPoints : undefined,
-          customPieces: state.customPieces,
-        }).then((puzzle) => {
-          state.geometryProblems.problems = undefined;
-          state.geometryProblems.progress = undefined;
-          state.puzzle = puzzle;
-          state.seedPoints = puzzle.seedPoints; // Capture generated points
-          state.building = false;
-          m.redraw();
-          if (state.geometryProblems.autoCheck) {
-            handleCheckGeometry();
-          }
-        }).catch((err) => {
-          state.building = false;
-          console.error(err);
-          m.redraw();
-        });
+        startPuzzleRebuild();
       }
 
       // debounced auto-save on every redraw
@@ -908,7 +968,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
         ]),
 
         m('.workspace', [
-          state.puzzle && m('.puzzle-stack', {
+          m('.puzzle-stack', {
             class: state.allowVerticalScrolling ? undefined : 'fit-viewport',
           }, [
             m(PuzzleRenderer, {
@@ -936,75 +996,38 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
                 state.customPieces = state.customPieces.map((piece) =>
                   piece.id === id ? { ...piece, transform } : piece
                 );
-
-                // Trigger puzzle regeneration with updated custom pieces
-                state.dirty = true;
-                state.building = true;
-                m.redraw();
-
-                buildPuzzle({
-                  bounds: {
-                    width: state.canvasWidth,
-                    height: state.canvasHeight,
-                  },
-                  border: createBorder(),
-                  pieceSize: state.distance,
-                  pointConfig: state.generators.point.config,
-                  pieceConfig: state.generators.piece.config,
-                  placementConfig: state.generators.placement.config,
-                  tabConfig: state.generators.tab.config,
-                  seed: state.seed,
-                  seedPoints: state.seedPointMode === 'edit' ? state.seedPoints : undefined,
-                  customPieces: state.customPieces,
-
-                }).then((puzzle) => {
-                  state.geometryProblems.problems = undefined;
-                  state.geometryProblems.progress = undefined;
-                  state.puzzle = puzzle;
-                  state.seedPoints = puzzle.seedPoints; // Capture generated points
-                  state.dirty = false;
-                  state.building = false;
-                  m.redraw();
-
-                  if (state.geometryProblems.autoCheck) {
-                    handleCheckGeometry();
-                  }
-                })
-                  .catch((err) => {
-                    console.error('Failed to rebuild puzzle with custom pieces:', err);
-                    state.dirty = false;
-                    state.building = false;
-                    m.redraw();
-                  });
+                startPuzzleRebuild();
               },
               onSeedPointMoved: (pieceId, newPosition) => {
                 // user dragged a seed point to a new position
-                state.dirty = false; // Prevent double-regeneration
-                state.building = true;
-
                 if (!state.puzzle) return;
-
-                rebuildPuzzleWithUpdatedSeedPoint(state.puzzle, pieceId, newPosition)
-                  .then((puzzle) => {
-                    state.geometryProblems.problems = undefined;
-                    state.geometryProblems.progress = undefined;
-                    state.puzzle = puzzle;
-                    state.seedPoints = puzzle.seedPoints;
-                    state.seedPointMode = 'edit';
-                    state.building = false;
-                    m.redraw();
-
-                    if (state.geometryProblems.autoCheck) {
-                      handleCheckGeometry();
-                    }
-                  })
-                  .catch((err) => {
-                    state.building = false;
-                    console.error('Failed to rebuild puzzle with updated seed point:', err);
-                    m.redraw();
-                  });
+                const puzzle = state.puzzle;
+                const { generation, startedAt } = beginRebuild();
+                state.dirty = false;
+                rebuildPuzzleWithUpdatedSeedPoint(
+                  puzzle,
+                  pieceId,
+                  newPosition,
+                  (event) => handleRebuildProgress(generation, startedAt, event),
+                ).then((nextPuzzle) => {
+                  if (generation !== rebuildGeneration) {
+                    return;
+                  }
+                  state.seedPointMode = 'edit';
+                  finishRebuild(generation, nextPuzzle);
+                }).catch((err: unknown) => {
+                  failRebuild(generation, err, 'Failed to rebuild puzzle with updated seed point:');
+                });
               },
             }),
+            state.showRebuildProgress && m('.rebuild-progress-overlay', {
+              'aria-live': 'polite',
+            }, [
+              m('wa-progress-bar', {
+                value: state.rebuildProgressPercent,
+                label: 'Building puzzle',
+              }, `${state.rebuildProgressPercent}%`),
+            ]),
           ]),
           m('.settings-shell', { class: state.activeTray ? 'tray-open' : '' }, [
             m('aside.settings-tray', {

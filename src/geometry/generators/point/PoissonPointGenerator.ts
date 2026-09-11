@@ -36,8 +36,11 @@ export const PoissonPointUIMetadata: GeneratorUIMetadata = {
  */
 export const PoissonPointGeneratorFactory: GeneratorFactory<PointGenerator> = (_border: PathCommand[], _bounds: { width: number; height: number }, _config: PoissonPointGeneratorConfig) => {
   const PoissonPointGenerator: PointGenerator = {
-    generatePoints(runtimeOpts: PointGenerationRuntimeOptions): Vec2[] {
-      const { width, height, pieceSize, random, border } = runtimeOpts;
+    async generatePoints(runtimeOpts: PointGenerationRuntimeOptions): Promise<Vec2[]> {
+      const { width, height, pieceSize, random, border, onProgress } = runtimeOpts;
+
+      const started = onProgress?.(0, 2);
+      if (started) await started;
 
       // generate points randomly in a Poisson disk sampling within rectangular bounds
       const poisson = new PoissonDiskSampling(
@@ -51,9 +54,13 @@ export const PoissonPointGeneratorFactory: GeneratorFactory<PointGenerator> = (_
 
       // have to cast because @types/PoissonDiskSampling is not correct for fill()
       const allPoints = poisson.fill() as unknown as Vec2[];
+      const filled = onProgress?.(1, 2);
+      if (filled) await filled;
 
       // Filter points to only include those inside the custom boundary
       const filteredPoints = allPoints.filter((point) => isPointInBoundary(point, border));
+      const done = onProgress?.(2, 2);
+      if (done) await done;
 
       return filteredPoints;
     },

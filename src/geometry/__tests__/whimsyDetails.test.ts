@@ -76,9 +76,9 @@ describe('whimsy cut details', () => {
     };
     const points: Vec2[] = [[25, 25], [75, 25], [25, 75], [75, 75]];
     const generate = () => generator.generatePieces(points, { bounds, border, pieceSize: 50, random: mulberry32(42), customPieces: [custom] });
-    const original = generate();
+    const original = await generate();
     custom.internalPaths = [{ path: [{ type: 'move', p: [-200, -200] }, { type: 'line', p: [200, 200] }] }];
-    const detailed = generate();
+    const detailed = await generate();
     expect(detailed.vertices).toEqual(original.vertices);
     expect(detailed.pieces.size).toBe(original.pieces.size);
     expect(detailed.halfEdges.size).toBe(original.halfEdges.size);

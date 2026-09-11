@@ -16,6 +16,7 @@
   border: 1px solid #ccc;
   cursor: default;
   box-sizing: border-box;
+  background: var(--wa-color-surface-default);
 }
 
 /* Fit entire puzzle in the available viewport (no vertical overflow) */

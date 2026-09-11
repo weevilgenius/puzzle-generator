@@ -47,10 +47,15 @@ export const GridJitterPointGeneratorFactory: GeneratorFactory<PointGenerator> =
   const { jitter = 50 } = config;
 
   const GridJitterPointGenerator: PointGenerator = {
-    generatePoints(runtimeOpts: PointGenerationRuntimeOptions): Vec2[] {
-      const { width, height, pieceSize, random, border } = runtimeOpts;
+    async generatePoints(runtimeOpts: PointGenerationRuntimeOptions): Promise<Vec2[]> {
+      const { width, height, pieceSize, random, border, onProgress } = runtimeOpts;
+
+      const columnCount = Math.max(1, Math.ceil(width / pieceSize));
+      const started = onProgress?.(0, columnCount);
+      if (started) await started;
 
       const points: Vec2[] = [];
+      let columnsProcessed = 0;
       // assemble a grid
       for (let x = 0; x < width; x += pieceSize) {
         for (let y = 0; y < height; y += pieceSize) {
@@ -67,7 +72,12 @@ export const GridJitterPointGeneratorFactory: GeneratorFactory<PointGenerator> =
             points.push(point);
           }
         }
+        columnsProcessed++;
+        const progress = onProgress?.(columnsProcessed, columnCount);
+        if (progress) await progress;
       }
+      const done = onProgress?.(columnCount, columnCount);
+      if (done) await done;
       return points;
     },
   };

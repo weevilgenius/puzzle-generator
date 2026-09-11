@@ -5,6 +5,7 @@ import {
   TabPlacementStrategyRegistry,
   TabGeneratorRegistry,
   type GeneratorConfig,
+  type ProgressCallback,
 } from "./generators/Generator";
 import { generateSegmentsForEdge } from "./utils";
 import mulberry32 from "../utils/mulberry";
@@ -39,15 +40,59 @@ export interface PuzzleGenerationOptions {
   seedPoints?: Vec2[];
   /** If true, skip tab placement and generation (for real-time preview) */
   skipTabs?: boolean;
+  /** Optional best-effort progress for the rebuild pipeline */
+  onProgress?: (event: PuzzleProgressEvent) => void | Promise<void>;
+}
+
+/** Pipeline stages reported by {@link buildPuzzle}. */
+export type PuzzleGenerationStage = 'points' | 'pieces' | 'tabPlacement' | 'tabs';
+
+/**
+ * Best-effort progress for a puzzle rebuild.
+ * `processed`/`total` are advisory units for the current stage;
+ * `fraction` is a 0–1 estimate across stages that will actually run.
+ */
+export interface PuzzleProgressEvent {
+  /** Pipeline stage currently running */
+  stage: PuzzleGenerationStage;
+  /** Best-effort units completed in this stage */
+  processed: number;
+  /** Best-effort units in this stage */
+  total: number;
+  /** Best-effort 0–1 fraction of the whole pipeline */
+  fraction: number;
+}
+
+/**
+ * Builds a per-stage progress reporter that maps local processed/total values
+ * onto an overall 0–1 pipeline fraction. Stages that will not run are omitted
+ * so remaining work still fills the bar.
+ */
+function createStageReporter(
+  onProgress: ((event: PuzzleProgressEvent) => void | Promise<void>) | undefined,
+  stages: readonly PuzzleGenerationStage[],
+): (stage: PuzzleGenerationStage) => ProgressCallback {
+  const stageCount = Math.max(1, stages.length);
+  return (stage) => {
+    const stageIndex = Math.max(0, stages.indexOf(stage));
+    return (processed, total) => {
+      const stageFraction = total > 0 ? Math.min(processed / total, 1) : 1;
+      return onProgress?.({
+        stage,
+        processed,
+        total,
+        fraction: (stageIndex + stageFraction) / stageCount,
+      });
+    };
+  };
 }
 
 /**
  * Orchestrates the procedural generation of a jigsaw puzzle
  * by coordinating various pluggable generators.
  */
- 
 export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<PuzzleGeometry> {
-  return measureAsync('Puzzle Generation', () => {
+  return measureAsync('Puzzle Generation', async () => {
     const { bounds, pieceSize, border } = options;
     const { pointConfig, pieceConfig, placementConfig, tabConfig } = options;
 
@@ -63,35 +108,75 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
     const seed = options.seed ?? new Date().getTime();
     const random = mulberry32(seed);
 
+    const stages: PuzzleGenerationStage[] = [];
+    if (!options.seedPoints) {
+      stages.push('points');
+    }
+    stages.push('pieces');
+    if (!options.skipTabs) {
+      stages.push('tabPlacement');
+      stages.push('tabs');
+    }
+    const reportFor = createStageReporter(options.onProgress, stages);
+
     // 1. Generate or use provided seed points for the pieces
     const points = options.seedPoints ??
-      pointGenerator.generatePoints({ width: bounds.width, height: bounds.height, pieceSize, random, border });
+      await pointGenerator.generatePoints({
+        width: bounds.width,
+        height: bounds.height,
+        pieceSize,
+        random,
+        border,
+        onProgress: reportFor('points'),
+      });
     console.log(`${options.seedPoints ? 'Using' : 'Generated'} ${points.length} points`);
 
     // 2. Convert points to a puzzle topology (pieces and edges)
-    const topology = pieceGenerator.generatePieces(points, {
+    const topology = await pieceGenerator.generatePieces(points, {
       random,
       pieceSize,
       border,
       bounds,
       customPieces: options.customPieces,
+      onProgress: reportFor('pieces'),
     });
     console.log(`Generated ${topology.pieces.size} pieces`);
 
     // 3. Place tabs on internal edges (skip if requested)
     if (!options.skipTabs) {
-      placementStrategy.placeTabs({ topology, random });
+      await placementStrategy.placeTabs({ topology, random, onProgress: reportFor('tabPlacement') });
 
       // 4. Generate geometry for placed tabs
-      for (const edge of topology.edges.values()) {
-        // only internal edges can accept tabs
-        const isInternal = edge.heRight !== -1;
-        if (isInternal && edge.tabs && edge.tabs.length > 0) {
+      const reportTabs = reportFor('tabs');
+      const tabEdges = [...topology.edges.values()].filter((edge) => (
+        edge.heRight !== -1 && edge.tabs && edge.tabs.length > 0
+      ));
+      const tabTotal = tabEdges.length;
+      if (tabTotal === 0) {
+        // Fast tab generators (e.g. NullTabGenerator) still complete this stage
+        const done = reportTabs(1, 1);
+        if (done) await done;
+      } else {
+        const started = reportTabs(0, tabTotal);
+        if (started) await started;
+        let processed = 0;
+        for (const edge of tabEdges) {
           // use the tab generator to create the segment path for an edge based on its TabPlacements
           generateSegmentsForEdge(edge, topology, tabGenerator, random);
+          processed++;
+          const progress = reportTabs(processed, tabTotal);
+          if (progress) await progress;
         }
       }
     }
+
+    const finished = options.onProgress?.({
+      stage: stages[stages.length - 1] ?? 'pieces',
+      processed: 1,
+      total: 1,
+      fraction: 1,
+    });
+    if (finished) await finished;
 
     // 5. Assemble the final puzzle data structure
     const puzzle: PuzzleGeometry = {
@@ -125,12 +210,14 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
  * @param originalPuzzle The original puzzle geometry
  * @param pieceId The ID of the piece whose seed point was moved
  * @param newSeedPosition The new position for the seed point
+ * @param onProgress Optional best-effort progress callback forwarded to {@link buildPuzzle}
  * @returns A new puzzle with the updated seed point
  */
 export async function rebuildPuzzleWithUpdatedSeedPoint(
   originalPuzzle: PuzzleGeometry,
   pieceId: PieceID,
-  newSeedPosition: Vec2
+  newSeedPosition: Vec2,
+  onProgress?: (event: PuzzleProgressEvent) => void | Promise<void>
 ): Promise<PuzzleGeometry> {
   // Create updated points array by finding the piece index
   const updatedPoints = [...originalPuzzle.seedPoints];
@@ -159,6 +246,7 @@ export async function rebuildPuzzleWithUpdatedSeedPoint(
     seedPoints: updatedPoints,
     customPieces: originalPuzzle.customPieces,
     skipTabs: false, // Include tabs in final version
+    onProgress,
   });
 }
 

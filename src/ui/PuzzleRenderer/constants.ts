@@ -25,8 +25,8 @@ export interface PuzzleRendererAttrs extends m.Attributes {
   height: number;
   /** Color of pieces */
   color: string;
-  /** Generated puzzle geometry */
-  puzzle: PuzzleGeometry,
+  /** Generated puzzle geometry. Absent while the first rebuild is still running. */
+  puzzle?: PuzzleGeometry,
   /** If true, geometry is being regenerated */
   isDirty: boolean;
   /** If set, draw the seed points in this color */

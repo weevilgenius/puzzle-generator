@@ -1,4 +1,5 @@
 import type { CustomPiece, RandomFn, PuzzleTopology, Vec2, PathCommand } from "../../types";
+import type { ProgressCallback } from "../Generator";
 
 /** Options options passed to all piece generators at runtime. */
 export interface PieceGeneratorRuntimeOptions {
@@ -15,6 +16,8 @@ export interface PieceGeneratorRuntimeOptions {
   };
   /** Custom pieces that procedural pieces should flow around */
   customPieces?: CustomPiece[];
+  /** Optional best-effort progress callback for this generation step */
+  onProgress?: ProgressCallback;
 }
 
 /**
@@ -22,5 +25,5 @@ export interface PieceGeneratorRuntimeOptions {
  * into a graph of pieces, edges, and half-edges.
  */
 export interface PieceGenerator {
-  generatePieces(points: Vec2[], runtimeOpts: PieceGeneratorRuntimeOptions): PuzzleTopology;
+  generatePieces(points: Vec2[], runtimeOpts: PieceGeneratorRuntimeOptions): Promise<PuzzleTopology>;
 }
