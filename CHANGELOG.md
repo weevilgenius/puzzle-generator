@@ -1,6 +1,14 @@
 Change Log
 ==========
 
+## Version 0.6.1
+
+Added support for whimsies that contain internal details via SVG import. The first
+path in the file must be closed or the import will be rejected. Any internal details
+that aren't black will have their colors preserved in the output. Fixed pinch zoom
+and dragging whimsy handles on retina displays.
+
+
 ## Version 0.6.0
 
 Overhauled the UI to make managing settings less awkward. Added a lot of help text.
