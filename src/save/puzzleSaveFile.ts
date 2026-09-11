@@ -12,6 +12,7 @@ import {
 } from '../geometry/generators/Generator';
 import type { GeneratorRegistry } from '../geometry/generators/Generator';
 import type { BorderShapeType } from '../ui/BorderShapePicker';
+import type { PhysicalUnit } from '../utils/svg';
 
 /* ========================================================= *\
  *  Types                                                     *
@@ -39,6 +40,8 @@ export interface PuzzleSaveData {
   visual: { color: string; drawPoints: boolean; pointColor: string };
   /** Border configuration */
   border: { shape: BorderShapeType; cornerRadius?: number };
+  /** SVG download sizing configuration */
+  svgExport: { width?: number; unit: PhysicalUnit };
   /** Generator configs keyed by stage */
   generators: {
     point: GeneratorConfig;
@@ -73,6 +76,8 @@ export interface SaveableState {
   pointColor: string;
   borderShape: BorderShapeType;
   borderCornerRadius: number;
+  svgExportWidth?: number;
+  svgExportUnit: PhysicalUnit;
   generators: Record<string, { name: GeneratorName; config: GeneratorConfig }>;
   customPieces: CustomPiece[];
   seedPoints?: Vec2[];
@@ -113,6 +118,10 @@ export function createSaveData(state: SaveableState): PuzzleSaveFile {
       border: {
         shape: state.borderShape,
         cornerRadius: state.borderCornerRadius,
+      },
+      svgExport: {
+        width: state.svgExportWidth,
+        unit: state.svgExportUnit,
       },
       generators: {
         point: state.generators.point.config,
@@ -239,6 +248,10 @@ export function validateAndDeserialize(json: unknown): DeserializeResult {
     ? puzzle.border
     : {}) as Record<string, unknown>;
 
+  const svgExport = (typeof puzzle.svgExport === 'object' && puzzle.svgExport !== null
+    ? puzzle.svgExport
+    : {}) as Record<string, unknown>;
+
   // Custom pieces
   const customPieces = Array.isArray(puzzle.customPieces) ? puzzle.customPieces as CustomPiece[] : [];
 
@@ -261,6 +274,12 @@ export function validateAndDeserialize(json: unknown): DeserializeResult {
       shape: isValidBorderShape(border.shape) ? border.shape : 'rectangle',
       cornerRadius: typeof border.cornerRadius === 'number' ? border.cornerRadius : undefined,
     },
+    svgExport: {
+      width: typeof svgExport.width === 'number' && Number.isFinite(svgExport.width) && svgExport.width > 0
+        ? svgExport.width
+        : undefined,
+      unit: isPhysicalUnit(svgExport.unit) ? svgExport.unit : 'mm',
+    },
     generators: {
       point: validatedGenerators.point,
       piece: validatedGenerators.piece,
@@ -279,6 +298,10 @@ const VALID_BORDER_SHAPES = new Set<string>(['rectangle', 'circle', 'ellipse', '
 
 function isValidBorderShape(value: unknown): value is BorderShapeType {
   return typeof value === 'string' && VALID_BORDER_SHAPES.has(value);
+}
+
+function isPhysicalUnit(value: unknown): value is PhysicalUnit {
+  return value === 'mm' || value === 'in';
 }
 
 /* ========================================================= *\

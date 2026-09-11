@@ -50,6 +50,22 @@
   gap: 0.25rem;
 }
 
+.svg-export-dimensions {
+  display: flex;
+  align-items: start;
+  gap: 0.5rem;
+}
+
+.svg-export-dimensions .number-input {
+  min-width: 0;
+  flex: 1;
+}
+
+.svg-export-unit {
+  margin-top: 1.375rem;
+  width: 5.5rem;
+}
+
 .seed-control wa-icon,
 .header-actions wa-icon {
   font-size: 1.25rem;

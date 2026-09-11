@@ -31,6 +31,7 @@ function createMockState(): SaveableState {
     pointColor: '#FF0000',
     borderShape: 'circle',
     borderCornerRadius: 30,
+    svgExportUnit: 'mm',
     generators: {
       point: {
         name: 'PoissonPointGenerator',

@@ -1,6 +1,7 @@
 // UI component that offers a SVG download when clicked
 import m from 'mithril';
 import { createSVG, downloadSvg } from '../utils/svg';
+import type { PhysicalUnit } from '../utils/svg';
 import type { PuzzleGeometry } from '../geometry/types';
 
 // Webawesome components
@@ -19,6 +20,10 @@ export interface DownloadPuzzleButtonAttrs extends m.Attributes {
   color: string;
   /** Optional filename for the download */
   filename?: string;
+  /** Optional physical width for the SVG output */
+  physicalWidth?: number;
+  /** Unit used with physicalWidth */
+  physicalUnit: PhysicalUnit;
 }
 
 export const DownloadPuzzleButton: m.Component<DownloadPuzzleButtonAttrs> = {
@@ -30,7 +35,15 @@ export const DownloadPuzzleButton: m.Component<DownloadPuzzleButtonAttrs> = {
         appearance: 'plain',
         'aria-label': 'Download SVG',
         onclick: () => {
-          const svg = createSVG(attrs.puzzle, attrs.width, attrs.height, attrs.color, attrs.puzzle.customPieces);
+          const svg = createSVG(
+            attrs.puzzle,
+            attrs.width,
+            attrs.height,
+            attrs.color,
+            attrs.puzzle.customPieces,
+            attrs.physicalWidth,
+            attrs.physicalUnit,
+          );
           downloadSvg(svg, attrs.filename ?? 'puzzle.svg');
         },
       }, m('wa-icon', { library: 'material', name: 'download', label: 'Download SVG' })),

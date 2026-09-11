@@ -38,6 +38,7 @@ import { checkGeometryInWorker } from '../geometry/GeometryChecker';
 import { createRectangleBorder, createCircleBorder, createEllipseBorder, createRoundedRectBorder } from '../geometry/borderShapes';
 import { createInitialTransform } from '../geometry/customPieces';
 import type MithrilViewEvent from '../utils/MithrilViewEvent';
+import type { PhysicalUnit } from '../utils/svg';
 import { confirm } from '../ui/Confirm';
 
 // register generators (side-effect imports)
@@ -57,6 +58,9 @@ import '@awesome.me/webawesome/dist/components/button-group/button-group.js';
 import '@awesome.me/webawesome/dist/components/icon/icon.js';
 import '@awesome.me/webawesome/dist/components/input/input.js';
 import type WaInput from '@awesome.me/webawesome/dist/components/input/input.js';
+import '@awesome.me/webawesome/dist/components/option/option.js';
+import '@awesome.me/webawesome/dist/components/select/select.js';
+import type WaSelect from '@awesome.me/webawesome/dist/components/select/select.js';
 import '@awesome.me/webawesome/dist/components/tooltip/tooltip.js';
 import '@awesome.me/webawesome/dist/components/progress-bar/progress-bar.js';
 
@@ -113,6 +117,10 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     canvasWidth: number;
     /** Height of canvas in pixels */
     canvasHeight: number;
+    /** Optional physical width used only for SVG downloads */
+    svgExportWidth?: number;
+    /** Unit used for physical SVG download dimensions */
+    svgExportUnit: PhysicalUnit;
     /** Aspect ratio of canvas, width/height */
     aspectRatio: number;
     /** Minimum distance between control points (pixels) */
@@ -181,6 +189,8 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     seed: initial?.seed ?? new Date().getTime() % 10240,
     canvasWidth: initialWidth,
     canvasHeight: initialHeight,
+    svgExportWidth: initial?.svgExport.width,
+    svgExportUnit: initial?.svgExport.unit ?? 'mm',
     aspectRatio: initialWidth / initialHeight,
     distance: initial?.pieceSize ?? 40,
     color: initial?.visual.color ?? (isDarkMode ? "#DDDDDD" : "#333333"),
@@ -427,6 +437,8 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     state.seed = data.seed;
     state.canvasWidth = data.dimensions.width;
     state.canvasHeight = data.dimensions.height;
+    state.svgExportWidth = data.svgExport.width;
+    state.svgExportUnit = data.svgExport.unit;
     state.aspectRatio = data.dimensions.width / data.dimensions.height;
     state.distance = data.pieceSize;
     state.color = data.visual.color;
@@ -475,6 +487,8 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     state.seed = new Date().getTime() % 10240;
     state.canvasWidth = defaultWidth;
     state.canvasHeight = defaultHeight;
+    state.svgExportWidth = undefined;
+    state.svgExportUnit = 'mm';
     state.aspectRatio = defaultWidth / defaultHeight;
     state.distance = 40;
     state.color = isDarkMode ? "#DDDDDD" : "#333333";
@@ -730,6 +744,36 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
   const renderCanvasSettings = (): m.Children => [
     m('p.tray-help',
       'These settings apply to the puzzle as a whole.'),
+    m('.svg-export-dimensions', [
+      m(NumberInputControl, {
+        config: {
+          name: 'svgExportWidth',
+          label: 'SVG export width',
+          type: 'number',
+          min: 0,
+          helpText: 'Optional physical width used only when downloading an SVG.',
+        },
+        value: state.svgExportWidth,
+        onChange: (value) => {
+          state.svgExportWidth = value !== undefined && Number.isFinite(value) && value > 0 ? value : undefined;
+          m.redraw();
+        },
+      }),
+      m('wa-select.svg-export-unit', {
+        'aria-label': 'SVG export unit',
+        size: 's',
+        value: state.svgExportUnit,
+        onchange: (e: Event & MithrilViewEvent) => {
+          e.redraw = false;
+          const value = (e.target as WaSelect).value;
+          if (value === 'mm' || value === 'in') state.svgExportUnit = value;
+          m.redraw();
+        },
+      }, [
+        m('wa-option', { value: 'mm' }, 'mm'),
+        m('wa-option', { value: 'in' }, 'in'),
+      ]),
+    ]),
     m('.background-image', [
       m(UploadImageButton, {
         label: 'Background Image',
@@ -974,6 +1018,8 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
               width: state.canvasWidth,
               height: state.canvasHeight,
               color: state.color,
+              physicalWidth: state.svgExportWidth,
+              physicalUnit: state.svgExportUnit,
             }),
           ]),
         ]),

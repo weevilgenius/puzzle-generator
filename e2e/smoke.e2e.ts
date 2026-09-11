@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 
 /**
  * Functional end-to-end smoke tests.
@@ -22,6 +23,36 @@ test('puzzle generator loads', async ({ page }) => {
   const initialSeed = await seed.inputValue();
   await page.getByRole('button', { name: 'Random seed' }).click();
   await expect(seed).not.toHaveValue(initialSeed);
+});
+
+test('physical SVG export width affects downloaded dimensions only', async ({ page }, testInfo) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Canvas' }).click();
+
+  await page.getByLabel('SVG export width').evaluate((el) => {
+    const input = (el.closest('wa-input') ?? el) as HTMLInputElement;
+    input.value = '100';
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await page.locator('.svg-export-unit').evaluate((el) => {
+    const select = el as HTMLSelectElement;
+    select.value = 'in';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+
+  if (testInfo.project.name === 'mobile-chromium') {
+    await page.getByRole('button', { name: 'Close settings' }).click();
+  }
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download SVG' }).click();
+  const download = await downloadPromise;
+  const path = await download.path();
+  const svg = readFileSync(path, 'utf8');
+
+  expect(svg).toContain('width="100in"');
+  expect(svg).toContain('height="75in"');
+  expect(svg).toContain('viewBox="0 0 800 600"');
 });
 
 test('desktop: settings rail opens one resizable tray at a time', async ({ page }, testInfo) => {

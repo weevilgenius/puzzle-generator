@@ -122,6 +122,17 @@ describe('whimsy cut details', () => {
       .querySelectorAll('path')).toHaveLength(1);
   });
 
+  it('uses an optional physical SVG width without changing its viewBox', () => {
+    const topology: PuzzleTopology = {
+      vertices: [], pieces: new Map(), edges: new Map(), halfEdges: new Map(), boundary: [], borderPath: [],
+    };
+    const exported = new DOMParser().parseFromString(createSVG(topology, 800, 600, 'black', [], 100, 'mm'), 'image/svg+xml');
+
+    expect(exported.documentElement.getAttribute('width')).toBe('100mm');
+    expect(exported.documentElement.getAttribute('height')).toBe('75mm');
+    expect(exported.documentElement.getAttribute('viewBox')).toBe('0 0 800 600');
+  });
+
   it('excludes hidden whimsies from generated topology', async () => {
     const bounds = { width: 100, height: 100 };
     const border = createRectangleBorder(bounds.width, bounds.height);

@@ -31,6 +31,8 @@ function createMockState(): SaveableState {
     pointColor: '#0000FF',
     borderShape: 'rectangle',
     borderCornerRadius: 50,
+    svgExportWidth: 100,
+    svgExportUnit: 'mm',
     generators: {
       point: {
         name: 'PoissonPointGenerator',
@@ -153,6 +155,12 @@ describe('createSaveData', () => {
       cornerRadius: 25,
     });
   });
+
+  it('includes SVG export settings', () => {
+    const result = createSaveData(createMockState());
+
+    expect(result.puzzle.svgExport).toEqual({ width: 100, unit: 'mm' });
+  });
 });
 
 describe('validateAndDeserialize', () => {
@@ -173,6 +181,7 @@ describe('validateAndDeserialize', () => {
     expect(data.generators.point.name).toBe('PoissonPointGenerator');
     expect(data.generators.piece.name).toBe('VoronoiPieceGenerator');
     expect(data.customPieces).toHaveLength(1);
+    expect(data.svgExport).toEqual({ width: 100, unit: 'mm' });
   });
 
   it('throws on non-object input', () => {
@@ -228,11 +237,13 @@ describe('validateAndDeserialize', () => {
     // Remove optional fields
     delete (saveFile.puzzle.border as unknown as Record<string, unknown>).cornerRadius;
     delete (saveFile.puzzle as unknown as Record<string, unknown>).customPieces;
+    delete (saveFile.puzzle as unknown as Record<string, unknown>).svgExport;
 
     const { data, warnings } = validateAndDeserialize(saveFile);
 
     expect(data.border.cornerRadius).toBeUndefined();
     expect(data.customPieces).toEqual([]);
+    expect(data.svgExport).toEqual({ width: undefined, unit: 'mm' });
     expect(warnings).toHaveLength(0);
   });
 
@@ -257,6 +268,16 @@ describe('validateAndDeserialize', () => {
     expect(data.seed).toBe(0);
     expect(data.dimensions.width).toBe(800); // default
     expect(data.pieceSize).toBe(40); // default
+  });
+
+  it('drops invalid SVG export settings', () => {
+    const saveFile = createValidJson();
+    (saveFile.puzzle.svgExport as unknown as Record<string, unknown>).width = -10;
+    (saveFile.puzzle.svgExport as unknown as Record<string, unknown>).unit = 'cm';
+
+    const { data } = validateAndDeserialize(saveFile);
+
+    expect(data.svgExport).toEqual({ width: undefined, unit: 'mm' });
   });
 
   it('falls back to rectangle for invalid border shape', () => {
@@ -303,6 +324,7 @@ describe('file I/O helpers', () => {
         pieceSize: 40,
         visual: { color: '#000', drawPoints: false, pointColor: '#000' },
         border: { shape: 'rectangle' },
+        svgExport: { unit: 'mm' },
         generators: {
           point: { name: 'PoissonPointGenerator' },
           piece: { name: 'VoronoiPieceGenerator' },

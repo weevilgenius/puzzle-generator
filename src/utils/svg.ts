@@ -1,6 +1,9 @@
 import type { PuzzleTopology, Vec2, PathCommand, CustomPiece } from "../geometry/types";
 import { transformCustomPiecePath } from '../geometry/customPieces';
 
+/** Physical units supported by SVG export dimensions. */
+export type PhysicalUnit = 'mm' | 'in';
+
 /** Serialize a path without closing or joining independent cut lines. */
 export function pathCommandsToSVG(commands: PathCommand[]): string {
   const point = (p: Vec2): string => p.map((value) => value.toFixed(3)).join(' ');
@@ -25,9 +28,19 @@ const escapeAttribute = (value: string): string => value.replace(/&/g, '&amp;').
  * @param height - The height of the SVG viewport.
  * @param pieceColor - Optional color to draw the pieces (default black)
  * @param customPieces - Whimsies whose independent cut details should be included.
+ * @param physicalWidth - Optional physical width for the SVG output.
+ * @param physicalUnit - Unit used with physicalWidth.
  * @returns A string containing the complete SVG markup.
  */
-export function createSVG(topology: PuzzleTopology, width: number, height: number, pieceColor = "black", customPieces: CustomPiece[] = []): string {
+export function createSVG(
+  topology: PuzzleTopology,
+  width: number,
+  height: number,
+  pieceColor = "black",
+  customPieces: CustomPiece[] = [],
+  physicalWidth?: number,
+  physicalUnit: PhysicalUnit = 'mm',
+): string {
   // how many digits to preserve when converting decimal numbers to SVG string
   const precisionDigits = 3;
 
@@ -82,6 +95,9 @@ export function createSVG(topology: PuzzleTopology, width: number, height: numbe
     `  <path d="${pathCommandsToSVG(transformCustomPiecePath(piece, detail.path))}" fill="none" ` +
     `stroke="${escapeAttribute(detail.strokeColor ?? pieceColor)}" stroke-width="1" vector-effect="non-scaling-stroke" />`
   )).join('\n');
+  const hasPhysicalWidth = Number.isFinite(physicalWidth) && physicalWidth !== undefined && physicalWidth > 0;
+  const svgWidth = hasPhysicalWidth ? `${physicalWidth}${physicalUnit}` : width;
+  const svgHeight = hasPhysicalWidth ? `${physicalWidth * height / width}${physicalUnit}` : height;
 
   // Construct the final SVG markup.
   // The <path> element uses vector-effect="non-scaling-stroke" which is a best
@@ -91,8 +107,8 @@ export function createSVG(topology: PuzzleTopology, width: number, height: numbe
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <svg
-  width="${width}"
-  height="${height}"
+  width="${svgWidth}"
+  height="${svgHeight}"
   viewBox="0 0 ${width} ${height}"
   xmlns="http://www.w3.org/2000/svg"
   version="1.1"
