@@ -49,6 +49,9 @@ export interface WhimsyManagerAttrs extends m.Attributes {
    */
   onSelect: (id: string | null) => void;
 
+  /** Called when a whimsy should be shown or hidden in the puzzle. */
+  onVisibilityChange: (id: string, visible: boolean) => void;
+
   /**
    * Called when the user clicks the "Edit" button or double-clicks a tile.
    * @param id - ID of the piece to edit
@@ -158,6 +161,9 @@ export const WhimsyManager: m.ClosureComponent<WhimsyManagerAttrs> = () => {
                 },
                 onDoubleClick: () => {
                   attrs.onEdit(piece.id);
+                },
+                onVisibilityChange: (visible) => {
+                  attrs.onVisibilityChange(piece.id, visible);
                 },
               });
             })

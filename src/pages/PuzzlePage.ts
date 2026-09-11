@@ -297,6 +297,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
           state.canvasHeight,
           state.distance // target piece size
         ),
+        visible: true,
         created: now,
       };
 
@@ -319,6 +320,14 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
   // WhimseyManager callbacks
   function handleSelectCustomPiece(id: string | null) {
     state.selectedCustomPieceId = id;
+    m.redraw();
+  }
+
+  function handleCustomPieceVisibilityChange(id: string, visible: boolean) {
+    state.customPieces = state.customPieces.map((piece) =>
+      piece.id === id ? { ...piece, visible } : piece
+    );
+    state.dirty = true;
     m.redraw();
   }
 
@@ -360,6 +369,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
           rotation: piece.transform.rotation,
           scale: [...piece.transform.scale],
         },
+        visible: piece.visible,
         created: now,
       };
 
@@ -853,6 +863,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
         selectedPieceId: state.selectedCustomPieceId,
         onAdd: handleOpenCustomPieceEditor,
         onSelect: handleSelectCustomPiece,
+        onVisibilityChange: handleCustomPieceVisibilityChange,
         onEdit: handleEditCustomPiece,
         onDuplicate: handleDuplicateCustomPiece,
         onDelete: handleDeleteCustomPiece,

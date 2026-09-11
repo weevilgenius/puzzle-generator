@@ -204,6 +204,9 @@ export interface CustomPiece {
   /** Optional user-friendly name */
   name?: string;
 
+  /** Whether this whimsy participates in the puzzle. Defaults to true. */
+  visible?: boolean;
+
   /** The path defining the piece shape (must be closed and non-self-intersecting) */
   path: PathCommand[];
 

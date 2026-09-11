@@ -114,17 +114,6 @@
   color: var(--wa-color-brand-on-normal);
 }
 
-/* Selection indicator */
-.custom-piece-tile-selected-indicator {
-  position: absolute;
-  top: 0.25rem;
-  right: 0.25rem;
-  color: var(--wa-color-brand-on-normal);
-  font-size: 1.25rem;
-  background-color: var(--wa-color-surface-raised);
-  border-radius: 50%;
-}
-
 /* Action buttons */
 .whimsy-actions {
   display: flex;

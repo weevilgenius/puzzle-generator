@@ -406,6 +406,8 @@ export function renderCustomPieces(
 
     // Render each custom piece
     for (const customPiece of customPieces) {
+      if (customPiece.visible === false) continue;
+
       // Convert path commands to Paper.js path
       const path = pathCommandsToPath(customPiece.path, paperScope);
 

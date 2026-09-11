@@ -5,12 +5,21 @@ import { fitPathToCanvas } from '../utils';
 import { createRectangleBorder } from '../borderShapes';
 import { transformCustomPiecePath, registerCustomPieceEdges } from '../customPieces';
 import { createSVG } from '../../utils/svg';
+import { buildPuzzle } from '../PuzzleMaker';
 import type { CustomPiece, PuzzleTopology, Vec2 } from '../types';
-import { PieceGeneratorRegistry } from '../generators/Generator';
+import {
+  PieceGeneratorRegistry,
+  PointGeneratorRegistry,
+  TabGeneratorRegistry,
+  TabPlacementStrategyRegistry,
+} from '../generators/Generator';
 import { checkGeometry } from '../GeometryChecker';
 import mulberry32 from '../../utils/mulberry';
 import '../generators/piece/VoronoiPieceGenerator';
 import '../generators/piece/RectangularPieceGenerator';
+import '../generators/point/PoissonPointGenerator';
+import '../generators/tab/NullTabGenerator';
+import '../generators/tab_placement/SimpleTabPlacementStrategy';
 
 const outline = '<path stroke="red" d="M0 0 H10 V10 H0 Z"/>';
 
@@ -107,6 +116,32 @@ describe('whimsy cut details', () => {
     custom.internalPaths![0].strokeColor = 'red" onload="alert(1)';
     const escaped = new DOMParser().parseFromString(createSVG(topology, 300, 300, 'black', [custom]), 'image/svg+xml');
     expect(escaped.querySelector('[onload]')).toBeNull();
+
+    custom.visible = false;
+    expect(new DOMParser().parseFromString(createSVG(topology, 300, 300, '#00ff00', [custom]), 'image/svg+xml')
+      .querySelectorAll('path')).toHaveLength(1);
+  });
+
+  it('excludes hidden whimsies from generated topology', async () => {
+    const bounds = { width: 100, height: 100 };
+    const border = createRectangleBorder(bounds.width, bounds.height);
+    const puzzle = await buildPuzzle({
+      bounds,
+      border,
+      pieceSize: 50,
+      seed: 42,
+      pointConfig: PointGeneratorRegistry.getDefaultConfig('PoissonPointGenerator', 100, 100),
+      pieceConfig: PieceGeneratorRegistry.getDefaultConfig('RectangularPieceGenerator', 100, 100),
+      placementConfig: TabPlacementStrategyRegistry.getDefaultConfig('SimpleTabPlacementStrategy', 100, 100),
+      tabConfig: TabGeneratorRegistry.getDefaultConfig('NullTabGenerator', 100, 100),
+      customPieces: [{
+        id: 'hidden', created: '', visible: false, path: createRectangleBorder(10, 10),
+        transform: { position: [50, 50], rotation: 0, scale: [1, 1] },
+      }],
+    });
+
+    expect(puzzle.customPieces).toEqual([]);
+    expect([...puzzle.pieces.values()].some((piece) => piece.isCustomPiece)).toBe(false);
   });
 
   it.each(['VoronoiPieceGenerator', 'RectangularPieceGenerator'])('keeps %s topology and checking independent of details', async (name) => {

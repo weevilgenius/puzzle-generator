@@ -170,7 +170,7 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
 
         // Render transform handles for selected custom piece
         if (attrs.selectedCustomPieceId) {
-          const selectedPiece = attrs.customPieces.find((p) => p.id === attrs.selectedCustomPieceId);
+          const selectedPiece = attrs.customPieces.find((p) => p.id === attrs.selectedCustomPieceId && p.visible !== false);
           if (selectedPiece) {
             renderCustomPieceHandles(state, selectedPiece);
           }
@@ -212,7 +212,7 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
 
         // Render transform handles for selected custom piece
         if (attrs.selectedCustomPieceId) {
-          const selectedPiece = attrs.customPieces.find((p) => p.id === attrs.selectedCustomPieceId);
+          const selectedPiece = attrs.customPieces.find((p) => p.id === attrs.selectedCustomPieceId && p.visible !== false);
           if (selectedPiece) {
             renderCustomPieceHandles(state, selectedPiece);
           }

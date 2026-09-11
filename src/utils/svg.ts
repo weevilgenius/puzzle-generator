@@ -78,7 +78,7 @@ export function createSVG(topology: PuzzleTopology, width: number, height: numbe
 
   // Join all path commands into a single string for the 'd' attribute.
   const pathD = pathData.join(' ');
-  const details = customPieces.flatMap((piece) => (piece.internalPaths ?? []).map((detail) =>
+  const details = customPieces.filter((piece) => piece.visible !== false).flatMap((piece) => (piece.internalPaths ?? []).map((detail) =>
     `  <path d="${pathCommandsToSVG(transformCustomPiecePath(piece, detail.path))}" fill="none" ` +
     `stroke="${escapeAttribute(detail.strokeColor ?? pieceColor)}" stroke-width="1" vector-effect="non-scaling-stroke" />`
   )).join('\n');

@@ -7,6 +7,8 @@ import type { CustomPiece } from '../geometry/types';
 import type MithrilViewEvent from '../utils/MithrilViewEvent';
 
 // Web Awesome components
+import '@awesome.me/webawesome/dist/components/checkbox/checkbox.js';
+import type WaCheckbox from '@awesome.me/webawesome/dist/components/checkbox/checkbox.js';
 import '@awesome.me/webawesome/dist/components/icon/icon.js';
 
 /* ========================================================= *\
@@ -31,6 +33,9 @@ export interface CustomPieceTileAttrs extends m.Attributes {
 
   /** Called when the tile is double-clicked. Does not trigger a Mithril redraw. */
   onDoubleClick: () => void;
+
+  /** Called when the whimsy's visibility changes. */
+  onVisibilityChange: (visible: boolean) => void;
 }
 
 /* ========================================================= *\
@@ -64,10 +69,14 @@ export const CustomPieceTile: m.Component<CustomPieceTileAttrs> = {
       // Name
       m('.custom-piece-tile-name', attrs.piece.name ?? 'Unnamed'),
 
-      // Selection indicator
-      attrs.isSelected
-        ? m('.custom-piece-tile-selected-indicator', m('wa-icon', { name: 'check-circle' }))
-        : null,
+      m('wa-checkbox.custom-piece-tile-visibility', {
+        checked: attrs.piece.visible !== false,
+        onclick: (e: Event) => e.stopPropagation(),
+        onchange: (e: Event & MithrilViewEvent) => {
+          e.redraw = false;
+          attrs.onVisibilityChange((e.target as WaCheckbox).checked);
+        },
+      }, 'Enabled'),
     ]);
   },
 };

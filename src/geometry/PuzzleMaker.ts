@@ -95,6 +95,7 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
   return measureAsync('Puzzle Generation', async () => {
     const { bounds, pieceSize, border } = options;
     const { pointConfig, pieceConfig, placementConfig, tabConfig } = options;
+    const customPieces = options.customPieces?.filter((piece) => piece.visible !== false);
 
     console.log(`rebuilding puzzle with dimensions ${bounds.width}x${bounds.height}, piece size ${pieceSize}`);
 
@@ -137,7 +138,7 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
       pieceSize,
       border,
       bounds,
-      customPieces: options.customPieces,
+      customPieces,
       onProgress: reportFor('pieces'),
     });
     console.log(`Generated ${topology.pieces.size} pieces`);
@@ -196,7 +197,7 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
       pieces: topology.pieces,
       edges: topology.edges,
       halfEdges: topology.halfEdges,
-      customPieces: options.customPieces,
+      customPieces,
     };
 
     return Promise.resolve(puzzle);

@@ -1,5 +1,6 @@
 import { createSaveData, validateAndDeserialize, downloadPuzzleFile, readPuzzleFile } from '../puzzleSaveFile';
 import type { SaveableState, PuzzleSaveFile } from '../puzzleSaveFile';
+import type { CustomPiece } from '../../geometry/types';
 
 // Register generators so registries have entries
 import '../../geometry/generators/point/PoissonPointGenerator';
@@ -78,6 +79,17 @@ describe('createSaveData', () => {
     }];
     const restored = validateAndDeserialize(JSON.parse(JSON.stringify(createSaveData(state))));
     expect(restored.data.customPieces).toEqual(state.customPieces);
+  });
+
+  it('round-trips hidden whimsies and leaves legacy whimsies visible', () => {
+    const state = createMockState();
+    state.customPieces[0].visible = false;
+    const saveFile = createSaveData(state);
+
+    expect(validateAndDeserialize(JSON.parse(JSON.stringify(saveFile))).data.customPieces[0].visible).toBe(false);
+
+    delete (saveFile.puzzle.customPieces[0] as Partial<CustomPiece>).visible;
+    expect(validateAndDeserialize(saveFile).data.customPieces[0].visible).toBeUndefined();
   });
 
   it('serializes state into a PuzzleSaveFile structure', () => {

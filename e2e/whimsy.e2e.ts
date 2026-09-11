@@ -48,6 +48,28 @@ test('incomplete.svg cannot be saved because its outline is open', async ({ page
   await expect(page.getByText('Valid piece', { exact: true })).not.toBeVisible();
 });
 
+test('visibility checkbox hides a whimsy without deselecting or deleting it', async ({ page }) => {
+  await openEditor(page);
+  await upload(page, svg(outline));
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.locator('.custom-piece-tile').click();
+  const checkbox = page.locator('wa-checkbox.custom-piece-tile-visibility');
+
+  await checkbox.click();
+  await expect(page.locator('.custom-piece-tile.selected')).toHaveCount(1);
+  await expect.poll(() => page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem('puzzleGenerator:autoSave') ?? '{}') as {
+      puzzle?: { customPieces?: { visible?: boolean }[] };
+    };
+    return saved.puzzle?.customPieces?.[0]?.visible;
+  })).toBe(false);
+
+  await page.reload();
+  await page.getByRole('button', { name: 'Whimsies', exact: true }).click();
+  await expect(page.locator('wa-checkbox.custom-piece-tile-visibility')).toHaveCount(1);
+  await expect.poll(() => checkbox.evaluate((element) => (element as unknown as { checked: boolean }).checked)).toBe(false);
+});
+
 test('detail operation colors survive save, duplication, reload, and SVG export', async ({ page }, testInfo) => {
   await openEditor(page);
   const colors = ['black', '#000', '#000000', 'rgb(0, 0, 0)', 'hsl(0, 0%, 0%)', '#010101', 'blue'];
