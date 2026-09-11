@@ -1,6 +1,15 @@
 Change Log
 ==========
 
+## Version 0.6.2
+
+Added a progress bar to lengthy rebuilds. Optimize geometry calculations to reduce
+rebuild times. Whimsies can now be toggled on and off in the puzzle.
+
+Fixes:
+* Restore missing whimsy outlines in the exported SVG.
+* Fix canvas issues after changing puzzle aspect ratios.
+
 ## Version 0.6.1
 
 Added support for whimsies that contain internal details via SVG import. The first
