@@ -8,6 +8,7 @@ import type MithrilViewEvent from '../../utils/MithrilViewEvent';
 import { DEFAULT_ZOOM, PRESET_ZOOM_LEVELS, PRESET_ZOOM_LABELS } from './constants';
 import {
   initializePaper,
+  syncPaperViewSize,
   renderPuzzle,
   createPaperLayers,
   cleanupPaper,
@@ -186,15 +187,23 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
         return;
       }
 
-      // Update background image if it changed
-      if (attrs.imageUrl !== previousImageUrl) {
+      // Aspect-ratio / dimension changes must update Paper.js before drawing.
+      // Mithril does not own canvas.width/height (see view()); Paper.js does.
+      const resized = syncPaperViewSize(state, attrs.width, attrs.height);
+
+      // Update background image if it changed, or rescale it after a canvas resize
+      if (attrs.imageUrl !== previousImageUrl || (resized && attrs.imageUrl)) {
         updateBackgroundImage(state, attrs.imageUrl, attrs.width, attrs.height);
         previousImageUrl = attrs.imageUrl;
       }
 
-      // Re-render if puzzle is not being regenerated
+      // Re-render if puzzle is not being regenerated. After a resize, also
+      // refresh the existing scene so the new backing store is fully painted
+      // while a rebuild is still in flight.
       if (attrs.puzzle && !attrs.isDirty) {
         renderPuzzle(state, attrs.puzzle, attrs.color, attrs.pointColor);
+      } else if (resized && state.paperCtx) {
+        state.paperCtx.scope.view.update();
       }
 
       // Render custom pieces (always update them, even if puzzle is dirty)
@@ -248,8 +257,9 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
         // Canvas for rendering the puzzle with Paper.js (background image is now inside Paper.js)
         m('canvas.puzzle-renderer', {
           key: 'puzzle-renderer-canvas', // Stable key to prevent Mithril from replacing the canvas
-          width: attrs.width,
-          height: attrs.height,
+          // Do not set width/height attributes here. Assigning them resets the
+          // 2d context and fights Paper.js hidpi backing-store sizing, which
+          // leaves stale/partial frames after aspect-ratio changes.
           style: {
             touchAction: 'manipulation',
             aspectRatio: `${attrs.width} / ${attrs.height}`,

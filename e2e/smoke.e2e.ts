@@ -120,6 +120,57 @@ test('slow rebuilds show a progress overlay that clears when done', async ({ pag
   await expect(page.locator('canvas.puzzle-renderer')).toBeVisible();
 });
 
+test('changing aspect ratio updates the canvas backing store', async ({ page }, testInfo) => {
+  await page.goto('/');
+  await expect(page.locator('canvas.puzzle-renderer')).toBeVisible();
+  await expect(page.locator('.rebuild-progress-overlay')).toHaveCount(0, { timeout: 60000 });
+
+  await page.getByRole('button', { name: 'Canvas' }).click();
+  await expect(page.getByRole('heading', { name: 'Canvas' })).toBeVisible();
+
+  const canvas = page.locator('canvas.puzzle-renderer');
+  const setRatio = async (ratio: number) => {
+    await page.locator('.aspect-ratio-picker wa-slider').evaluate((el, value) => {
+      const slider = el as HTMLElement & { value: number };
+      slider.value = value;
+      slider.dispatchEvent(new Event('change', { bubbles: true }));
+    }, ratio);
+  };
+
+  // Tall portrait first — this is the change that used to leave GPU garbage
+  // in the region Paper.js no longer cleared.
+  await setRatio(9 / 16);
+  await expect.poll(async () => {
+    return canvas.evaluate((el) => {
+      const canvasEl = el as HTMLCanvasElement;
+      return canvasEl.width / canvasEl.height;
+    });
+  }).toBeCloseTo(9 / 16, 2);
+
+  await expect(page.locator('.rebuild-progress-overlay')).toHaveCount(0, { timeout: 60000 });
+  if (testInfo.project.name === 'mobile-chromium') {
+    await page.getByRole('button', { name: 'Close settings' }).click();
+  }
+  await page.screenshot({ path: `screenshots/aspect-ratio-portrait-${testInfo.project.name}.png` });
+
+  if (testInfo.project.name === 'mobile-chromium') {
+    await page.getByRole('button', { name: 'Canvas' }).click();
+  }
+  await setRatio(16 / 9);
+  await expect.poll(async () => {
+    return canvas.evaluate((el) => {
+      const canvasEl = el as HTMLCanvasElement;
+      return canvasEl.width / canvasEl.height;
+    });
+  }).toBeCloseTo(16 / 9, 2);
+
+  await expect(page.locator('.rebuild-progress-overlay')).toHaveCount(0, { timeout: 60000 });
+  if (testInfo.project.name === 'mobile-chromium') {
+    await page.getByRole('button', { name: 'Close settings' }).click();
+  }
+  await page.screenshot({ path: `screenshots/aspect-ratio-wide-${testInfo.project.name}.png` });
+});
+
 test('help explains the generator flow', async ({ page }, testInfo) => {
   await page.goto('/');
 

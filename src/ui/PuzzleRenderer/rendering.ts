@@ -14,6 +14,50 @@ import { measureSync } from '../../utils/performance';
 import { computePathBounds, transformCustomPiecePath } from '../../geometry/customPieces';
 
 /**
+ * Paper.js hidpi mode writes inline CSS width/height on the canvas. PuzzleRenderer
+ * sizes the canvas through stylesheets (max-width/height, aspect-ratio), so those
+ * inline sizes must be cleared or they freeze the layout at the logical pixel size.
+ */
+function releasePaperCanvasLayout(canvas: HTMLCanvasElement): void {
+  canvas.style.removeProperty('width');
+  canvas.style.removeProperty('height');
+}
+
+/**
+ * Keep the Paper.js view's logical size in sync with the puzzle dimensions.
+ *
+ * Changing the canvas `width`/`height` attributes (or CSS aspect ratio) without
+ * updating `view.viewSize` leaves Paper.js clearing and drawing only the old
+ * rectangle. The rest of the new backing store can show GPU garbage or smeared
+ * leftover pixels.
+ *
+ * @returns true if the view size changed
+ */
+export function syncPaperViewSize(
+  state: Pick<PuzzleRendererState, 'canvas' | 'paperCtx'>,
+  width: number,
+  height: number
+): boolean {
+  if (!state.paperCtx || !state.canvas) {
+    return false;
+  }
+
+  const changed = withPaper(state.paperCtx, 'PuzzleRenderer:syncPaperViewSize', () => {
+    const paperScope = state.paperCtx!.scope;
+    const view = paperScope.view;
+    if (view.viewSize.width === width && view.viewSize.height === height) {
+      return false;
+    }
+
+    view.viewSize = new paperScope.Size(width, height);
+    return true;
+  }) === true;
+
+  releasePaperCanvasLayout(state.canvas);
+  return changed;
+}
+
+/**
  * Initialize Paper.js on a canvas element with an isolated scope
  */
 export function initializePaper(
@@ -28,7 +72,10 @@ export function initializePaper(
   // Verify context was created successfully
   if (!state.paperCtx) {
     console.error('PuzzleRenderer: Failed to create Paper.js context');
+    return;
   }
+
+  releasePaperCanvasLayout(canvas);
 }
 
 /**

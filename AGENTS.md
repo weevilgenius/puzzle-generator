@@ -214,6 +214,16 @@ Web Awesome provides a comprehensive color system with CSS variables for theming
 - **NEVER destructure classes**: Destructuring detaches classes from their scope binding
 - **Activate scope before creating objects**: Call `paperCtx.scope.activate()` before creating any Paper.js objects. `withPaper()` convenience method wraps this logic.
 
+##### Canvas sizing and `view.viewSize`
+
+Paper.js owns the canvas backing store after `createPaperContext()` / `scope.setup()`. Fighting that from Mithril or CSS is a recurring source of intermittent, hard-to-reproduce redraw bugs (partial frames, smeared leftover pixels, GPU garbage in the unsized region).
+
+- **Do not set `width`/`height` attributes on a Paper.js canvas from the Mithril vnode** after setup. Assigning `canvas.width` / `canvas.height` resets the 2d context (including Paper.js's hidpi `scale(pixelRatio)` transform) and can leave `view.viewSize` pointing at the old rectangle.
+- **When puzzle/editor logical dimensions change, update `paper.view.viewSize`** (see `syncPaperViewSize()` in `src/ui/PuzzleRenderer/rendering.ts`). Paper.js then resizes the backing store (`viewSize * devicePixelRatio`) and restores the context. CSS `aspect-ratio` / `max-width` only changes how the bitmap is *displayed*; it does not resize the view.
+- **Let CSS control on-screen size.** On hidpi, Paper.js writes inline `style.width` / `style.height` in CSS pixels. For a responsive canvas (PuzzleRenderer), clear those so stylesheet rules can layout the element. PathEditor is the exception: it is a fixed-size editor and sets explicit pixel CSS sizes on purpose.
+- **Use a stable `key` on the `<canvas>` vnode** so Mithril reuses the same element. Replacing the canvas detaches `view._context` and Paper.js silently stops drawing (`assertPaperReady()` catches this).
+- Symptom of a size mismatch: only part of the canvas redraws after an aspect-ratio or dimension change; the rest looks like streaks or noise. Fix the view size — do not paper over it with extra `view.update()` calls.
+
 ### General Style
 
 - **Avoid emoji** in code (comments, strings, etc.) unless explicitly required by the domain
