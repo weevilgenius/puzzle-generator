@@ -36,6 +36,87 @@ export function distanceSq(p1: Vec2, p2: Vec2): number {
   return dx * dx + dy * dy;
 }
 
+/* ========================================================= *\
+ *  Uniform grid for near-constant-time proximity queries    *
+\* ========================================================= */
+
+type SpatialGrid<T> = Map<string, T[]>;
+
+interface GridSegment {
+  p1: Vec2;
+  p2: Vec2;
+}
+
+function gridCellKey(x: number, y: number, cellSize: number): string {
+  return `${Math.floor(x / cellSize)},${Math.floor(y / cellSize)}`;
+}
+
+function insertAtCell<T>(grid: SpatialGrid<T>, key: string, item: T): void {
+  const bucket = grid.get(key);
+  if (bucket) {
+    bucket.push(item);
+  } else {
+    grid.set(key, [item]);
+  }
+}
+
+function insertPoint<T>(grid: SpatialGrid<T>, point: Vec2, cellSize: number, item: T): void {
+  insertAtCell(grid, gridCellKey(point[0], point[1], cellSize), item);
+}
+
+/** Rasterize a segment into every grid cell it crosses. */
+function insertSegment(grid: SpatialGrid<GridSegment>, p1: Vec2, p2: Vec2, cellSize: number): void {
+  const seg: GridSegment = { p1, p2 };
+  const x0 = Math.floor(p1[0] / cellSize);
+  const y0 = Math.floor(p1[1] / cellSize);
+  const x1 = Math.floor(p2[0] / cellSize);
+  const y1 = Math.floor(p2[1] / cellSize);
+  const steps = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
+  for (let i = 0; i <= steps; i++) {
+    const x = Math.round(x0 + ((x1 - x0) * i) / steps);
+    const y = Math.round(y0 + ((y1 - y0) * i) / steps);
+    insertAtCell(grid, `${x},${y}`, seg);
+  }
+}
+
+function queryNeighborCells<T>(grid: SpatialGrid<T>, point: Vec2, cellSize: number): T[] {
+  const gx = Math.floor(point[0] / cellSize);
+  const gy = Math.floor(point[1] / cellSize);
+  const results: T[] = [];
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dy = -1; dy <= 1; dy++) {
+      const bucket = grid.get(`${gx + dx},${gy + dy}`);
+      if (!bucket) continue;
+      for (const item of bucket) {
+        results.push(item);
+      }
+    }
+  }
+  return results;
+}
+
+function buildPolygonSegmentGrid(polygon: Vec2[], cellSize: number): SpatialGrid<GridSegment> {
+  const grid: SpatialGrid<GridSegment> = new Map();
+  for (let i = 0; i < polygon.length; i++) {
+    insertSegment(grid, polygon[i], polygon[(i + 1) % polygon.length], cellSize);
+  }
+  return grid;
+}
+
+function pointNearSegmentGrid(
+  point: Vec2,
+  grid: SpatialGrid<GridSegment>,
+  cellSize: number,
+  threshold: number,
+): boolean {
+  for (const seg of queryNeighborCells(grid, point, cellSize)) {
+    if (distanceToSegment(point, seg.p1, seg.p2) < threshold) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /** Serializable version of PuzzleTopology */
 export interface PuzzleTopologySerializable {
   vertices: Vertex[];
@@ -425,23 +506,15 @@ export function getPieceNeighbors(
     );
 
     if (dx < proximityThreshold && dy < proximityThreshold) {
-      // Bounding boxes are close, check vertex-to-edge distances
       const candidatePolygon = extractPiecePolygon(candidate, topology);
+      const segmentGrid = buildPolygonSegmentGrid(candidatePolygon, proximityThreshold);
       let sharedEdgeLength = 0;
 
-      // Check if vertices of piece are close to edges of candidate
-      for (const vertex of piecePolygon) {
-        for (let i = 0; i < candidatePolygon.length; i++) {
-          const p1 = candidatePolygon[i];
-          const p2 = candidatePolygon[(i + 1) % candidatePolygon.length];
-
-          const dist = distanceToSegment(vertex, p1, p2);
-          if (dist < proximityThreshold) {
-            // Approximate shared edge length as distance between vertices
-            const edgeLen = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
-            sharedEdgeLength += edgeLen;
-            break; // Move to next vertex
-          }
+      for (let i = 0; i < piecePolygon.length; i++) {
+        const vertex = piecePolygon[i];
+        if (pointNearSegmentGrid(vertex, segmentGrid, proximityThreshold, proximityThreshold)) {
+          const next = piecePolygon[(i + 1) % piecePolygon.length];
+          sharedEdgeLength += Math.hypot(next[0] - vertex[0], next[1] - vertex[1]);
         }
       }
 
@@ -462,12 +535,35 @@ export function getPieceNeighbors(
  * @param proximityThreshold Maximum distance to consider pieces adjacent (default: 2 pixels).
  * @returns True if the piece is adjacent to at least one custom piece.
  */
-export function isAdjacentToCustomPiece(
+interface CustomAdjacencyIndex {
+  bounds: AABB;
+  polygon: Vec2[];
+  grid: SpatialGrid<GridSegment>;
+}
+
+function indexCustomPieces(
+  topology: PuzzleTopology,
+  proximityThreshold: number,
+): CustomAdjacencyIndex[] {
+  const index: CustomAdjacencyIndex[] = [];
+  for (const piece of topology.pieces.values()) {
+    if (!piece.isCustomPiece) continue;
+    const polygon = extractPiecePolygon(piece, topology);
+    index.push({
+      bounds: piece.bounds,
+      polygon,
+      grid: buildPolygonSegmentGrid(polygon, proximityThreshold),
+    });
+  }
+  return index;
+}
+
+function isAdjacentToIndexedCustomPieces(
   piece: Piece,
   topology: PuzzleTopology,
-  proximityThreshold = 2.0
+  customIndex: readonly CustomAdjacencyIndex[],
+  proximityThreshold: number,
 ): boolean {
-  // First, check via twin edges (fast path)
   const startHeId = piece.halfEdge;
   if (startHeId !== -1) {
     let currentHeId = startHeId;
@@ -489,56 +585,56 @@ export function isAdjacentToCustomPiece(
     } while (currentHeId !== startHeId && currentHeId !== -1);
   }
 
-  // Fallback: check geometric proximity to custom pieces
-  // This catches fragments created by polygon clipping that don't have proper twin edges
-  const customPieces = Array.from(topology.pieces.values()).filter((p) => p.isCustomPiece);
-  if (customPieces.length === 0) return false;
+  if (customIndex.length === 0) return false;
 
-  // Quick rejection: check bounding boxes
-  for (const customPiece of customPieces) {
+  const piecePolygon = extractPiecePolygon(piece, topology);
+  const pieceGrid = buildPolygonSegmentGrid(piecePolygon, proximityThreshold);
+
+  for (const custom of customIndex) {
     const dx = Math.max(
-      piece.bounds[0] - customPiece.bounds[2],
-      customPiece.bounds[0] - piece.bounds[2]
+      piece.bounds[0] - custom.bounds[2],
+      custom.bounds[0] - piece.bounds[2]
     );
     const dy = Math.max(
-      piece.bounds[1] - customPiece.bounds[3],
-      customPiece.bounds[1] - piece.bounds[3]
+      piece.bounds[1] - custom.bounds[3],
+      custom.bounds[1] - piece.bounds[3]
     );
+    if (dx >= proximityThreshold || dy >= proximityThreshold) continue;
 
-    if (dx < proximityThreshold && dy < proximityThreshold) {
-      // Bounding boxes are close, do detailed check
-      const piecePolygon = extractPiecePolygon(piece, topology);
-      const customPolygon = extractPiecePolygon(customPiece, topology);
-
-      // Check if any vertex of the piece is very close to any edge of the custom piece
-      for (const vertex of piecePolygon) {
-        for (let i = 0; i < customPolygon.length; i++) {
-          const p1 = customPolygon[i];
-          const p2 = customPolygon[(i + 1) % customPolygon.length];
-
-          const dist = distanceToSegment(vertex, p1, p2);
-          if (dist < proximityThreshold) {
-            return true;
-          }
-        }
+    for (const vertex of piecePolygon) {
+      if (pointNearSegmentGrid(vertex, custom.grid, proximityThreshold, proximityThreshold)) {
+        return true;
       }
-
-      // Also check if any vertex of the custom piece is close to any edge of the piece
-      for (const vertex of customPolygon) {
-        for (let i = 0; i < piecePolygon.length; i++) {
-          const p1 = piecePolygon[i];
-          const p2 = piecePolygon[(i + 1) % piecePolygon.length];
-
-          const dist = distanceToSegment(vertex, p1, p2);
-          if (dist < proximityThreshold) {
-            return true;
-          }
-        }
+    }
+    for (const vertex of custom.polygon) {
+      if (pointNearSegmentGrid(vertex, pieceGrid, proximityThreshold, proximityThreshold)) {
+        return true;
       }
     }
   }
 
   return false;
+}
+
+/**
+ * Checks if a piece is adjacent to any custom pieces.
+ * Uses both topology (twin edges) and geometric proximity as fallback.
+ * @param piece The piece to check.
+ * @param topology The puzzle topology.
+ * @param proximityThreshold Maximum distance to consider pieces adjacent (default: 2 pixels).
+ * @returns True if the piece is adjacent to at least one custom piece.
+ */
+export function isAdjacentToCustomPiece(
+  piece: Piece,
+  topology: PuzzleTopology,
+  proximityThreshold = 2.0
+): boolean {
+  return isAdjacentToIndexedCustomPieces(
+    piece,
+    topology,
+    indexCustomPieces(topology, proximityThreshold),
+    proximityThreshold,
+  );
 }
 
 /**
@@ -680,23 +776,24 @@ export function mergePieces(
   }
 
   // 5. Remove old half-edges and their associated edges
-  for (const he of halfEdgesToRemove) {
-    // Find and remove any edge that references this half-edge
-    for (const [edgeId, edge] of topology.edges) {
-      if (edge.heLeft === he.id || edge.heRight === he.id) {
-        topology.edges.delete(edgeId);
-
-        // Remove from boundary list if present
-        const boundaryIndex = topology.boundary.indexOf(edgeId);
-        if (boundaryIndex !== -1) {
-          topology.boundary.splice(boundaryIndex, 1);
-        }
-        break;
-      }
+  const edgeIdByHalfEdge = new Map<HalfEdgeID, EdgeID>();
+  for (const [edgeId, edge] of topology.edges) {
+    edgeIdByHalfEdge.set(edge.heLeft, edgeId);
+    if (edge.heRight !== -1) {
+      edgeIdByHalfEdge.set(edge.heRight, edgeId);
     }
-
-    // Remove the half-edge itself
+  }
+  const removedEdgeIds = new Set<EdgeID>();
+  for (const he of halfEdgesToRemove) {
+    const edgeId = edgeIdByHalfEdge.get(he.id);
+    if (edgeId !== undefined) {
+      topology.edges.delete(edgeId);
+      removedEdgeIds.add(edgeId);
+    }
     topology.halfEdges.delete(he.id);
+  }
+  if (removedEdgeIds.size > 0) {
+    topology.boundary = topology.boundary.filter((id) => !removedEdgeIds.has(id));
   }
 
   // 6. Remove pieceB from the topology
@@ -736,6 +833,7 @@ export function mergeFragmentsIntoNeighbors(
 ): number {
   // Collect fragments to merge
   const fragmentsToMerge: { pieceId: PieceID; area: number }[] = [];
+  const customIndex = indexCustomPieces(topology, 2.0);
 
   for (const piece of topology.pieces.values()) {
     // Skip custom pieces
@@ -747,11 +845,7 @@ export function mergeFragmentsIntoNeighbors(
 
     // Check if it's below threshold
     if (area < minFragmentArea) {
-      // Check if this piece is adjacent to any custom pieces
-      const isAdjacent = isAdjacentToCustomPiece(piece, topology);
-
-      if (!isAdjacent) {
-        console.log(`  Fragment ${piece.id} (${area.toFixed(0)}px²) is undersized but NOT adjacent to custom pieces (skipping)`);
+      if (!isAdjacentToIndexedCustomPieces(piece, topology, customIndex, 2.0)) {
         continue;
       }
 
@@ -1153,8 +1247,13 @@ export function createHalfEdgeLoop(
   const newHalfEdges: HalfEdge[] = [];
 
   // 1. Add any new, unique vertices to the main list
+  const existingVertexKeys = new Set(
+    topology.vertices.map((v) => `${Math.round(v[0] * 1e6)},${Math.round(v[1] * 1e6)}`),
+  );
   for (const vertex of vertices) {
-    if (!topology.vertices.find((v) => arePointsEqual(v, vertex))) {
+    const vertexKey = `${Math.round(vertex[0] * 1e6)},${Math.round(vertex[1] * 1e6)}`;
+    if (!existingVertexKeys.has(vertexKey)) {
+      existingVertexKeys.add(vertexKey);
       topology.vertices.push(vertex);
     }
   }
@@ -1203,6 +1302,18 @@ export function linkAndCreateEdges(
   const key = (p1: Vec2, p2: Vec2) => `${p1[0]},${p1[1]}-${p2[0]},${p2[1]}`;
   const numEdges = halfEdges.length;
   const PROXIMITY_THRESHOLD = 0.1; // 0.1 pixel tolerance for matching edges
+  const thresholdSq = PROXIMITY_THRESHOLD * PROXIMITY_THRESHOLD;
+  type TwinCandidate = { mapKey: string; candidateId: HalfEdgeID };
+  const originGrid: SpatialGrid<TwinCandidate> = new Map();
+
+  const indexCandidate = (mapKey: string, candidateId: HalfEdgeID): void => {
+    const candidateHe = topology.halfEdges.get(candidateId);
+    if (!candidateHe) return;
+    insertPoint(originGrid, candidateHe.origin, PROXIMITY_THRESHOLD, { mapKey, candidateId });
+  };
+  for (const [mapKey, candidateId] of halfEdgeTwinMap) {
+    indexCandidate(mapKey, candidateId);
+  }
 
   for (let i = 0; i < numEdges; i++) {
     const he = halfEdges[i];
@@ -1213,20 +1324,20 @@ export function linkAndCreateEdges(
     const selfKey = key(p1, p2);
     let twinId = halfEdgeTwinMap.get(twinKey);
 
-    // If exact match not found, try geometric proximity search
+    // If exact match not found, search nearby unmatched origins instead of
+    // comparing against every unmatched edge.
     if (twinId === undefined) {
-      for (const [mapKey, candidateId] of halfEdgeTwinMap.entries()) {
-        const candidateHe = topology.halfEdges.get(candidateId)!;
+      for (const candidate of queryNeighborCells(originGrid, p2, PROXIMITY_THRESHOLD)) {
+        if (halfEdgeTwinMap.get(candidate.mapKey) !== candidate.candidateId) continue;
+        const candidateHe = topology.halfEdges.get(candidate.candidateId);
+        if (!candidateHe) continue;
+        const nextOfCandidate = topology.halfEdges.get(candidateHe.next);
+        if (!nextOfCandidate) continue;
         const cp1 = candidateHe.origin;
-        const cp2 = topology.halfEdges.get(candidateHe.next)!.origin;
-
-        // Check if edges match in reverse direction with proximity tolerance
-        const d1 = Math.sqrt((p1[0] - cp2[0]) ** 2 + (p1[1] - cp2[1]) ** 2);
-        const d2 = Math.sqrt((p2[0] - cp1[0]) ** 2 + (p2[1] - cp1[1]) ** 2);
-
-        if (d1 < PROXIMITY_THRESHOLD && d2 < PROXIMITY_THRESHOLD) {
-          twinId = candidateId;
-          halfEdgeTwinMap.delete(mapKey);
+        const cp2 = nextOfCandidate.origin;
+        if (distanceSq(p1, cp2) < thresholdSq && distanceSq(p2, cp1) < thresholdSq) {
+          twinId = candidate.candidateId;
+          halfEdgeTwinMap.delete(candidate.mapKey);
           break;
         }
       }
@@ -1247,6 +1358,7 @@ export function linkAndCreateEdges(
     } else {
       // No twin found.
       halfEdgeTwinMap.set(selfKey, he.id);
+      indexCandidate(selfKey, he.id);
 
       if (isBoundaryEdgeFn(p1, p2)) {
         // This is a new edge on the puzzle's custom boundary.

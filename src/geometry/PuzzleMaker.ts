@@ -122,53 +122,65 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
 
     // 1. Generate or use provided seed points for the pieces
     const points = options.seedPoints ??
-      await pointGenerator.generatePoints({
-        width: bounds.width,
-        height: bounds.height,
-        pieceSize,
-        random,
-        border,
-        onProgress: reportFor('points'),
-      });
+      await measureAsync(`Point generation (${pointConfig.name})`, () =>
+        pointGenerator.generatePoints({
+          width: bounds.width,
+          height: bounds.height,
+          pieceSize,
+          random,
+          border,
+          onProgress: reportFor('points'),
+        }),
+      );
     console.log(`${options.seedPoints ? 'Using' : 'Generated'} ${points.length} points`);
 
     // 2. Convert points to a puzzle topology (pieces and edges)
-    const topology = await pieceGenerator.generatePieces(points, {
-      random,
-      pieceSize,
-      border,
-      bounds,
-      customPieces,
-      onProgress: reportFor('pieces'),
-    });
+    const customPieceLabel = customPieces && customPieces.length > 0
+      ? `, ${customPieces.length} custom pieces`
+      : '';
+    const topology = await measureAsync(
+      `Piece generation (${pieceConfig.name}${customPieceLabel})`,
+      () => pieceGenerator.generatePieces(points, {
+        random,
+        pieceSize,
+        border,
+        bounds,
+        customPieces,
+        onProgress: reportFor('pieces'),
+      }),
+    );
     console.log(`Generated ${topology.pieces.size} pieces`);
 
     // 3. Place tabs on internal edges (skip if requested)
     if (!options.skipTabs) {
-      await placementStrategy.placeTabs({ topology, random, onProgress: reportFor('tabPlacement') });
+      await measureAsync(`Tab placement (${placementConfig.name})`, () =>
+        placementStrategy.placeTabs({ topology, random, onProgress: reportFor('tabPlacement') }),
+      );
 
       // 4. Generate geometry for placed tabs
-      const reportTabs = reportFor('tabs');
-      const tabEdges = [...topology.edges.values()].filter((edge) => (
-        edge.heRight !== -1 && edge.tabs && edge.tabs.length > 0
-      ));
-      const tabTotal = tabEdges.length;
-      if (tabTotal === 0) {
-        // Fast tab generators (e.g. NullTabGenerator) still complete this stage
-        const done = reportTabs(1, 1);
-        if (done) await done;
-      } else {
-        const started = reportTabs(0, tabTotal);
-        if (started) await started;
-        let processed = 0;
-        for (const edge of tabEdges) {
-          // use the tab generator to create the segment path for an edge based on its TabPlacements
-          generateSegmentsForEdge(edge, topology, tabGenerator, random);
-          processed++;
-          const progress = reportTabs(processed, tabTotal);
-          if (progress) await progress;
+      await measureAsync(`Tab generation (${tabConfig.name})`, async () => {
+        const reportTabs = reportFor('tabs');
+        const tabEdges = [...topology.edges.values()].filter((edge) => (
+          edge.heRight !== -1 && edge.tabs && edge.tabs.length > 0
+        ));
+        const tabTotal = tabEdges.length;
+        if (tabTotal === 0) {
+          // Fast tab generators (e.g. NullTabGenerator) still complete this stage
+          const done = reportTabs(1, 1);
+          if (done) await done;
+        } else {
+          const started = reportTabs(0, tabTotal);
+          if (started) await started;
+          let processed = 0;
+          for (const edge of tabEdges) {
+            // use the tab generator to create the segment path for an edge based on its TabPlacements
+            generateSegmentsForEdge(edge, topology, tabGenerator, random);
+            processed++;
+            const progress = reportTabs(processed, tabTotal);
+            if (progress) await progress;
+          }
         }
-      }
+      });
     }
 
     const finished = options.onProgress?.({

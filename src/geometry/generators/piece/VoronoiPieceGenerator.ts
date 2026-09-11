@@ -34,6 +34,7 @@ import {
   customPieceToPolygon,
   registerCustomPieceEdges,
 } from '../../customPieces';
+import { logPerformance, measureAsync, measureSync } from '../../../utils/performance';
 
 
 // Name of this generator, uniquely identifies it from all other PieceGenerators
@@ -447,11 +448,13 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
       if (doAdjust) {
         // Step 1: Apply Algorithm 1 (seed point elimination near whimsies)
         console.log(`${whimsyMode === 'adaptive' ? 'Adaptive' : 'Flow'} mode: adjusting ${points.length} seed points for ${customPieces.length} custom pieces (threshold: ${eliminationThreshold}px)`);
-        adjustedPoints = await adjustSeedPointsForWhimsies(
-          points,
-          customPieces,
-          eliminationThreshold,
-          tick
+        adjustedPoints = await measureAsync('Whimsy seed elimination', () =>
+          adjustSeedPointsForWhimsies(
+            points,
+            customPieces,
+            eliminationThreshold,
+            tick
+          ),
         );
         const eliminated = points.length - adjustedPoints.length;
         const eliminatedPercent = ((eliminated / points.length) * 100).toFixed(1);
@@ -462,16 +465,18 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
         // Step 2: Apply Algorithm 5 (fragment filtering) for adaptive mode
         if (doFilter) {
           console.log(`Adaptive mode: filtering seeds that would create small fragments`);
-          adjustedPoints = await eliminateSeedsCausingSmallFragments(
-            adjustedPoints,
-            customPieces,
-            bounds,
-            boundaryContext,
-            {
-              minFragmentSizeRatio,
-              maxIterations,
-            },
-            tick
+          adjustedPoints = await measureAsync('Whimsy fragment filtering', () =>
+            eliminateSeedsCausingSmallFragments(
+              adjustedPoints,
+              customPieces,
+              bounds,
+              boundaryContext,
+              {
+                minFragmentSizeRatio,
+                maxIterations,
+              },
+              tick
+            ),
           );
           const totalEliminated = points.length - adjustedPoints.length;
           const totalEliminatedPercent = ((totalEliminated / points.length) * 100).toFixed(1);
@@ -482,8 +487,10 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
       if (afterPrep) await afterPrep;
 
       // 1. Generate Voronoi diagram from points, clipped to the rectangular bounds.
-      const delaunay = Delaunay.from(adjustedPoints);
-      const voronoi = delaunay.voronoi([0, 0, width, height]);
+      const voronoi = measureSync('Voronoi diagram', () => {
+        const delaunay = Delaunay.from(adjustedPoints);
+        return delaunay.voronoi([0, 0, width, height]);
+      });
 
       // 2. Initialize data structures for the topology.
       const topology: PuzzleTopology = {
@@ -500,6 +507,7 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
 
       // 3. For each Voronoi cell, clip it against the puzzle boundary and create a piece
       let pieceIdCounter = 0;
+      const cellClipStart = performance.now();
       for (let i = 0; i < adjustedPoints.length; i++) {
         const cellTick = tick();
         if (cellTick) await cellTick;
@@ -597,10 +605,12 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
           return onBoundary;
         });
       }
+      logPerformance('Voronoi cell clipping', performance.now() - cellClipStart);
       const afterCells = snapTo(adjustTotal + filterTotal + cellTotal);
       if (afterCells) await afterCells;
 
       // 4. Add custom pieces as their own pieces in the topology
+      const customInsertStart = performance.now();
       for (const customPiece of customPieces) {
         const customTick = tick();
         if (customTick) await customTick;
@@ -620,6 +630,10 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
             currentHeId = he.next;
           } while (currentHeId !== startHeId);
         }
+        console.log(
+          `Custom piece ${customPiece.id}: ${pieceHalfEdges.length} outline edges, ` +
+          `${halfEdgeTwinMap.size} unmatched edges before linking`,
+        );
 
         // Link edges to neighbors or mark them as part of the boundary
         // Custom piece edges that touch procedural pieces should link to them
@@ -631,6 +645,7 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
           return onBoundary;
         });
       }
+      logPerformance('Custom piece insertion', performance.now() - customInsertStart);
       const afterCustom = snapTo(adjustTotal + filterTotal + cellTotal + customTotal);
       if (afterCustom) await afterCustom;
 
@@ -641,16 +656,18 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
 
         console.log(`Simple+merge mode: post-processing to merge fragments (threshold: ${minFragmentArea.toFixed(0)}px²)`);
 
-        mergeFragmentsIntoNeighbors(
-          topology,
-          minFragmentArea,
-          halfEdgeTwinMap,
-          (p1, p2) => {
-            const onBoundary = isPointNearBoundary(p1, boundaryContext) &&
-              isPointNearBoundary(p2, boundaryContext);
-            return onBoundary;
-          }
-        );
+        measureSync('Fragment merge', () => {
+          mergeFragmentsIntoNeighbors(
+            topology,
+            minFragmentArea,
+            halfEdgeTwinMap,
+            (p1, p2) => {
+              const onBoundary = isPointNearBoundary(p1, boundaryContext) &&
+                isPointNearBoundary(p2, boundaryContext);
+              return onBoundary;
+            }
+          );
+        });
         const mergeTick = tick();
         if (mergeTick) await mergeTick;
       }

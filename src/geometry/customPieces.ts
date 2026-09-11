@@ -157,6 +157,13 @@ export function flattenPath(path: PathCommand[], tolerance = 0.5): Vec2[] {
   return points;
 }
 
+const customPolygonCache = new WeakMap<CustomPiece, { key: string; polygon: Vec2[] }>();
+
+function customPieceCacheKey(piece: CustomPiece): string {
+  const { position, rotation, scale } = piece.transform;
+  return `${position[0]},${position[1]},${rotation},${scale[0]},${scale[1]},${piece.path.length}`;
+}
+
 /**
  * Converts a custom piece to a polygon by applying its transform and flattening its path.
  *
@@ -164,10 +171,17 @@ export function flattenPath(path: PathCommand[], tolerance = 0.5): Vec2[] {
  * @returns An array of points representing the transformed polygon
  */
 export function customPieceToPolygon(piece: CustomPiece): Vec2[] {
+  const key = customPieceCacheKey(piece);
+  const cached = customPolygonCache.get(piece);
+  if (cached?.key === key) {
+    return cached.polygon;
+  }
+
   // First, flatten the path to get the base polygon
   const basePolygon = flattenPath(piece.path);
 
   if (basePolygon.length === 0) {
+    customPolygonCache.set(piece, { key, polygon: [] });
     return [];
   }
 
@@ -184,6 +198,7 @@ export function customPieceToPolygon(piece: CustomPiece): Vec2[] {
     applyTransformToPoint(point, center, piece.transform)
   );
 
+  customPolygonCache.set(piece, { key, polygon: transformedPolygon });
   return transformedPolygon;
 }
 
