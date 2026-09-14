@@ -1,6 +1,15 @@
 Change Log
 ==========
 
+## Version 0.6.3
+
+Curves in whimsy outlines are no longer flattened to polygon approximations. For
+complicated whimsies, this dramatically reduces the size and complexity of the
+export file, and simplifies laser cutting.
+
+Added a visual ruler to the puzzle canvas to make it easier to estimate final
+puzzle and whimsy sizes.
+
 ## Version 0.6.2
 
 Added a progress bar to lengthy rebuilds. Optimize geometry calculations to reduce
@@ -17,12 +26,10 @@ path in the file must be closed or the import will be rejected. Any internal det
 that aren't black will have their colors preserved in the output. Fixed pinch zoom
 and dragging whimsy handles on retina displays.
 
-
 ## Version 0.6.0
 
 Overhauled the UI to make managing settings less awkward. Added a lot of help text.
 Better mobile support.
-
 
 ## Version 0.5.1
 
@@ -30,7 +37,6 @@ Added the ability to save and load puzzle configurations as JSON files, allowing
 to preserve and share their designs. This feature includes support for persistent
 manual seed point edits and automatically recovers the last session's state using
 local storage.
-
 
 ## Version 0.5.0
 
