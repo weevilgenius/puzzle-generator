@@ -126,3 +126,62 @@ test('unsupported SVG features produce visible warnings', async ({ page }) => {
   await expect(warning).toContainText('Stylesheet-based colors');
   await expect(warning).toContainText('unsupported detail stroke');
 });
+
+test('Hector retains curved outline cuts and all details after generation', async ({ page }, testInfo) => {
+  await openEditor(page);
+  await page.locator('.custom-piece-editor input[type=file]').setInputFiles('tests/fixtures/whimsies/hector.svg');
+  await expect(page.locator('.whimsy-preview path')).toHaveCount(66);
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('button', { name: 'Close settings' }).click();
+  const button = page.getByRole('button', { name: 'Download SVG', exact: true });
+  await expect(button).toBeEnabled();
+  await expect(page.locator('.rebuild-progress-overlay')).toHaveCount(0);
+  const downloaded = page.waitForEvent('download');
+  await button.click();
+  const output = readFileSync(await (await downloaded).path(), 'utf8');
+  const paths = await page.evaluate((content) => [...new DOMParser().parseFromString(content, 'image/svg+xml').querySelectorAll('path')]
+    .map((path) => path.getAttribute('d') ?? ''), output);
+  expect(paths).toHaveLength(66);
+  expect(paths[0].match(/ C /g)!.length).toBeGreaterThan(52);
+  expect(paths[0].match(/M /g)!.length).toBeLessThan(1000);
+  await page.screenshot({ path: `screenshots/hector-curves-${testInfo.project.name}.png`, fullPage: true });
+});
+
+test('an enclosed whimsy shows a nonblocking warning and keeps its curved cut', async ({ page }, testInfo) => {
+  await page.emulateMedia({ colorScheme: testInfo.project.name === 'desktop-chromium' ? 'dark' : 'light' });
+  await page.addInitScript(() => {
+    localStorage.setItem('puzzleGenerator:autoSave', JSON.stringify({
+      version: '1.0.0', created: new Date().toISOString(),
+      puzzle: {
+        seed: 42, dimensions: { width: 200, height: 200 }, pieceSize: 100,
+        visual: { color: '#333333', drawPoints: false, pointColor: '#0000FF' },
+        border: { shape: 'rectangle', cornerRadius: 50 },
+        generators: {
+          point: { name: 'PoissonPointGenerator' }, piece: { name: 'RectangularPieceGenerator' },
+          placement: { name: 'SimpleTabPlacementStrategy' }, tab: { name: 'NullTabGenerator' },
+        },
+        customPieces: [{
+          id: 'enclosed', created: '', name: 'Enclosed circle',
+          transform: { position: [50, 50], rotation: 0, scale: [1, 1] },
+          path: [
+            { type: 'move', p: [0, 15] },
+            { type: 'bezier', p1: [0, 6.716], p2: [6.716, 0], p3: [15, 0] },
+            { type: 'bezier', p1: [23.284, 0], p2: [30, 6.716], p3: [30, 15] },
+            { type: 'bezier', p1: [30, 23.284], p2: [23.284, 30], p3: [15, 30] },
+            { type: 'bezier', p1: [6.716, 30], p2: [0, 23.284], p3: [0, 15] },
+          ],
+        }],
+      },
+    }));
+  });
+  await page.goto('/');
+  await expect(page.locator('.whimsy-hole-warning')).toBeVisible();
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download SVG', exact: true }).click();
+  const output = readFileSync(await (await download).path(), 'utf8');
+  expect(output.match(/ C /g)).toHaveLength(4);
+  await page.screenshot({ path: `screenshots/whimsy-hole-${testInfo.project.name}.png`, fullPage: true });
+  await page.getByRole('button', { name: 'Whimsies', exact: true }).click();
+  await page.locator('wa-checkbox.custom-piece-tile-visibility').click();
+  await expect(page.locator('.whimsy-hole-warning')).toHaveCount(0);
+});

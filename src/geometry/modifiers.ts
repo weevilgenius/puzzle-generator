@@ -9,7 +9,7 @@ import type {
   VertexID,
 } from './types';
 import { TabPlacementStrategyRegistry, TabGeneratorRegistry } from './generators/Generator';
-import { generateSegmentsForEdge, getPieceBounds } from './utils';
+import { generateSegmentsForEdge, getPieceBounds, invertSegments, calculateSegmentsBounds } from './utils';
 import { createRectangleBorder } from './borderShapes';
 import mulberry32 from "../utils/mulberry";
 
@@ -49,33 +49,38 @@ export function moveVertex(
 
   const affectedPieceIDs = new Set<PieceID>();
   const delta: Vec2 = [newPos[0] - oldPos[0], newPos[1] - oldPos[1]];
-
-  // --- 4. Update the geometry of all affected half-edges ---
-  for (const departingEdge of departingEdges) {
-    // The origin of the departing edge is now the new position.
-    departingEdge.origin = newPos;
-    affectedPieceIDs.add(departingEdge.piece);
-
-    // Now we must update the half-edge that *flows into* this vertex.
-    // This is the predecessor in the piece's boundary loop.
-    const predecessorEdge = puzzle.halfEdges.get(departingEdge.prev);
-
-    if (predecessorEdge?.segments) {
-      const lastSegment = predecessorEdge.segments[predecessorEdge.segments.length - 1];
-
-      // Update the endpoint of the predecessor's final segment.
-      if (lastSegment.type === 'line') {
-        lastSegment.p = newPos;
-      } else { // 'bezier'
-        lastSegment.p3 = newPos;
-        // For a smooth transition, we translate the control points by the same
-        // amount as the endpoint. More sophisticated logic could be used here
-        // for better curve preservation.
-        lastSegment.p1 = [lastSegment.p1[0] + delta[0], lastSegment.p1[1] + delta[1]];
-        lastSegment.p2 = [lastSegment.p2[0] + delta[0], lastSegment.p2[1] + delta[1]];
+  // Update each physical curve once, then derive the reversed twin.
+  for (const edge of puzzle.edges.values()) {
+    const he = puzzle.halfEdges.get(edge.heLeft)!;
+    const end = puzzle.halfEdges.get(he.next)!.origin;
+    const starts = he.origin[0] === oldPos[0] && he.origin[1] === oldPos[1];
+    const ends = end[0] === oldPos[0] && end[1] === oldPos[1];
+    if (!starts && !ends) continue;
+    const segments = he.segments;
+    if (segments?.length) {
+      if (starts && segments[0].type === 'bezier') {
+        segments[0].p1 = [segments[0].p1[0] + delta[0], segments[0].p1[1] + delta[1]];
       }
-      affectedPieceIDs.add(predecessorEdge.piece);
+      const last = segments[segments.length - 1];
+      if (ends) {
+        if (last.type === 'bezier') {
+          last.p2 = [last.p2[0] + delta[0], last.p2[1] + delta[1]];
+          last.p3 = newPos;
+        } else {
+          last.p = newPos;
+        }
+      }
+      const twin = puzzle.halfEdges.get(he.twin);
+      if (twin) twin.segments = invertSegments(segments, starts ? newPos : he.origin);
     }
+    affectedPieceIDs.add(he.piece);
+    const twin = puzzle.halfEdges.get(he.twin);
+    if (twin) affectedPieceIDs.add(twin.piece);
+    edge.bounds = calculateSegmentsBounds(starts ? newPos : he.origin, segments ?? [{ type: 'line', p: ends ? newPos : end }]);
+  }
+  for (const he of departingEdges) {
+    he.origin = newPos;
+    affectedPieceIDs.add(he.piece);
   }
 
   // --- 5. Rebuild any tabs affected by the vertex move ---
@@ -153,7 +158,9 @@ export function regenerateAffectedTabs(
   for (const edge of affectedEdges) {
     // only add tabs to internal edges
     const isInternal = edge.heRight !== -1;
-    if (isInternal) {
+    const leftPiece = puzzle.pieces.get(puzzle.halfEdges.get(edge.heLeft)!.piece);
+    const rightPiece = puzzle.pieces.get(puzzle.halfEdges.get(edge.heRight)?.piece ?? -1);
+    if (isInternal && !leftPiece?.isCustomPiece && !rightPiece?.isCustomPiece) {
       // remove any existing segments
       const he1 = puzzle.halfEdges.get(edge.heLeft);
       if (he1) {

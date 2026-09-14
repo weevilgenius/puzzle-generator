@@ -413,3 +413,13 @@
     font-size: 1.4rem;
   }
 }
+
+.puzzle-page .whimsy-hole-warning {
+  flex: none;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--wa-color-warning-border-normal);
+  border-radius: var(--wa-border-radius-m);
+  color: var(--wa-color-warning-on-quiet);
+  background: var(--wa-color-warning-fill-quiet);
+}

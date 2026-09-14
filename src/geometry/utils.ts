@@ -119,6 +119,8 @@ function pointNearSegmentGrid(
 
 /** Serializable version of PuzzleTopology */
 export interface PuzzleTopologySerializable {
+  /** Interior rings unsupported by the piece model. */
+  unsupportedHoles?: Vec2[];
   vertices: Vertex[];
   pieces: [PieceID, Piece][];
   edges: [EdgeID, Edge][];
@@ -140,6 +142,7 @@ export function serializeTopology(topology: PuzzleTopology): PuzzleTopologySeria
     halfEdges: Array.from(topology.halfEdges.entries()),
     boundary: topology.boundary,
     borderPath: topology.borderPath,
+    unsupportedHoles: topology.unsupportedHoles,
   };
 }
 
@@ -152,6 +155,7 @@ export function deserializeTopology(serialized: PuzzleTopologySerializable): Puz
     halfEdges: new Map(serialized.halfEdges),
     boundary: serialized.boundary,
     borderPath: serialized.borderPath,
+    unsupportedHoles: serialized.unsupportedHoles,
   };
 }
 
@@ -384,7 +388,7 @@ export function calculateCentroid(polygon: Vec2[]): Vec2 {
 }
 
 /**
- * Extracts the polygon vertices for a piece by traversing its half-edge loop.
+ * Samples a piece boundary for polygon-based measurements without changing its topology.
  * @param piece The piece to extract vertices from.
  * @param topology The puzzle topology.
  * @returns Array of vertices in counter-clockwise order.
@@ -401,6 +405,18 @@ export function extractPiecePolygon(piece: Piece, topology: PuzzleTopology): Vec
     if (!he) break;
 
     vertices.push(he.origin);
+    let start = he.origin;
+    for (const segment of he.segments ?? []) {
+      if (segment.type === 'bezier') {
+        const curve = new Bezier([...start, ...segment.p1, ...segment.p2, ...segment.p3]);
+        // Samples are for measurements only; the half-edge retains the original cubic.
+        vertices.push(...curve.getLUT(32).slice(1).map((p): Vec2 => [p.x, p.y]));
+        start = segment.p3;
+      } else {
+        vertices.push(segment.p);
+        start = segment.p;
+      }
+    }
     currentHeId = he.next;
   } while (currentHeId !== startHeId && currentHeId !== -1);
 
@@ -669,149 +685,63 @@ function distanceToSegment(point: Vec2, segStart: Vec2, segEnd: Vec2): number {
 }
 
 /**
- * Merges two pieces into one by performing a polygon union and updating the topology.
- * This function:
- * 1. Extracts polygons for both pieces
- * 2. Performs a union operation
- * 3. Removes old half-edges and edges
- * 4. Creates a new half-edge loop for the merged polygon
- * 5. Re-links to neighboring pieces
- *
- * @param pieceAId The ID of the first piece (will be kept).
- * @param pieceBId The ID of the second piece (will be removed).
- * @param topology The puzzle topology to modify.
- * @param halfEdgeTwinMap The map of unmatched half-edges for re-linking.
- * @param isBoundaryEdgeFn Callback to determine if an edge is on the puzzle boundary.
- * @returns True if merge was successful, false otherwise.
+ * Merge neighboring pieces by removing their shared cuts and stitching surviving edges.
+ * Returns false and records a diagnostic, preserving all cuts, if the union needs multiple loops.
  */
 export function mergePieces(
   pieceAId: PieceID,
   pieceBId: PieceID,
   topology: PuzzleTopology,
-  halfEdgeTwinMap: Map<string, HalfEdgeID>,
-  isBoundaryEdgeFn: (p1: Vec2, p2: Vec2) => boolean
 ): boolean {
   const pieceA = topology.pieces.get(pieceAId);
   const pieceB = topology.pieces.get(pieceBId);
-
-  if (!pieceA || !pieceB) {
-    console.warn(`  Merge failed: piece not found (A: ${pieceA ? 'ok' : 'missing'}, B: ${pieceB ? 'ok' : 'missing'})`);
+  if (!pieceA || !pieceB || pieceA === pieceB || pieceA.isCustomPiece || pieceB.isCustomPiece) return false;
+  const all = [...collectPieceHalfEdges(pieceA, topology), ...collectPieceHalfEdges(pieceB, topology)];
+  const removed = new Set(all.filter((he) => {
+    const twin = topology.halfEdges.get(he.twin);
+    return twin && (twin.piece === pieceAId || twin.piece === pieceBId);
+  }).map((he) => he.id));
+  if (!removed.size) return false;
+  const surviving = all.filter((he) => !removed.has(he.id));
+  if (!surviving.length) return false;
+  const successors = new Map<HalfEdgeID, HalfEdgeID>();
+  for (const he of surviving) {
+    let next = topology.halfEdges.get(he.next)!;
+    const visited = new Set<HalfEdgeID>();
+    while (removed.has(next.id)) {
+      if (visited.has(next.id)) return false;
+      visited.add(next.id);
+      next = topology.halfEdges.get(topology.halfEdges.get(next.twin)!.next)!;
+    }
+    successors.set(he.id, next.id);
+  }
+  const visited = new Set<HalfEdgeID>();
+  let current = surviving[0].id;
+  while (!visited.has(current)) {
+    visited.add(current);
+    const next = successors.get(current);
+    if (next === undefined) return false;
+    current = next;
+  }
+  if (current !== surviving[0].id || visited.size !== surviving.length) {
+    // Keep both original pieces: silently dropping a ring would change the cuts.
+    (topology.unsupportedHoles ??= []).push(pieceB.site);
     return false;
   }
-
-  // 1. Extract polygons for both pieces
-  const polyA = extractPiecePolygon(pieceA, topology);
-  const polyB = extractPiecePolygon(pieceB, topology);
-
-  if (polyA.length < 3 || polyB.length < 3) {
-    console.warn(`  Merge failed: invalid polygons (A: ${polyA.length} verts, B: ${polyB.length} verts)`);
-    return false;
+  for (const he of surviving) {
+    he.piece = pieceAId;
+    he.next = successors.get(he.id)!;
+    topology.halfEdges.get(he.next)!.prev = he.id;
   }
-
-  // 2. Union them using martinez polygon clipping
-  const martinezA: martinez.Polygon = [polyA.map((p) => [p[0], p[1]] as const)];
-  const martinezB: martinez.Polygon = [polyB.map((p) => [p[0], p[1]] as const)];
-
-  const union = martinez.union(martinezA, martinezB);
-
-  if (!union || union.length === 0) {
-    console.warn(`  Merge failed: union returned empty/null (polyA: ${polyA.length} verts, polyB: ${polyB.length} verts)`);
-    return false;
+  for (const id of removed) topology.halfEdges.delete(id);
+  for (const [id, edge] of topology.edges) {
+    if (removed.has(edge.heLeft) || removed.has(edge.heRight)) topology.edges.delete(id);
   }
-
-  // Martinez returns either Polygon or MultiPolygon
-  // MultiPolygon: [[[[x,y]...]...]]
-  // Polygon: [[[x,y]...]...]
-  let mergedPolygon: Vec2[];
-
-  if (isMartinezPolygon(union)) {
-    // It's a Polygon - extract the outer ring (first element)
-    mergedPolygon = union[0].map((p) => [p[0], p[1]] as Vec2);
-  } else {
-    // It's a MultiPolygon - extract outer ring of first polygon
-    const firstPolygon = union[0];
-    if (!firstPolygon || !Array.isArray(firstPolygon[0])) {
-      console.warn(`  Merge failed: unexpected union format`);
-      return false;
-    }
-    mergedPolygon = firstPolygon[0].map((p) => [p[0], p[1]] as Vec2);
-  }
-
-  if (mergedPolygon.length < 3) {
-    console.warn(`  Merge failed: merged polygon has ${mergedPolygon.length} vertices`);
-    return false;
-  }
-
-  // 3. Collect all half-edges to remove
-  const halfEdgesToRemove = [
-    ...collectPieceHalfEdges(pieceA, topology),
-    ...collectPieceHalfEdges(pieceB, topology),
-  ];
-
-  // 4. For each half-edge to remove, handle its twin and clean up the map
-  const key = (p1: Vec2, p2: Vec2) => `${p1[0]},${p1[1]}-${p2[0]},${p2[1]}`;
-
-  for (const he of halfEdgesToRemove) {
-    // Remove this half-edge's entry from the twin map (if it exists)
-    const nextHe = topology.halfEdges.get(he.next);
-    if (nextHe) {
-      const selfKey = key(he.origin, nextHe.origin);
-      halfEdgeTwinMap.delete(selfKey);
-    }
-
-    if (he.twin !== -1) {
-      const twin = topology.halfEdges.get(he.twin);
-      if (twin && twin.piece !== pieceAId && twin.piece !== pieceBId) {
-        // This twin belongs to a different piece (neighbor), unlink it
-        twin.twin = -1;
-
-        // Add twin back to map for re-linking
-        const nextOfTwin = topology.halfEdges.get(twin.next);
-        if (nextOfTwin) {
-          const edgeKey = key(twin.origin, nextOfTwin.origin);
-          halfEdgeTwinMap.set(edgeKey, twin.id);
-        }
-      }
-    }
-  }
-
-  // 5. Remove old half-edges and their associated edges
-  const edgeIdByHalfEdge = new Map<HalfEdgeID, EdgeID>();
-  for (const [edgeId, edge] of topology.edges) {
-    edgeIdByHalfEdge.set(edge.heLeft, edgeId);
-    if (edge.heRight !== -1) {
-      edgeIdByHalfEdge.set(edge.heRight, edgeId);
-    }
-  }
-  const removedEdgeIds = new Set<EdgeID>();
-  for (const he of halfEdgesToRemove) {
-    const edgeId = edgeIdByHalfEdge.get(he.id);
-    if (edgeId !== undefined) {
-      topology.edges.delete(edgeId);
-      removedEdgeIds.add(edgeId);
-    }
-    topology.halfEdges.delete(he.id);
-  }
-  if (removedEdgeIds.size > 0) {
-    topology.boundary = topology.boundary.filter((id) => !removedEdgeIds.has(id));
-  }
-
-  // 6. Remove pieceB from the topology
+  topology.boundary = topology.boundary.filter((id) => topology.edges.has(id));
   topology.pieces.delete(pieceBId);
-
-  // 7. Create new half-edge loop for the merged polygon
-  const newHalfEdges = createHalfEdgeLoop(mergedPolygon, pieceAId, topology);
-
-  if (newHalfEdges.length === 0) return false;
-
-  // 8. Update pieceA with new geometry
-  pieceA.halfEdge = newHalfEdges[0].id;
-  pieceA.bounds = polygonBounds(mergedPolygon);
-  pieceA.site = calculateCentroid(mergedPolygon);
-
-  // 9. Link new half-edges to neighbors
-  linkAndCreateEdges(newHalfEdges, topology, halfEdgeTwinMap, isBoundaryEdgeFn);
-
+  pieceA.halfEdge = surviving[0].id;
+  pieceA.bounds = getPieceBounds(pieceA, topology);
+  pieceA.site = calculateCentroid(extractPiecePolygon(pieceA, topology));
   return true;
 }
 
@@ -821,15 +751,11 @@ export function mergePieces(
  *
  * @param topology The puzzle topology to process.
  * @param minFragmentArea Minimum area threshold - fragments smaller than this will be merged.
- * @param halfEdgeTwinMap The map of unmatched half-edges for re-linking after merges.
- * @param isBoundaryEdgeFn Callback to determine if an edge is on the puzzle boundary.
  * @returns The number of fragments merged.
  */
 export function mergeFragmentsIntoNeighbors(
   topology: PuzzleTopology,
   minFragmentArea: number,
-  halfEdgeTwinMap: Map<string, HalfEdgeID>,
-  isBoundaryEdgeFn: (p1: Vec2, p2: Vec2) => boolean
 ): number {
   // Collect fragments to merge
   const fragmentsToMerge: { pieceId: PieceID; area: number }[] = [];
@@ -901,8 +827,6 @@ export function mergeFragmentsIntoNeighbors(
       targetPieceId,
       fragment.pieceId,
       topology,
-      halfEdgeTwinMap,
-      isBoundaryEdgeFn
     );
 
     if (success) {
@@ -1291,6 +1215,7 @@ export function createHalfEdgeLoop(
  * @param halfEdges - The list of half-edges to process.
  * @param topology - The main puzzle topology object, which will be mutated.
  * @param halfEdgeTwinMap - The map used to look up twin half-edges.
+ * @param tolerance - Endpoint matching tolerance; reconciled curved topology uses numerical epsilon.
  * @param isBoundaryEdgeFn - A callback function that returns true if a given edge should be treated as part of the puzzle's outer boundary.
  */
 export function linkAndCreateEdges(
@@ -1298,10 +1223,11 @@ export function linkAndCreateEdges(
   topology: PuzzleTopology,
   halfEdgeTwinMap: Map<string, HalfEdgeID>,
   isBoundaryEdgeFn: (p1: Vec2, p2: Vec2) => boolean,
+  tolerance = 0.1,
 ): void {
   const key = (p1: Vec2, p2: Vec2) => `${p1[0]},${p1[1]}-${p2[0]},${p2[1]}`;
   const numEdges = halfEdges.length;
-  const PROXIMITY_THRESHOLD = 0.1; // 0.1 pixel tolerance for matching edges
+  const PROXIMITY_THRESHOLD = tolerance;
   const thresholdSq = PROXIMITY_THRESHOLD * PROXIMITY_THRESHOLD;
   type TwinCandidate = { mapKey: string; candidateId: HalfEdgeID };
   const originGrid: SpatialGrid<TwinCandidate> = new Map();
@@ -1322,7 +1248,20 @@ export function linkAndCreateEdges(
 
     const twinKey = key(p2, p1);
     const selfKey = key(p1, p2);
+    const matches = (candidate: HalfEdge): boolean => {
+      if (candidate.piece === he.piece || candidate.twin !== -1) return false;
+      if (!he.segments?.length && !candidate.segments?.length) return true;
+      const reversed = invertSegments(candidate.segments ?? [{ type: 'line', p: topology.halfEdges.get(candidate.next)!.origin }], candidate.origin);
+      const segments = he.segments ?? [{ type: 'line', p: p2 }];
+      return segments.length === reversed.length && segments.every((segment, index) => {
+        const other = reversed[index];
+        return segment.type === 'bezier' && other.type === 'bezier'
+          ? distanceSq(segment.p1, other.p1) < 1e-10 && distanceSq(segment.p2, other.p2) < 1e-10 && distanceSq(segment.p3, other.p3) < 1e-10
+          : segment.type === 'line' && other.type === 'line' && distanceSq(segment.p, other.p) < 1e-10;
+      });
+    };
     let twinId = halfEdgeTwinMap.get(twinKey);
+    if (twinId !== undefined && !matches(topology.halfEdges.get(twinId)!)) twinId = undefined;
 
     // If exact match not found, search nearby unmatched origins instead of
     // comparing against every unmatched edge.
@@ -1335,7 +1274,7 @@ export function linkAndCreateEdges(
         if (!nextOfCandidate) continue;
         const cp1 = candidateHe.origin;
         const cp2 = nextOfCandidate.origin;
-        if (distanceSq(p1, cp2) < thresholdSq && distanceSq(p2, cp1) < thresholdSq) {
+        if (distanceSq(p1, cp2) < thresholdSq && distanceSq(p2, cp1) < thresholdSq && matches(candidateHe)) {
           twinId = candidate.candidateId;
           halfEdgeTwinMap.delete(candidate.mapKey);
           break;
@@ -1349,20 +1288,22 @@ export function linkAndCreateEdges(
     if (twinId !== undefined) {
       // Found a twin! This is an internal edge.
       const twinHe = topology.halfEdges.get(twinId)!;
+      if (twinHe.segments?.length) he.segments = invertSegments(twinHe.segments, twinHe.origin);
       he.twin = twinHe.id;
       twinHe.twin = he.id;
-      edge = { id: edgeId, heLeft: twinHe.id, heRight: he.id, bounds: polygonBounds([p1, p2]) };
+      edge = { id: edgeId, heLeft: twinHe.id, heRight: he.id, bounds: calculateSegmentsBounds(p1, he.segments ?? [{ type: 'line', p: p2 }]) };
       if (halfEdgeTwinMap.get(twinKey) === twinId) {
         halfEdgeTwinMap.delete(twinKey);
       }
     } else {
       // No twin found.
-      halfEdgeTwinMap.set(selfKey, he.id);
-      indexCandidate(selfKey, he.id);
+      const unmatchedKey = halfEdgeTwinMap.has(selfKey) ? `${selfKey}:${he.id}` : selfKey;
+      halfEdgeTwinMap.set(unmatchedKey, he.id);
+      indexCandidate(unmatchedKey, he.id);
 
       if (isBoundaryEdgeFn(p1, p2)) {
         // This is a new edge on the puzzle's custom boundary.
-        edge = { id: edgeId, heLeft: he.id, heRight: -1, bounds: polygonBounds([p1, p2]) };
+        edge = { id: edgeId, heLeft: he.id, heRight: -1, bounds: calculateSegmentsBounds(p1, he.segments ?? [{ type: 'line', p: p2 }]) };
         topology.boundary.push(edgeId);
       } else {
         // It's an internal grid edge, wait for its neighbor to find it.

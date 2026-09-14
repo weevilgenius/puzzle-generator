@@ -240,6 +240,8 @@ export interface WhimsyInternalPath {
  * This is the final output of the generator sequence.
  */
 export interface PuzzleTopology {
+  /** Interior rings omitted by the single-loop piece model; shown as nonblocking diagnostics. */
+  unsupportedHoles?: Vec2[];
   /** Vertexes of puzzle pieces */
   vertices: Vertex[];
   /** Indexed lookup table of pieces */

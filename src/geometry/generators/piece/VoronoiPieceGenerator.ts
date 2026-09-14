@@ -15,7 +15,6 @@ import type {
 import {
   linkAndCreateEdges,
   isPointInPolygon,
-  polygonArea,
   mergeFragmentsIntoNeighbors,
 } from '../../utils';
 import type { GeneratorUIMetadata } from '../../ui_types';
@@ -28,12 +27,12 @@ import {
   type BoundaryContext,
 } from "./PieceGeneratorHelpers";
 import {
-  checkCustomPieceOverlap,
-  subtractCustomPieces,
-  createPieceFromCustom,
   customPieceToPolygon,
   registerCustomPieceEdges,
 } from '../../customPieces';
+import { subtractCustomPieces, integrateCurvedWhimsies } from '../../curvedWhimsies';
+import { createGeometryPaperContext, disposeGeometryPaperContext } from '../../../utils/paperScope';
+import type { PaperContext } from '../../../utils/paperScope';
 import { logPerformance, measureAsync, measureSync } from '../../../utils/performance';
 
 
@@ -295,6 +294,7 @@ async function eliminateSeedsCausingSmallFragments(
     minFragmentSizeRatio: number;
     maxIterations: number;
   },
+  ctx: PaperContext,
   onItem?: () => void | Promise<void>
 ): Promise<Vec2[]> {
   const { minFragmentSizeRatio, maxIterations } = options;
@@ -339,31 +339,10 @@ async function eliminateSeedsCausingSmallFragments(
         continue;
       }
 
-      // Subtract custom pieces from the cell
-      if (customPieces.length > 0) {
-        const overlappingPieces = checkCustomPieceOverlap(clippedCell, customPieces);
-
-        if (overlappingPieces.length > 0) {
-          const fragments = subtractCustomPieces(clippedCell, overlappingPieces);
-
-          // Check if all fragments meet minimum size
-          if (!fragments || fragments.length === 0) {
-            // Cell fully contained in custom pieces
-            eliminatedCount++;
-            continue;
-          }
-
-          // Check if any fragment is too small
-          const hasSmallFragment = fragments.some((frag) => {
-            const area = polygonArea(frag);
-            return area < minFragmentArea;
-          });
-
-          if (hasSmallFragment) {
-            eliminatedCount++;
-            continue;
-          }
-        }
+      const fragments = subtractCustomPieces(clippedCell, customPieces, ctx);
+      if (!fragments.length || fragments.some((fragment) => fragment.area < minFragmentArea)) {
+        eliminatedCount++;
+        continue;
       }
 
       // This seed is valid, keep it
@@ -413,280 +392,188 @@ export const VoronoiPieceGeneratorFactory: GeneratorFactory<PieceGenerator> = (b
      */
     async generatePieces(points: Vec2[], runtimeOpts: PieceGeneratorRuntimeOptions): Promise<PuzzleTopology> {
       const { border, customPieces = [], onProgress } = runtimeOpts;
+      const ctx = customPieces.length ? createGeometryPaperContext() : undefined;
+      try {
 
-      // Note: Lloyd's relaxation could be performed here to create more uniform
-      // piece shapes. This would involve creating the Voronoi diagram, calculating
-      // the centroid of each cell, moving the input point to that centroid, and
-      // repeating for a number of iterations before proceeding.
+        // Note: Lloyd's relaxation could be performed here to create more uniform
+        // piece shapes. This would involve creating the Voronoi diagram, calculating
+        // the centroid of each cell, moving the input point to that centroid, and
+        // repeating for a number of iterations before proceeding.
 
-      console.log(`VoronoiPieceGenerator using dimensions ${width}x${height}`);
+        console.log(`VoronoiPieceGenerator using dimensions ${width}x${height}`);
 
-      const doAdjust = customPieces.length > 0 && (whimsyMode === 'flow' || whimsyMode === 'adaptive');
-      const doFilter = doAdjust && whimsyMode === 'adaptive';
-      const doMerge = customPieces.length > 0 && whimsyMode === 'simple+merge';
-      const adjustTotal = doAdjust ? points.length : 0;
-      const filterTotal = doFilter ? points.length * maxIterations : 0;
-      const cellTotal = Math.max(1, points.length);
-      const customTotal = customPieces.length;
-      const mergeTotal = doMerge ? 1 : 0;
-      const total = adjustTotal + filterTotal + cellTotal + customTotal + mergeTotal;
-      let processed = 0;
-      const report = (): void | Promise<void> => onProgress?.(processed, total);
-      const tick = (): void | Promise<void> => {
-        processed = Math.min(processed + 1, total);
-        return report();
-      };
-      const snapTo = (value: number): void | Promise<void> => {
-        processed = value;
-        return report();
-      };
-      const started = onProgress?.(0, total);
-      if (started) await started;
+        const doAdjust = customPieces.length > 0 && (whimsyMode === 'flow' || whimsyMode === 'adaptive');
+        const doFilter = doAdjust && whimsyMode === 'adaptive';
+        const doMerge = customPieces.length > 0 && whimsyMode === 'simple+merge';
+        const adjustTotal = doAdjust ? points.length : 0;
+        const filterTotal = doFilter ? points.length * maxIterations : 0;
+        const cellTotal = Math.max(1, points.length);
+        const customTotal = customPieces.length;
+        const mergeTotal = doMerge ? 1 : 0;
+        const total = adjustTotal + filterTotal + cellTotal + customTotal + mergeTotal;
+        let processed = 0;
+        const report = (): void | Promise<void> => onProgress?.(processed, total);
+        const tick = (): void | Promise<void> => {
+          processed = Math.min(processed + 1, total);
+          return report();
+        };
+        const snapTo = (value: number): void | Promise<void> => {
+          processed = value;
+          return report();
+        };
+        const started = onProgress?.(0, total);
+        if (started) await started;
 
-      // Adjust seed points based on whimsy mode
-      let adjustedPoints = points;
-      if (doAdjust) {
+        // Adjust seed points based on whimsy mode
+        let adjustedPoints = points;
+        if (doAdjust) {
         // Step 1: Apply Algorithm 1 (seed point elimination near whimsies)
-        console.log(`${whimsyMode === 'adaptive' ? 'Adaptive' : 'Flow'} mode: adjusting ${points.length} seed points for ${customPieces.length} custom pieces (threshold: ${eliminationThreshold}px)`);
-        adjustedPoints = await measureAsync('Whimsy seed elimination', () =>
-          adjustSeedPointsForWhimsies(
-            points,
-            customPieces,
-            eliminationThreshold,
-            tick
-          ),
-        );
-        const eliminated = points.length - adjustedPoints.length;
-        const eliminatedPercent = ((eliminated / points.length) * 100).toFixed(1);
-        console.log(`Seed elimination: ${adjustedPoints.length} seed points remaining (eliminated ${eliminated} / ${eliminatedPercent}%)`);
-        const adjusted = snapTo(adjustTotal);
-        if (adjusted) await adjusted;
-
-        // Step 2: Apply Algorithm 5 (fragment filtering) for adaptive mode
-        if (doFilter) {
-          console.log(`Adaptive mode: filtering seeds that would create small fragments`);
-          adjustedPoints = await measureAsync('Whimsy fragment filtering', () =>
-            eliminateSeedsCausingSmallFragments(
-              adjustedPoints,
+          console.log(`${whimsyMode === 'adaptive' ? 'Adaptive' : 'Flow'} mode: adjusting ${points.length} seed points for ${customPieces.length} custom pieces (threshold: ${eliminationThreshold}px)`);
+          adjustedPoints = await measureAsync('Whimsy seed elimination', () =>
+            adjustSeedPointsForWhimsies(
+              points,
               customPieces,
-              bounds,
-              boundaryContext,
-              {
-                minFragmentSizeRatio,
-                maxIterations,
-              },
+              eliminationThreshold,
               tick
             ),
           );
-          const totalEliminated = points.length - adjustedPoints.length;
-          const totalEliminatedPercent = ((totalEliminated / points.length) * 100).toFixed(1);
-          console.log(`Adaptive mode: ${adjustedPoints.length} seed points remaining after all filtering (total eliminated ${totalEliminated} / ${totalEliminatedPercent}%)`);
+          const eliminated = points.length - adjustedPoints.length;
+          const eliminatedPercent = ((eliminated / points.length) * 100).toFixed(1);
+          console.log(`Seed elimination: ${adjustedPoints.length} seed points remaining (eliminated ${eliminated} / ${eliminatedPercent}%)`);
+          const adjusted = snapTo(adjustTotal);
+          if (adjusted) await adjusted;
+
+          // Step 2: Apply Algorithm 5 (fragment filtering) for adaptive mode
+          if (doFilter) {
+            console.log(`Adaptive mode: filtering seeds that would create small fragments`);
+            adjustedPoints = await measureAsync('Whimsy fragment filtering', () =>
+              eliminateSeedsCausingSmallFragments(
+                adjustedPoints,
+                customPieces,
+                bounds,
+                boundaryContext,
+                {
+                  minFragmentSizeRatio,
+                  maxIterations,
+                },
+                ctx!,
+                tick
+              ),
+            );
+            const totalEliminated = points.length - adjustedPoints.length;
+            const totalEliminatedPercent = ((totalEliminated / points.length) * 100).toFixed(1);
+            console.log(`Adaptive mode: ${adjustedPoints.length} seed points remaining after all filtering (total eliminated ${totalEliminated} / ${totalEliminatedPercent}%)`);
+          }
         }
-      }
-      const afterPrep = snapTo(adjustTotal + filterTotal);
-      if (afterPrep) await afterPrep;
+        const afterPrep = snapTo(adjustTotal + filterTotal);
+        if (afterPrep) await afterPrep;
 
-      // 1. Generate Voronoi diagram from points, clipped to the rectangular bounds.
-      const voronoi = measureSync('Voronoi diagram', () => {
-        const delaunay = Delaunay.from(adjustedPoints);
-        return delaunay.voronoi([0, 0, width, height]);
-      });
+        // 1. Generate Voronoi diagram from points, clipped to the rectangular bounds.
+        const voronoi = measureSync('Voronoi diagram', () => {
+          const delaunay = Delaunay.from(adjustedPoints);
+          return delaunay.voronoi([0, 0, width, height]);
+        });
 
-      // 2. Initialize data structures for the topology.
-      const topology: PuzzleTopology = {
-        vertices: [],
-        pieces: new Map<PieceID, Piece>(),
-        edges: new Map<EdgeID, Edge>(),
-        halfEdges: new Map<HalfEdgeID, HalfEdge>(),
-        boundary: [],
-        borderPath: border,
-      };
+        // 2. Initialize data structures for the topology.
+        const topology: PuzzleTopology = {
+          vertices: [],
+          pieces: new Map<PieceID, Piece>(),
+          edges: new Map<EdgeID, Edge>(),
+          halfEdges: new Map<HalfEdgeID, HalfEdge>(),
+          boundary: [],
+          borderPath: border,
+        };
 
-      // Map to find twin half-edges
-      const halfEdgeTwinMap = new Map<string, HalfEdgeID>();
+        // Map to find twin half-edges
+        const halfEdgeTwinMap = new Map<string, HalfEdgeID>();
 
-      // 3. For each Voronoi cell, clip it against the puzzle boundary and create a piece
-      let pieceIdCounter = 0;
-      const cellClipStart = performance.now();
-      for (let i = 0; i < adjustedPoints.length; i++) {
-        const cellTick = tick();
-        if (cellTick) await cellTick;
-        const site = adjustedPoints[i];
-        const cellPolygon = voronoi.cellPolygon(i);
+        // 3. For each Voronoi cell, clip it against the puzzle boundary and create a piece
+        let pieceIdCounter = 0;
+        const cellClipStart = performance.now();
+        for (let i = 0; i < adjustedPoints.length; i++) {
+          const cellTick = tick();
+          if (cellTick) await cellTick;
+          const site = adjustedPoints[i];
+          const cellPolygon = voronoi.cellPolygon(i);
 
-        if (!cellPolygon) continue;
+          if (!cellPolygon) continue;
 
-        // Clip the Voronoi cell against the custom puzzle boundary
-        const clippedVertices = clipCellToBoundary(cellPolygon, boundaryContext);
+          // Clip the Voronoi cell against the custom puzzle boundary
+          const clippedVertices = clipCellToBoundary(cellPolygon, boundaryContext);
 
-        if (!clippedVertices) {
-          // Cell is completely outside the boundary, skip it
-          continue;
-        }
-
-        // Handle custom piece integration
-        // Both simple and flow modes clip Voronoi cells against custom piece boundaries
-        if (customPieces.length > 0) {
-          // Check if this cell overlaps with any custom pieces
-          const overlappingCustomPieces = checkCustomPieceOverlap(clippedVertices, customPieces);
-
-          if (overlappingCustomPieces.length > 0) {
-            // Subtract the custom pieces from this cell
-            const remainingPolygons = subtractCustomPieces(clippedVertices, overlappingCustomPieces);
-
-            if (!remainingPolygons || remainingPolygons.length === 0) {
-              // Cell is fully contained in custom pieces, skip it
-              continue;
-            }
-
-            // The cell may have been split into multiple polygons
-            // Create a piece for each resulting polygon
-            for (const polygon of remainingPolygons) {
-              if (polygon.length < 3) continue; // Skip degenerate polygons
-
-              const pieceId = pieceIdCounter++;
-              const piece = createPieceFromPolygon(pieceId, polygon, topology);
-
-              // Override the site to use the original seed point instead of centroid
-              piece.site = site;
-
-              topology.pieces.set(pieceId, piece);
-
-              // Collect the half-edges for this piece to link them with neighbors
-              const pieceHalfEdges: HalfEdge[] = [];
-              let currentHeId = piece.halfEdge;
-              if (currentHeId !== -1) {
-                const startHeId = currentHeId;
-                do {
-                  const he = topology.halfEdges.get(currentHeId)!;
-                  pieceHalfEdges.push(he);
-                  currentHeId = he.next;
-                } while (currentHeId !== startHeId);
-              }
-
-              // Link edges to neighbors or mark them as part of the boundary
-              linkAndCreateEdges(pieceHalfEdges, topology, halfEdgeTwinMap, (p1, p2) => {
-                const onBoundary = isPointNearBoundary(p1, boundaryContext) &&
-                  isPointNearBoundary(p2, boundaryContext);
-                return onBoundary;
-              });
-            }
-            // Skip the normal piece creation below since we handled it with clipping
+          if (!clippedVertices) {
+            // Cell is completely outside the boundary, skip it
             continue;
           }
-          // Fall through to create piece normally if no overlap
+
+          // Build the procedural cells before subtracting and reconciling whimsy outlines.
+          const pieceId = pieceIdCounter++;
+          const piece = createPieceFromPolygon(pieceId, clippedVertices, topology);
+
+          // Override the site to use the original seed point instead of centroid
+          piece.site = site;
+
+          topology.pieces.set(pieceId, piece);
+
+          // Collect the half-edges for this piece to link them with neighbors
+          const pieceHalfEdges: HalfEdge[] = [];
+          let currentHeId = piece.halfEdge;
+          if (currentHeId !== -1) {
+            const startHeId = currentHeId;
+            do {
+              const he = topology.halfEdges.get(currentHeId)!;
+              pieceHalfEdges.push(he);
+              currentHeId = he.next;
+            } while (currentHeId !== startHeId);
+          }
+
+          // Link edges to neighbors or mark them as part of the boundary
+          linkAndCreateEdges(pieceHalfEdges, topology, halfEdgeTwinMap, (p1, p2) => {
+            const onBoundary = isPointNearBoundary(p1, boundaryContext) &&
+              isPointNearBoundary(p2, boundaryContext);
+            return onBoundary;
+          });
+        }
+        logPerformance('Voronoi cell clipping', performance.now() - cellClipStart);
+        const afterCells = snapTo(adjustTotal + filterTotal + cellTotal);
+        if (afterCells) await afterCells;
+
+        if (ctx) integrateCurvedWhimsies(topology, customPieces, ctx);
+        const afterCustom = snapTo(adjustTotal + filterTotal + cellTotal + customTotal);
+        if (afterCustom) await afterCustom;
+
+        // 5. Post-processing: Merge fragments for simple+merge mode
+        if (customPieces.length > 0 && whimsyMode === 'simple+merge') {
+          const averagePieceArea = (bounds.width * bounds.height) / adjustedPoints.length;
+          const minFragmentArea = Math.max(500, averagePieceArea * minFragmentSizeRatio);
+
+          console.log(`Simple+merge mode: post-processing to merge fragments (threshold: ${minFragmentArea.toFixed(0)}px²)`);
+
+          measureSync('Fragment merge', () => {
+            mergeFragmentsIntoNeighbors(topology, minFragmentArea);
+          });
+          const mergeTick = tick();
+          if (mergeTick) await mergeTick;
         }
 
-        // No overlap with custom pieces: create piece normally from Voronoi cell
-        const pieceId = pieceIdCounter++;
-        const piece = createPieceFromPolygon(pieceId, clippedVertices, topology);
-
-        // Override the site to use the original seed point instead of centroid
-        piece.site = site;
-
-        topology.pieces.set(pieceId, piece);
-
-        // Collect the half-edges for this piece to link them with neighbors
-        const pieceHalfEdges: HalfEdge[] = [];
-        let currentHeId = piece.halfEdge;
-        if (currentHeId !== -1) {
-          const startHeId = currentHeId;
-          do {
-            const he = topology.halfEdges.get(currentHeId)!;
-            pieceHalfEdges.push(he);
-            currentHeId = he.next;
-          } while (currentHeId !== startHeId);
+        // 6. Final step: Collect all unique vertices.
+        const vertexSet = new Map<string, Vec2>();
+        for (const he of topology.halfEdges.values()) {
+          const key = pointToKey(he.origin);
+          if (!vertexSet.has(key)) {
+            vertexSet.set(key, he.origin);
+          }
         }
+        topology.vertices = Array.from(vertexSet.values());
 
-        // Link edges to neighbors or mark them as part of the boundary
-        linkAndCreateEdges(pieceHalfEdges, topology, halfEdgeTwinMap, (p1, p2) => {
-          const onBoundary = isPointNearBoundary(p1, boundaryContext) &&
-            isPointNearBoundary(p2, boundaryContext);
-          return onBoundary;
-        });
+        if (customPieces.length > 0) registerCustomPieceEdges(topology);
+
+        const done = onProgress?.(total, total);
+        if (done) await done;
+        return topology;
+      } finally {
+        if (ctx) disposeGeometryPaperContext(ctx);
       }
-      logPerformance('Voronoi cell clipping', performance.now() - cellClipStart);
-      const afterCells = snapTo(adjustTotal + filterTotal + cellTotal);
-      if (afterCells) await afterCells;
-
-      // 4. Add custom pieces as their own pieces in the topology
-      const customInsertStart = performance.now();
-      for (const customPiece of customPieces) {
-        const customTick = tick();
-        if (customTick) await customTick;
-        const pieceId = pieceIdCounter++;
-        const piece = createPieceFromCustom(customPiece, pieceId, topology);
-
-        topology.pieces.set(pieceId, piece);
-
-        // Collect the half-edges for this piece to link them with neighbors
-        const pieceHalfEdges: HalfEdge[] = [];
-        let currentHeId = piece.halfEdge;
-        if (currentHeId !== -1) {
-          const startHeId = currentHeId;
-          do {
-            const he = topology.halfEdges.get(currentHeId)!;
-            pieceHalfEdges.push(he);
-            currentHeId = he.next;
-          } while (currentHeId !== startHeId);
-        }
-        console.log(
-          `Custom piece ${customPiece.id}: ${pieceHalfEdges.length} outline edges, ` +
-          `${halfEdgeTwinMap.size} unmatched edges before linking`,
-        );
-
-        // Link edges to neighbors or mark them as part of the boundary
-        // Custom piece edges that touch procedural pieces should link to them
-        // Unmatched outline cuts are registered after fragment merging.
-        linkAndCreateEdges(pieceHalfEdges, topology, halfEdgeTwinMap, (p1, p2) => {
-          // Check if this edge is on the puzzle boundary
-          const onBoundary = isPointNearBoundary(p1, boundaryContext) &&
-            isPointNearBoundary(p2, boundaryContext);
-          return onBoundary;
-        });
-      }
-      logPerformance('Custom piece insertion', performance.now() - customInsertStart);
-      const afterCustom = snapTo(adjustTotal + filterTotal + cellTotal + customTotal);
-      if (afterCustom) await afterCustom;
-
-      // 5. Post-processing: Merge fragments for simple+merge mode
-      if (customPieces.length > 0 && whimsyMode === 'simple+merge') {
-        const averagePieceArea = (bounds.width * bounds.height) / adjustedPoints.length;
-        const minFragmentArea = Math.max(500, averagePieceArea * minFragmentSizeRatio);
-
-        console.log(`Simple+merge mode: post-processing to merge fragments (threshold: ${minFragmentArea.toFixed(0)}px²)`);
-
-        measureSync('Fragment merge', () => {
-          mergeFragmentsIntoNeighbors(
-            topology,
-            minFragmentArea,
-            halfEdgeTwinMap,
-            (p1, p2) => {
-              const onBoundary = isPointNearBoundary(p1, boundaryContext) &&
-                isPointNearBoundary(p2, boundaryContext);
-              return onBoundary;
-            }
-          );
-        });
-        const mergeTick = tick();
-        if (mergeTick) await mergeTick;
-      }
-
-      // 6. Final step: Collect all unique vertices.
-      const vertexSet = new Map<string, Vec2>();
-      for (const he of topology.halfEdges.values()) {
-        const key = pointToKey(he.origin);
-        if (!vertexSet.has(key)) {
-          vertexSet.set(key, he.origin);
-        }
-      }
-      topology.vertices = Array.from(vertexSet.values());
-
-      if (customPieces.length > 0) registerCustomPieceEdges(topology);
-
-      const done = onProgress?.(total, total);
-      if (done) await done;
-      return topology;
     },
   };
   return VoronoiPieceGenerator;

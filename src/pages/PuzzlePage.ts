@@ -1024,6 +1024,8 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
           ]),
         ]),
 
+        !!state.puzzle?.unsupportedHoles?.length && m('p.whimsy-hole-warning', { role: 'status' },
+          'A piece would need an interior hole. Outline cuts are retained, but some pieces or merges may be incomplete. Move or resize the whimsy across a piece boundary.'),
         m('.workspace', [
           m('.puzzle-stack', {
             class: state.allowVerticalScrolling ? undefined : 'fit-viewport',

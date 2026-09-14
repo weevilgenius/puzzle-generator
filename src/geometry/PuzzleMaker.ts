@@ -210,6 +210,7 @@ export async function buildPuzzle(options: PuzzleGenerationOptions): Promise<Puz
       edges: topology.edges,
       halfEdges: topology.halfEdges,
       customPieces,
+      unsupportedHoles: topology.unsupportedHoles,
     };
 
     return Promise.resolve(puzzle);

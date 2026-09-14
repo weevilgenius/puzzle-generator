@@ -76,7 +76,9 @@ describe('whimsy cut details', () => {
       return command.p.map((value) => value.toFixed(3)).join(' ');
     });
     for (let i = 1; i < points.length; i++) {
-      expect(outlineData.split(`M ${points[i - 1]} L ${points[i]}`).length - 1).toBe(1);
+      const forward = outlineData.split(`M ${points[i - 1]} L ${points[i]}`).length - 1;
+      const reverse = outlineData.split(`M ${points[i]} L ${points[i - 1]}`).length - 1;
+      expect(forward + reverse).toBe(1);
     }
     const edgeCount = topology.edges.size;
     registerCustomPieceEdges(topology);

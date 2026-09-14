@@ -118,11 +118,13 @@ export function paperPathToPathCommands(path: paper.Path): PathCommand[] {
  *
  * @param commands - Array of PathCommand objects
  * @param ctx - Paper.js context with isolated scope
+ * @param closed - Close the outline, retaining closing handles without a duplicate endpoint
  * @returns A new Paper.js path representing the commands
  */
 export function pathCommandsToPaperPath(
   commands: PathCommand[],
-  ctx: PaperContext
+  ctx: PaperContext,
+  closed = false,
 ): paper.Path {
   // Scope is already activated by caller
   const paperScope = ctx.scope;
@@ -189,5 +191,12 @@ export function pathCommandsToPaperPath(
     }
   }
 
+  if (closed && path.segments.length > 1) {
+    if (path.firstSegment.point.equals(path.lastSegment.point)) {
+      path.firstSegment.handleIn = path.lastSegment.handleIn;
+      path.lastSegment.remove();
+    }
+    path.closed = true;
+  }
   return path;
 }

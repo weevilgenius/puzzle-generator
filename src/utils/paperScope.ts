@@ -95,3 +95,17 @@ export function createPaperContext(
 
   return { scope };
 }
+
+/** Create an isolated, offscreen scope for synchronous geometry operations. */
+export function createGeometryPaperContext(): PaperContext {
+  const scope = new PaperCore.PaperScope();
+  scope.activate();
+  scope.setup(new scope.Size(1, 1));
+  return { scope };
+}
+
+/** Release a geometry scope, including Paper.js's internal scope registry entry. */
+export function disposeGeometryPaperContext(ctx: PaperContext): void {
+  // Paper.js 0.12 implements remove(), but omits it from its bundled declarations.
+  (ctx.scope as paper.PaperScope & { remove(): void }).remove();
+}

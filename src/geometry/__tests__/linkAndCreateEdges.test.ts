@@ -1,4 +1,4 @@
-import { createHalfEdgeLoop, linkAndCreateEdges } from '../utils';
+import { createHalfEdgeLoop, linkAndCreateEdges, invertSegments } from '../utils';
 import type { PuzzleTopology, Vec2 } from '../types';
 
 function emptyTopology(): PuzzleTopology {
@@ -38,4 +38,20 @@ describe('linkAndCreateEdges', () => {
     const twinned = [...topology.halfEdges.values()].filter((he) => he.twin !== -1);
     expect(twinned.length).toBe(2);
   });
+  it('distinguishes curved routes with identical endpoints', () => {
+    const topology = emptyTopology();
+    const twinMap = new Map<string, number>();
+    const top = createHalfEdgeLoop([[0, 0], [10, 0]], 0, topology);
+    const bottom = createHalfEdgeLoop([[0, 0], [10, 0]], 1, topology);
+    top[0].segments = [{ type: 'bezier', p1: [0, 5], p2: [10, 5], p3: [10, 0] }];
+    bottom[0].segments = [{ type: 'bezier', p1: [0, -5], p2: [10, -5], p3: [10, 0] }];
+    linkAndCreateEdges([top[0], bottom[0]], topology, twinMap, () => false);
+    const reverse = createHalfEdgeLoop([[10, 0], [0, 0]], 2, topology);
+    reverse[0].segments = invertSegments(bottom[0].segments, bottom[0].origin);
+    linkAndCreateEdges([reverse[0]], topology, twinMap, () => false);
+    expect(reverse[0].twin).toBe(bottom[0].id);
+    expect(top[0].twin).toBe(-1);
+    expect(topology.edges.size).toBe(1);
+  });
+
 });

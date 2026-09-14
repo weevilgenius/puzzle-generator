@@ -10,6 +10,7 @@ import type {
 import type { ProgressCallback } from "./generators/Generator";
 import {
   distanceSq,
+  extractPiecePolygon,
   calculateSegmentsBounds,
   serializeTopology,
   doAABBsIntersect,
@@ -351,7 +352,8 @@ async function detectTabWhimsyIntersections(puzzle: PuzzleTopology): Promise<Vec
     if (whimsyBoundary.length === 0) continue;
 
     // Convert boundary to simple polygon for point-in-polygon checks
-    const whimsyPolygon: Vec2[] = whimsyBoundary.map((b) => b.startPoint);
+    const whimsyPolygon = extractPiecePolygon(whimsyPiece, puzzle);
+    const whimsyVertices = whimsyBoundary.map((b) => b.startPoint);
 
     // 2. Find procedural pieces directly adjacent to this whimsy piece
     const adjacentPieceIds = new Set<PieceID>();
@@ -389,7 +391,8 @@ async function detectTabWhimsyIntersections(puzzle: PuzzleTopology): Promise<Vec
         if (!he) break;
 
         // Check if this half-edge has custom tab segments
-        if (he.segments && he.segments.length > 0) {
+        if (he.segments && he.segments.length > 0
+          && !puzzle.pieces.get(puzzle.halfEdges.get(he.twin)?.piece ?? -1)?.isCustomPiece) {
           // Build BoundarySegments for the tab
           let startPoint = he.origin;
           const tabSegments: BoundarySegment[] = [];
@@ -412,7 +415,7 @@ async function detectTabWhimsyIntersections(puzzle: PuzzleTopology): Promise<Vec
               const potentialPoints = await narrowPhaseDetection(tabSeg, whimsySeg, false);
               for (const point of potentialPoints) {
                 // Ignore touches at shared boundary vertices
-                const isSharedVertex = whimsyPolygon.some((v) => distanceSq(point, v) < 1e-6);
+                const isSharedVertex = whimsyVertices.some((v) => distanceSq(point, v) < 1e-6);
                 if (!isSharedVertex) {
                   problemPoints.push(point);
                 }
@@ -423,7 +426,7 @@ async function detectTabWhimsyIntersections(puzzle: PuzzleTopology): Promise<Vec
             const tabEndPoint = getEndPoint(tabSeg.segment);
             if (isPointInPolygon(tabEndPoint, whimsyPolygon)) {
               // Ensure it's not on the boundary vertex
-              const isBoundaryVertex = whimsyPolygon.some((v) => distanceSq(tabEndPoint, v) < 1e-6);
+              const isBoundaryVertex = whimsyVertices.some((v) => distanceSq(tabEndPoint, v) < 1e-6);
               if (!isBoundaryVertex) {
                 problemPoints.push(tabEndPoint);
               }
@@ -460,7 +463,7 @@ export async function checkGeometry(
   const tabWhimsyIntersections = await detectTabWhimsyIntersections(puzzle);
 
   // combine all types of problems
-  const allProblems = [...intersections, ...outsideVertices, ...tabWhimsyIntersections];
+  const allProblems = [...(puzzle.unsupportedHoles ?? []), ...intersections, ...outsideVertices, ...tabWhimsyIntersections];
 
   if (allProblems.length < 2) {
     return allProblems;

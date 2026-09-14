@@ -1,6 +1,5 @@
 import type { PieceGenerator, PieceGeneratorRuntimeOptions } from "./PieceGenerator";
 import type {
-  CustomPiece,
   Edge,
   EdgeID,
   HalfEdge,
@@ -14,9 +13,6 @@ import type {
 import {
   linkAndCreateEdges,
   mergeFragmentsIntoNeighbors,
-  polygonBounds,
-  isPointInPolygon,
-  doAABBsIntersect,
 } from "../../utils";
 import {
   createBoundaryContext,
@@ -25,10 +21,10 @@ import {
   type BoundaryContext,
 } from "./PieceGeneratorHelpers";
 import {
-  customPieceToPolygon,
   registerCustomPieceEdges,
 } from '../../customPieces';
-import * as martinez from 'martinez-polygon-clipping';
+import { integrateCurvedWhimsies } from '../../curvedWhimsies';
+import { createGeometryPaperContext, disposeGeometryPaperContext } from '../../../utils/paperScope';
 import type { GeneratorUIMetadata } from '../../ui_types';
 import type { GeneratorConfig, GeneratorFactory } from "../Generator";
 import { PieceGeneratorRegistry } from "../Generator";
@@ -77,375 +73,181 @@ export const RectangularPieceGeneratorFactory: GeneratorFactory<PieceGenerator> 
      */
     async generatePieces(_points: Vec2[], runtimeOpts: PieceGeneratorRuntimeOptions): Promise<PuzzleTopology> {
       const { pieceSize, border, customPieces = [], onProgress } = runtimeOpts;
+      const ctx = customPieces.length ? createGeometryPaperContext() : undefined;
+      try {
 
-      const topology: PuzzleTopology = {
-        vertices: [],
-        pieces: new Map<PieceID, Piece>(),
-        edges: new Map<EdgeID, Edge>(),
-        halfEdges: new Map<HalfEdgeID, HalfEdge>(),
-        boundary: [],
-        borderPath: border,
-      };
+        const topology: PuzzleTopology = {
+          vertices: [],
+          pieces: new Map<PieceID, Piece>(),
+          edges: new Map<EdgeID, Edge>(),
+          halfEdges: new Map<HalfEdgeID, HalfEdge>(),
+          boundary: [],
+          borderPath: border,
+        };
 
-      // --- 1. Calculate Grid Dimensions ---
-      // Determine the number of rows and columns based on the desired piece size.
-      const cols = Math.ceil(width / pieceSize);
-      const rows = Math.ceil(height / pieceSize);
+        // --- 1. Calculate Grid Dimensions ---
+        // Determine the number of rows and columns based on the desired piece size.
+        const cols = Math.ceil(width / pieceSize);
+        const rows = Math.ceil(height / pieceSize);
 
-      // Calculate the actual width and height of each cell
-      const cellWidth = Math.round(width / cols);
-      const cellHeight = Math.round(height / rows);
+        // Calculate the actual width and height of each cell
+        const cellWidth = Math.round(width / cols);
+        const cellHeight = Math.round(height / rows);
 
-      // --- 2. Create Vertices ---
-      // A 2D array to hold all vertex points for easy lookup by grid index.
-      const gridVertices: Vec2[][] = [];
-      for (let r = 0; r <= rows; r++) {
-        const rowVertices: Vec2[] = [];
-        for (let c = 0; c <= cols; c++) {
-          const x = c * cellWidth;
-          const y = r * cellHeight;
-          rowVertices.push([x, y]);
-        }
-        gridVertices.push(rowVertices);
-      }
-      // Flatten the 2D array into the final list for the topology.
-      topology.vertices = gridVertices.flat();
-
-      // --- 3. Create Pieces and Half-Edges ---
-      // This map will help us find the twin of a half-edge. The key is a string
-      // representing the start and end vertices of an edge, e.g., "x1,y1-x2,y2".
-      const halfEdgeTwinMap = new Map<string, HalfEdgeID>();
-
-      // NOTE: Using a string key based on floating point coordinates can be very
-      // fragile. Tiny precision errors can cause lookups to fail. This approach
-      // is safe here because the grid coordinates are normalized to integers.
-
-      // Counter for piece IDs (will be incremented when cells split into multiple fragments)
-      let pieceIdCounter = 0;
-
-      // Helper to split polygon edges at grid line intersections
-      const splitAtGridLines = (polygon: Vec2[]): Vec2[] => {
-        const result: Vec2[] = [];
-
-        for (let i = 0; i < polygon.length; i++) {
-          const p1 = polygon[i];
-          const p2 = polygon[(i + 1) % polygon.length];
-          result.push(p1);
-
-          const intersections: { t: number; point: Vec2 }[] = [];
-
-          // Check vertical grid lines
+        // --- 2. Create Vertices ---
+        // A 2D array to hold all vertex points for easy lookup by grid index.
+        const gridVertices: Vec2[][] = [];
+        for (let r = 0; r <= rows; r++) {
+          const rowVertices: Vec2[] = [];
           for (let c = 0; c <= cols; c++) {
             const x = c * cellWidth;
-            if ((p1[0] < x && p2[0] > x) || (p1[0] > x && p2[0] < x)) {
-              // Edge crosses grid line in interior
-              const t = (x - p1[0]) / (p2[0] - p1[0]);
-              const y = p1[1] + t * (p2[1] - p1[1]);
-              intersections.push({ t, point: [x, y] });
-            }
-          }
-
-          // Check horizontal grid lines
-          for (let r = 0; r <= rows; r++) {
             const y = r * cellHeight;
-            if ((p1[1] < y && p2[1] > y) || (p1[1] > y && p2[1] < y)) {
-              // Edge crosses grid line in interior
-              const t = (y - p1[1]) / (p2[1] - p1[1]);
-              const x = p1[0] + t * (p2[0] - p1[0]);
-              intersections.push({ t, point: [x, y] });
+            rowVertices.push([x, y]);
+          }
+          gridVertices.push(rowVertices);
+        }
+        // Flatten the 2D array into the final list for the topology.
+        topology.vertices = gridVertices.flat();
+
+        // --- 3. Create Pieces and Half-Edges ---
+        // This map will help us find the twin of a half-edge. The key is a string
+        // representing the start and end vertices of an edge, e.g., "x1,y1-x2,y2".
+        const halfEdgeTwinMap = new Map<string, HalfEdgeID>();
+
+        // NOTE: Using a string key based on floating point coordinates can be very
+        // fragile. Tiny precision errors can cause lookups to fail. This approach
+        // is safe here because the grid coordinates are normalized to integers.
+
+        // Counter for piece IDs (will be incremented when cells split into multiple fragments)
+        let pieceIdCounter = 0;
+
+        // Helper to calculate distance from point to line segment
+        const distanceToSegment = (point: Vec2, segStart: Vec2, segEnd: Vec2): number => {
+          const [px, py] = point;
+          const [x1, y1] = segStart;
+          const [x2, y2] = segEnd;
+
+          const dx = x2 - x1;
+          const dy = y2 - y1;
+          const lengthSq = dx * dx + dy * dy;
+
+          if (lengthSq === 0) {
+            return Math.hypot(px - x1, py - y1);
+          }
+
+          let t = ((px - x1) * dx + (py - y1) * dy) / lengthSq;
+          t = Math.max(0, Math.min(1, t));
+
+          const projX = x1 + t * dx;
+          const projY = y1 + t * dy;
+
+          return Math.hypot(px - projX, py - projY);
+        };
+
+        // Helper to check if a point is near the puzzle boundary
+        const isPointNearBoundary = (point: Vec2): boolean => {
+          const tolerance = 1e-3;
+          const polygon = boundaryContext.flattenedPolygon;
+
+          for (let i = 0; i < polygon.length; i++) {
+            const p1 = polygon[i];
+            const p2 = polygon[(i + 1) % polygon.length];
+            const dist = distanceToSegment(point, p1, p2);
+            if (dist < tolerance) {
+              return true;
             }
           }
 
-          intersections.sort((a, b) => a.t - b.t);
-          for (const int of intersections) {
-            result.push(int.point);
-          }
-        }
+          return false;
+        };
 
-        return result;
-      };
+        const mergeUnits = customPieces.length > 0 ? 1 : 0;
+        const total = Math.max(1, rows * cols + customPieces.length + mergeUnits);
+        let processed = 0;
+        const started = onProgress?.(0, total);
+        if (started) await started;
 
-      // Helper to calculate distance from point to line segment
-      const distanceToSegment = (point: Vec2, segStart: Vec2, segEnd: Vec2): number => {
-        const [px, py] = point;
-        const [x1, y1] = segStart;
-        const [x2, y2] = segEnd;
+        // build each piece
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
 
-        const dx = x2 - x1;
-        const dy = y2 - y1;
-        const lengthSq = dx * dx + dy * dy;
+            // Get the four corner vertices for the current grid cell.
+            const topLeft = gridVertices[r][c];
+            const topRight = gridVertices[r][c + 1];
+            const bottomLeft = gridVertices[r + 1][c];
+            const bottomRight = gridVertices[r + 1][c + 1];
 
-        if (lengthSq === 0) {
-          return Math.hypot(px - x1, py - y1);
-        }
+            // Clip the grid cell against the puzzle boundary
+            const cellPolygon = [topLeft, topRight, bottomRight, bottomLeft];
+            const pieceVertices = clipCellToBoundary(cellPolygon, boundaryContext);
 
-        let t = ((px - x1) * dx + (py - y1) * dy) / lengthSq;
-        t = Math.max(0, Math.min(1, t));
-
-        const projX = x1 + t * dx;
-        const projY = y1 + t * dy;
-
-        return Math.hypot(px - projX, py - projY);
-      };
-
-      // Helper to check if a point is near the puzzle boundary
-      const isPointNearBoundary = (point: Vec2): boolean => {
-        const tolerance = 1e-3;
-        const polygon = boundaryContext.flattenedPolygon;
-
-        for (let i = 0; i < polygon.length; i++) {
-          const p1 = polygon[i];
-          const p2 = polygon[(i + 1) % polygon.length];
-          const dist = distanceToSegment(point, p1, p2);
-          if (dist < tolerance) {
-            return true;
-          }
-        }
-
-        return false;
-      };
-
-      // Pre-split custom pieces at grid lines once for reuse
-      const gridSplitCustomPieces: { original: CustomPiece; polygon: Vec2[] }[] = customPieces.map((cp) => {
-        const cpPolygon = customPieceToPolygon(cp);
-        const cpSplit = splitAtGridLines(cpPolygon);
-        return { original: cp, polygon: cpSplit };
-      });
-
-      const mergeUnits = customPieces.length > 0 ? 1 : 0;
-      const total = Math.max(1, rows * cols + gridSplitCustomPieces.length + mergeUnits);
-      let processed = 0;
-      const started = onProgress?.(0, total);
-      if (started) await started;
-
-      // build each piece
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-
-          // Get the four corner vertices for the current grid cell.
-          const topLeft = gridVertices[r][c];
-          const topRight = gridVertices[r][c + 1];
-          const bottomLeft = gridVertices[r + 1][c];
-          const bottomRight = gridVertices[r + 1][c + 1];
-
-          // Clip the grid cell against the puzzle boundary
-          const cellPolygon = [topLeft, topRight, bottomRight, bottomLeft];
-          const pieceVertices = clipCellToBoundary(cellPolygon, boundaryContext);
-
-          if (!pieceVertices) {
-            // Cell is completely outside the boundary, skip it
-            processed++;
-            const skipped = onProgress?.(processed, total);
-            if (skipped) await skipped;
-            continue;
-          }
-
-          // Handle custom piece integration
-          // Clip grid cells against custom piece boundaries
-          if (gridSplitCustomPieces.length > 0) {
-            // Check overlap using pre-split custom pieces
-            const overlappingPolygons: Vec2[][] = [];
-            const cellBounds = polygonBounds(pieceVertices);
-
-            for (const { polygon: cpSplit } of gridSplitCustomPieces) {
-              const customBounds = polygonBounds(cpSplit);
-
-              // Fast rejection: check if bounding boxes overlap
-              if (!doAABBsIntersect(cellBounds, customBounds)) {
-                continue;
-              }
-
-              // Check if any vertex of the cell is inside the custom piece
-              let hasOverlap = false;
-              for (const point of pieceVertices) {
-                if (isPointInPolygon(point, cpSplit)) {
-                  hasOverlap = true;
-                  break;
-                }
-              }
-
-              // If no cell vertices are inside, check if any custom piece vertices are inside the cell
-              if (!hasOverlap) {
-                for (const point of cpSplit) {
-                  if (isPointInPolygon(point, pieceVertices)) {
-                    hasOverlap = true;
-                    break;
-                  }
-                }
-              }
-
-              if (hasOverlap) {
-                overlappingPolygons.push(cpSplit);
-              }
-            }
-
-            if (overlappingPolygons.length > 0) {
-              // Subtract the grid-split custom piece polygons from this cell
-              let result: martinez.Polygon | martinez.MultiPolygon = [pieceVertices.map((p) => [p[0], p[1]] as const)];
-
-              for (const cpSplit of overlappingPolygons) {
-                const customMartinez: martinez.Polygon = [cpSplit.map((p) => [p[0], p[1]] as const)];
-                const clipped = martinez.diff(result, customMartinez);
-
-                if (!clipped || clipped.length === 0) {
-                  result = [];
-                  break;
-                }
-                result = clipped;
-              }
-
-              // Convert back to Vec2[][] format
-              const remainingPolygons: Vec2[][] = [];
-              if (Array.isArray(result) && result.length > 0) {
-                for (const polygon of result) {
-                  if (Array.isArray(polygon) && polygon.length > 0) {
-                    const outerRing = polygon[0];
-                    if (Array.isArray(outerRing)) {
-                      const vertices: Vec2[] = outerRing.map((p) => {
-                        if (Array.isArray(p) && p.length >= 2) {
-                          return [p[0], p[1]] as Vec2;
-                        }
-                        return [0, 0] as Vec2;
-                      });
-                      remainingPolygons.push(vertices);
-                    }
-                  }
-                }
-              }
-
-              if (!remainingPolygons || remainingPolygons.length === 0) {
-                // Cell is fully contained in custom pieces, skip it
-                processed++;
-                const contained = onProgress?.(processed, total);
-                if (contained) await contained;
-                continue;
-              }
-
-              // The cell may have been split into multiple polygons
-              // Create a piece for each resulting polygon
-              for (const polygon of remainingPolygons) {
-                if (polygon.length < 3) continue; // Skip degenerate polygons
-
-                const fragmentId = pieceIdCounter++;
-                const piece = createPieceFromPolygon(fragmentId, polygon, topology);
-                topology.pieces.set(fragmentId, piece);
-
-                // Collect the half-edges for this piece to link them with neighbors
-                const pieceHalfEdges: HalfEdge[] = [];
-                let currentHeId = piece.halfEdge;
-                if (currentHeId !== -1) {
-                  const startHeId = currentHeId;
-                  do {
-                    const he = topology.halfEdges.get(currentHeId)!;
-                    pieceHalfEdges.push(he);
-                    currentHeId = he.next;
-                  } while (currentHeId !== startHeId);
-                }
-
-                // Link edges to neighbors or mark them as part of the boundary
-                linkAndCreateEdges(pieceHalfEdges, topology, halfEdgeTwinMap, (p1, p2) => {
-                  const onBoundary = isPointNearBoundary(p1) && isPointNearBoundary(p2);
-                  return onBoundary;
-                });
-              }
-              // Skip the normal piece creation below since we handled it with clipping
+            if (!pieceVertices) {
+              // Cell is completely outside the boundary, skip it
               processed++;
-              const clipped = onProgress?.(processed, total);
-              if (clipped) await clipped;
+              const skipped = onProgress?.(processed, total);
+              if (skipped) await skipped;
               continue;
             }
-            // Fall through to create piece normally if no overlap
+
+            // Build the grid cells before subtracting and reconciling whimsy outlines.
+            const pieceId = pieceIdCounter++;
+            const piece = createPieceFromPolygon(pieceId, pieceVertices, topology);
+            topology.pieces.set(pieceId, piece);
+
+            // Collect the half-edges for this piece to link them with neighbors
+            const pieceHalfEdges: HalfEdge[] = [];
+            let currentHeId = piece.halfEdge;
+            if (currentHeId !== -1) {
+              const startHeId = currentHeId;
+              do {
+                const he = topology.halfEdges.get(currentHeId)!;
+                pieceHalfEdges.push(he);
+                currentHeId = he.next;
+              } while (currentHeId !== startHeId);
+            }
+
+            // link edges to neighbors or mark them as part of the boundary
+            linkAndCreateEdges(pieceHalfEdges, topology, halfEdgeTwinMap, (p1, p2) => {
+              const onBoundary = isPointNearBoundary(p1) && isPointNearBoundary(p2);
+              return onBoundary;
+            });
+
+            processed++;
+            const cellDone = onProgress?.(processed, total);
+            if (cellDone) await cellDone;
           }
-
-          // No overlap with custom pieces: create piece normally from grid cell
-          const pieceId = pieceIdCounter++;
-          const piece = createPieceFromPolygon(pieceId, pieceVertices, topology);
-          topology.pieces.set(pieceId, piece);
-
-          // Collect the half-edges for this piece to link them with neighbors
-          const pieceHalfEdges: HalfEdge[] = [];
-          let currentHeId = piece.halfEdge;
-          if (currentHeId !== -1) {
-            const startHeId = currentHeId;
-            do {
-              const he = topology.halfEdges.get(currentHeId)!;
-              pieceHalfEdges.push(he);
-              currentHeId = he.next;
-            } while (currentHeId !== startHeId);
-          }
-
-          // link edges to neighbors or mark them as part of the boundary
-          linkAndCreateEdges(pieceHalfEdges, topology, halfEdgeTwinMap, (p1, p2) => {
-            const onBoundary = isPointNearBoundary(p1) && isPointNearBoundary(p2);
-            return onBoundary;
-          });
-
-          processed++;
-          const cellDone = onProgress?.(processed, total);
-          if (cellDone) await cellDone;
-        }
-      }
-
-      // --- 4. Add custom pieces as their own pieces in the topology ---
-      for (const { polygon: splitPolygon } of gridSplitCustomPieces) {
-        const pieceId = pieceIdCounter++;
-
-        const piece = createPieceFromPolygon(pieceId, splitPolygon, topology);
-        piece.isCustomPiece = true;
-        topology.pieces.set(pieceId, piece);
-
-        // Collect the half-edges for this piece to link them with neighbors
-        const pieceHalfEdges: HalfEdge[] = [];
-        let currentHeId = piece.halfEdge;
-        if (currentHeId !== -1) {
-          const startHeId = currentHeId;
-          do {
-            const he = topology.halfEdges.get(currentHeId)!;
-            pieceHalfEdges.push(he);
-            currentHeId = he.next;
-          } while (currentHeId !== startHeId);
         }
 
-        // Link edges to neighbors or mark them as part of the boundary
-        linkAndCreateEdges(pieceHalfEdges, topology, halfEdgeTwinMap, (p1, p2) => {
-          const onBoundary = isPointNearBoundary(p1) && isPointNearBoundary(p2);
-          return onBoundary;
-        });
+        if (ctx) integrateCurvedWhimsies(topology, customPieces, ctx);
+        processed += customPieces.length;
 
-        processed++;
-        const customDone = onProgress?.(processed, total);
-        if (customDone) await customDone;
-      }
-
-      // --- 5. Post-processing: Merge fragments ---
-      if (customPieces.length > 0) {
+        // --- 5. Post-processing: Merge fragments ---
+        if (customPieces.length > 0) {
         // Calculate minimum fragment area threshold
-        const totalPoints = rows * cols;
-        const averagePieceArea = (bounds.width * bounds.height) / totalPoints;
-        const minFragmentSizeRatio = 0.3; // Same default as VoronoiPieceGenerator
-        const minFragmentArea = Math.max(500, averagePieceArea * minFragmentSizeRatio);
+          const totalPoints = rows * cols;
+          const averagePieceArea = (bounds.width * bounds.height) / totalPoints;
+          const minFragmentSizeRatio = 0.3; // Same default as VoronoiPieceGenerator
+          const minFragmentArea = Math.max(500, averagePieceArea * minFragmentSizeRatio);
 
-        console.log(`RectangularPieceGenerator: post-processing to merge fragments (threshold: ${minFragmentArea.toFixed(0)}px²)`);
+          console.log(`RectangularPieceGenerator: post-processing to merge fragments (threshold: ${minFragmentArea.toFixed(0)}px²)`);
 
-        mergeFragmentsIntoNeighbors(
-          topology,
-          minFragmentArea,
-          halfEdgeTwinMap,
-          (p1, p2) => {
-            const onBoundary = isPointNearBoundary(p1) && isPointNearBoundary(p2);
-            return onBoundary;
-          }
-        );
-        processed++;
-        const merged = onProgress?.(processed, total);
-        if (merged) await merged;
+          mergeFragmentsIntoNeighbors(topology, minFragmentArea);
+          processed++;
+          const merged = onProgress?.(processed, total);
+          if (merged) await merged;
+        }
+
+        if (customPieces.length > 0) {
+          registerCustomPieceEdges(topology);
+          topology.vertices = [...new Set([...topology.halfEdges.values()].map((he) => he.origin))];
+        }
+
+        const done = onProgress?.(total, total);
+        if (done) await done;
+        return topology;
+      } finally {
+        if (ctx) disposeGeometryPaperContext(ctx);
       }
-
-      if (customPieces.length > 0) registerCustomPieceEdges(topology);
-
-      const done = onProgress?.(total, total);
-      if (done) await done;
-      return topology;
     },
   };
   return RectangularPieceGenerator;
