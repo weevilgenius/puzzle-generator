@@ -17,6 +17,7 @@ import {
   renderCustomPieceHandles,
   clearCustomPieceHandles,
 } from './rendering';
+import { drawRulers } from './ruler';
 import {
   handleMouseMove,
   handleDragStart,
@@ -44,6 +45,9 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
   // Component state
   const state: PuzzleRendererState = {
     canvas: null,
+    rulerH: null,
+    rulerV: null,
+    rulerObserver: null,
     isDragging: false,
     draggedVertexId: -1,
     draggedSeedPointId: -1,
@@ -87,6 +91,15 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
     isSpacebarPressed: false,
   };
 
+  // Most recent attrs, so view-transform changes (pan, wheel zoom) can redraw the
+  // rulers without going through a Mithril redraw.
+  let latestAttrs: PuzzleRendererAttrs | null = null;
+
+  /** Redraw the rulers from the current Paper.js view transform */
+  const refreshRulers = () => {
+    if (latestAttrs) drawRulers(state, latestAttrs);
+  };
+
   /**
    * Set zoom level programmatically (from dropdown selection)
    */
@@ -97,6 +110,7 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
     const zoomFactor = newZoom / state.zoom;
     paperScope.view.scale(zoomFactor, paperScope.view.center);
     state.zoom = newZoom;
+    refreshRulers();
 
     // Notify parent of zoom change if callback provided
     if (attrs?.onZoomChanged) {
@@ -124,6 +138,7 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
       paperScope.view.viewSize.width / 2,
       paperScope.view.viewSize.height / 2
     );
+    refreshRulers();
     m.redraw();
   };
 
@@ -145,6 +160,14 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
         console.error('PuzzleRenderer: couldn\'t get canvas element');
         return;
       }
+      latestAttrs = attrs;
+      state.rulerH = dom.querySelector<HTMLCanvasElement>("canvas.puzzle-ruler-h");
+      state.rulerV = dom.querySelector<HTMLCanvasElement>("canvas.puzzle-ruler-v");
+
+      // The puzzle canvas is sized by CSS, so its on-screen size can change without
+      // any attribute change. Redraw the rulers whenever it does.
+      state.rulerObserver = new ResizeObserver(() => refreshRulers());
+      state.rulerObserver.observe(state.canvas);
 
       // Initialize Paper.js
       initializePaper(state.canvas, attrs.width, attrs.height, state);
@@ -153,7 +176,7 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
       createPaperLayers(state);
 
       // Set up pan and zoom event handlers
-      setupPanZoomHandling(state, attrs.onZoomChanged);
+      setupPanZoomHandling(state, attrs.onZoomChanged, refreshRulers);
 
       // Load background image if present
       updateBackgroundImage(state, attrs.imageUrl, attrs.width, attrs.height);
@@ -178,10 +201,13 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
           clearCustomPieceHandles(state);
         }
       }
+
+      refreshRulers();
     },
 
     // Component lifecycle: called when attributes change
     onupdate: ({ attrs }) => {
+      latestAttrs = attrs;
       if (!state.canvas) {
         console.error('PuzzleRenderer: couldn\'t get canvas element');
         return;
@@ -224,6 +250,8 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
         state.customPiecesLayer.removeChildren();
         clearCustomPieceHandles(state);
       }
+
+      refreshRulers();
     },
 
     // Component lifecycle: cleanup when component is removed
@@ -238,6 +266,10 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
         state.documentMouseUp = null;
       }
 
+      // Stop watching the canvas for layout changes
+      state.rulerObserver?.disconnect();
+      state.rulerObserver = null;
+
       // Clean up pan and zoom event handlers
       cleanupPanZoomHandling(state.canvas);
 
@@ -251,34 +283,46 @@ export const PuzzleRenderer: m.ClosureComponent<PuzzleRendererAttrs> = () => {
       const currentZoomStr = getZoomPercentage();
       const allowVerticalScrolling = attrs.allowVerticalScrolling === true;
 
+      const showRuler = attrs.showRuler !== false;
+
       return m('.puzzle-renderer-wrapper', {
         class: allowVerticalScrolling ? undefined : 'fit-viewport',
       }, [
-        // Canvas for rendering the puzzle with Paper.js (background image is now inside Paper.js)
-        m('canvas.puzzle-renderer', {
-          key: 'puzzle-renderer-canvas', // Stable key to prevent Mithril from replacing the canvas
-          // Do not set width/height attributes here. Assigning them resets the
-          // 2d context and fights Paper.js hidpi backing-store sizing, which
-          // leaves stale/partial frames after aspect-ratio changes.
-          style: {
-            touchAction: 'manipulation',
-            aspectRatio: `${attrs.width} / ${attrs.height}`,
-          },
+        m('.puzzle-canvas-grid', {
+          key: 'puzzle-canvas-grid',
+          class: showRuler ? 'with-ruler' : undefined,
+        }, [
+        // Rulers along the top and left edges (plain 2d canvases, not Paper.js)
+          m('.puzzle-ruler-corner', { key: 'puzzle-ruler-corner' }),
+          m('canvas.puzzle-ruler-h', { key: 'puzzle-ruler-h' }),
+          m('canvas.puzzle-ruler-v', { key: 'puzzle-ruler-v' }),
 
-          // Mouse events
-          onmousedown: (e: MouseEvent & MithrilViewEvent) => handleDragStart(e, attrs, state),
-          onmousemove: (e: MouseEvent & MithrilViewEvent) => {
-            handleMouseMove(e, attrs, state);
-            handleDragMove(e, attrs, state);
-          },
-          onmouseup: (e: MouseEvent & MithrilViewEvent) => handleDragEnd(e, attrs, state),
+          // Canvas for rendering the puzzle with Paper.js (background image is now inside Paper.js)
+          m('canvas.puzzle-renderer', {
+            key: 'puzzle-renderer-canvas', // Stable key to prevent Mithril from replacing the canvas
+            // Do not set width/height attributes here. Assigning them resets the
+            // 2d context and fights Paper.js hidpi backing-store sizing, which
+            // leaves stale/partial frames after aspect-ratio changes.
+            style: {
+              touchAction: 'manipulation',
+              aspectRatio: `${attrs.width} / ${attrs.height}`,
+            },
 
-          // Touch events
-          ontouchstart: (e: TouchEvent & MithrilViewEvent) => handleDragStart(e, attrs, state),
-          ontouchmove: (e: TouchEvent & MithrilViewEvent) => handleDragMove(e, attrs, state),
-          ontouchend: (e: TouchEvent & MithrilViewEvent) => handleDragEnd(e, attrs, state),
-          ontouchcancel: (e: TouchEvent & MithrilViewEvent) => handleDragEnd(e, attrs, state),
-        }),
+            // Mouse events
+            onmousedown: (e: MouseEvent & MithrilViewEvent) => handleDragStart(e, attrs, state),
+            onmousemove: (e: MouseEvent & MithrilViewEvent) => {
+              handleMouseMove(e, attrs, state);
+              handleDragMove(e, attrs, state);
+            },
+            onmouseup: (e: MouseEvent & MithrilViewEvent) => handleDragEnd(e, attrs, state),
+
+            // Touch events
+            ontouchstart: (e: TouchEvent & MithrilViewEvent) => handleDragStart(e, attrs, state),
+            ontouchmove: (e: TouchEvent & MithrilViewEvent) => handleDragMove(e, attrs, state),
+            ontouchend: (e: TouchEvent & MithrilViewEvent) => handleDragEnd(e, attrs, state),
+            ontouchcancel: (e: TouchEvent & MithrilViewEvent) => handleDragEnd(e, attrs, state),
+          }),
+        ]),
 
         // Controls row
         m('.puzzle-renderer-controls', {

@@ -7,9 +7,52 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  /* Ruler thickness; must match RULER_SIZE in ruler.ts */
+  --ruler-size: 0px;
+}
+
+/* Grid holding the rulers (top/left) and the puzzle canvas */
+.puzzle-renderer-wrapper .puzzle-canvas-grid {
+  width: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: var(--ruler-size) auto;
+  grid-template-rows: var(--ruler-size) auto;
+}
+
+.puzzle-renderer-wrapper .puzzle-canvas-grid.with-ruler {
+  --ruler-size: 20px;
+}
+
+.puzzle-renderer-wrapper .puzzle-ruler-corner {
+  grid-area: 1 / 1;
+  background: var(--wa-color-surface-lowered);
+}
+
+.puzzle-renderer-wrapper canvas.puzzle-ruler-h {
+  grid-area: 1 / 2;
+  width: 100%;
+  height: var(--ruler-size);
+  display: block;
+}
+
+.puzzle-renderer-wrapper canvas.puzzle-ruler-v {
+  grid-area: 2 / 1;
+  width: var(--ruler-size);
+  height: 100%;
+  display: block;
+}
+
+.puzzle-renderer-wrapper .puzzle-canvas-grid:not(.with-ruler) .puzzle-ruler-corner,
+.puzzle-renderer-wrapper .puzzle-canvas-grid:not(.with-ruler) canvas.puzzle-ruler-h,
+.puzzle-renderer-wrapper .puzzle-canvas-grid:not(.with-ruler) canvas.puzzle-ruler-v {
+  display: none;
 }
 
 .puzzle-renderer-wrapper canvas.puzzle-renderer {
+  grid-area: 2 / 2;
+  align-self: start;
+  justify-self: start;
   width: 100%;
   height: auto;
   display: block;
@@ -30,14 +73,24 @@
   overflow: hidden;
 }
 
+/*
+ * Leave room for the zoom controls row below the canvas. The grid gets the
+ * definite height so the canvas (a grid item) can resolve max-height: 100%
+ * against its row.
+ */
+.puzzle-renderer-wrapper.fit-viewport .puzzle-canvas-grid {
+  height: calc(100% - 4rem);
+  min-height: 0;
+  grid-template-rows: var(--ruler-size) minmax(0, 1fr);
+  flex: 0 1 auto;
+}
+
 .puzzle-renderer-wrapper.fit-viewport canvas.puzzle-renderer {
   width: auto;
   height: auto;
   max-width: 100%;
-  /* Leave room for the zoom controls row below the canvas */
-  max-height: calc(100% - 4rem);
+  max-height: 100%;
   min-height: 0;
-  flex: 0 1 auto;
   object-fit: contain;
 }
 

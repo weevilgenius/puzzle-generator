@@ -136,6 +136,8 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
      * vertically. When false, the canvas is scaled to fit the viewport.
      */
     allowVerticalScrolling: boolean;
+    /** Should we draw rulers along the top and left edges of the canvas? */
+    showRuler: boolean;
     /** Selected border shape */
     borderShape: BorderShapeType;
     /** Corner radius for rounded rectangle (pixels) */
@@ -197,6 +199,7 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
     drawPoints: initial?.visual.drawPoints ?? false,
     pointColor: initial?.visual.pointColor ?? (isDarkMode ? "#FF0000" : "#0000FF"),
     allowVerticalScrolling: false,
+    showRuler: true,
     borderShape: initial?.border.shape ?? 'rectangle',
     borderCornerRadius: initial?.border.cornerRadius ?? 50,
     geometryProblems: {
@@ -869,6 +872,19 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
         m.redraw();
       },
     }),
+    m(BooleanInputControl, {
+      config: {
+        name: 'showRuler',
+        label: 'Show ruler',
+        type: 'boolean',
+        helpText: 'Draw rulers along the top and left edges of the puzzle.',
+      },
+      value: state.showRuler,
+      onChange: (value) => {
+        state.showRuler = value;
+        m.redraw();
+      },
+    }),
   ];
 
   const renderSeedSettings = (): m.Children => [
@@ -1039,6 +1055,9 @@ export const PuzzlePage: m.ClosureComponent<unknown> = () => {
               isDirty: state.dirty,
               pointColor: state.drawPoints ? state.pointColor : undefined,
               allowVerticalScrolling: state.allowVerticalScrolling,
+              showRuler: state.showRuler,
+              physicalWidth: state.svgExportWidth,
+              physicalUnit: state.svgExportUnit,
               customPieces: state.customPieces,
               selectedCustomPieceId: state.selectedCustomPieceId,
               onPuzzleChanged: (puzzle) => {

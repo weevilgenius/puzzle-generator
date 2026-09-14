@@ -37,6 +37,7 @@ let lastPanPoint: { x: number; y: number } | null = null;
 export function setupPanZoomHandling(
   state: PuzzleRendererState,
   onZoomChanged?: (zoom: number) => void,
+  onViewChanged?: () => void,
 ): void {
   // Set up keyboard event listeners for spacebar (pan mode)
   keyDownHandler = (event: KeyboardEvent) => {
@@ -102,6 +103,11 @@ export function setupPanZoomHandling(
       paperScope.view.scale(zoomFactor, viewPos);
       state.zoom = newZoom;
 
+      // Keep the rulers aligned with the new view transform
+      if (onViewChanged) {
+        onViewChanged();
+      }
+
       // Notify parent of zoom change
       if (onZoomChanged) {
         onZoomChanged(newZoom);
@@ -148,6 +154,11 @@ export function setupPanZoomHandling(
 
       // Pan by translating the view (move content with the mouse)
       paperScope.view.translate(new paperScope.Point(scaledDx, scaledDy));
+
+      // Keep the rulers aligned with the new view transform
+      if (onViewChanged) {
+        onViewChanged();
+      }
 
       lastPanPoint = { x: event.clientX, y: event.clientY };
     }

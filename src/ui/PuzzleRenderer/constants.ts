@@ -5,6 +5,7 @@
 import type m from 'mithril';
 import type { PieceID, VertexID, PuzzleGeometry, Vec2, CustomPiece, CustomPieceTransform } from '../../geometry/types';
 import type { PaperContext } from '../../utils/paperScope';
+import type { PhysicalUnit } from '../../utils/svg';
 
 /**
  * Interaction mode for the puzzle renderer
@@ -55,6 +56,12 @@ export interface PuzzleRendererAttrs extends m.Attributes {
    * available viewport both horizontally and vertically.
    */
   allowVerticalScrolling?: boolean;
+  /** When true (default), rulers are drawn along the top and left edges */
+  showRuler?: boolean;
+  /** Optional physical width of the puzzle, used for ruler units */
+  physicalWidth?: number;
+  /** Unit of physicalWidth */
+  physicalUnit?: PhysicalUnit;
 }
 
 /**
@@ -63,6 +70,12 @@ export interface PuzzleRendererAttrs extends m.Attributes {
 export interface PuzzleRendererState {
   /** Canvas HTML element */
   canvas: HTMLCanvasElement | null;
+  /** Horizontal (top) ruler canvas */
+  rulerH: HTMLCanvasElement | null;
+  /** Vertical (left) ruler canvas */
+  rulerV: HTMLCanvasElement | null;
+  /** Observer that redraws the rulers when the puzzle canvas is resized */
+  rulerObserver: ResizeObserver | null;
   /** Is the user currently dragging something? */
   isDragging: boolean;
   /** The index of the vertex being dragged. */
