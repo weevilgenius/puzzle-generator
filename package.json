@@ -24,7 +24,7 @@
     "screenshot": "node scripts/screenshot.ts",
     "check": "pnpm typecheck && pnpm lint && pnpm test"
   },
-  "packageManager": "pnpm@12.4.1",
+  "packageManager": "pnpm@12.6.0",
   "type": "module",
   "engines": {
     "node": ">=24.0.0"
