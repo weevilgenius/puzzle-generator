@@ -24,10 +24,10 @@
     "screenshot": "node scripts/screenshot.ts",
     "check": "pnpm typecheck && pnpm lint && pnpm test"
   },
-  "packageManager": "pnpm@12.6.0",
+  "packageManager": "pnpm@12.8.1",
   "type": "module",
   "engines": {
-    "node": ">=24.0.0"
+    "node": ">=24"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
