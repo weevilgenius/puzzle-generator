@@ -2,3 +2,7 @@ allowBuilds:
   esbuild: true
 autoDedupe: true
 saveTypes: true
+peerDependencyRules:
+  allowedVersions:
+    # suppress peer warnings from lit about @types/node
+    "@lit-labs/ssr>@types/node": ">=20"
