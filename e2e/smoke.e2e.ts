@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import type { PuzzleSaveFile } from '../src/save/puzzleSaveFile';
 
 /**
  * Functional end-to-end smoke tests.
@@ -23,6 +24,27 @@ test('puzzle generator loads', async ({ page }) => {
   const initialSeed = await seed.inputValue();
   await page.getByRole('button', { name: 'Random seed' }).click();
   await expect(seed).not.toHaveValue(initialSeed);
+});
+
+test('minimum edge length removes tabs from short edges', async ({ page }, testInfo) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Placement' }).click();
+  await page.getByLabel('Minimum Edge Length').fill('10000');
+  await page.getByLabel('Minimum Edge Length').press('Tab');
+  await expect.poll(() => page.evaluate(() => {
+    const saved = localStorage.getItem('puzzleGenerator:autoSave');
+    return saved ? (JSON.parse(saved) as PuzzleSaveFile).puzzle.generators.placement.minEdgeLength : undefined;
+  })).toBe(10000);
+  if (testInfo.project.name === 'mobile-chromium') {
+    await page.getByRole('button', { name: 'Close settings' }).click();
+  }
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download SVG' }).click();
+  const download = await downloadPromise;
+  const svg = readFileSync(await download.path(), 'utf8');
+  const paths = [...svg.matchAll(/\bd="([^"]*)"/g)].map((match) => match[1]);
+  expect(paths.length).toBeGreaterThan(0);
+  expect(paths.every((path) => !/[Cc]/.test(path))).toBe(true);
 });
 
 test('physical SVG export width affects downloaded dimensions only', async ({ page }, testInfo) => {

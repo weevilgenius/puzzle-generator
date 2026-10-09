@@ -13,9 +13,9 @@ export interface SimpleTabPlacementStrategyConfig extends GeneratorConfig {
   name: SimpleTabPlacementStrategyName;
   /** The default size of the tab as a fraction (0-1) of the edge length. */
   tabSize?: number;
-  /** Edges shorter than this value will not have a tab. */
+  /** Edges shorter than this length in canvas pixels will not have a tab. */
   minEdgeLength?: number;
-  /** The maximum absolute width that a tab can have. Wide tabs will get clamped to this value. */
+  /** Maximum tab width in canvas pixels. Wide tabs will get clamped to this value. */
   maxTabSize?: number;
 }
 
@@ -41,16 +41,16 @@ export const SimpleTabPlacementStrategyUIMetadata: GeneratorUIMetadata = {
     {
       type: 'number',
       name: 'minEdgeLength',
-      label: 'Minimum Edge Length',
+      label: 'Minimum Edge Length (px)',
       optional: true,
       defaultValue: 15,
-      helpText: 'Edges shorter than this value will not have a tab',
+      helpText: 'Edges shorter than this length in canvas pixels will not have a tab. SVG export scales this to the chosen physical width.',
     },
     {
       type: 'number',
       name: 'maxTabSize',
-      label: 'Maximum Tab Size',
-      helpText: 'Maximum width of a generated tab',
+      label: 'Maximum Tab Size (px)',
+      helpText: 'Maximum tab width in canvas pixels. SVG export scales this to the chosen physical width.',
     },
   ],
 };

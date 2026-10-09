@@ -78,3 +78,9 @@ online puzzle generators including those from [proceduraljigsaw] on GitHub.
 [Typescript]: https://www.typescriptlang.org/
 [Vite]: https://vitejs.dev/
 [proceduraljigsaw]: https://github.com/proceduraljigsaw
+
+TODO
+----
+
+* Scale all distances in the app to the physical puzzle width and its units when
+  an SVG export width is set.
