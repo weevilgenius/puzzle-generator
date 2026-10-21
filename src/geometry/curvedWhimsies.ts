@@ -14,10 +14,6 @@ export interface CurvedFragment {
   holes: Vec2[];
 }
 
-// Positions closer than this are indistinguishable to the topology. Tangent
-// intersections can produce tiny intervals which must use the same threshold.
-const TOPOLOGY_EPSILON = 1e-6;
-
 const preparedPaths = new WeakMap<PaperContext, Map<CustomPiece, paper.Path>>();
 
 const getCustomPaths = (customPieces: CustomPiece[], ctx: PaperContext): paper.Path[] => {
@@ -94,6 +90,10 @@ export function integrateCurvedWhimsies(topology: PuzzleTopology, customs: Custo
       contours.push({ path: path.clone({ insert: false }), site: point(path.position), custom: true });
     }
 
+    const bounds = contours.reduce((bounds, contour) => bounds.unite(contour.path.bounds), contours[0]?.path.bounds ?? new ctx.scope.Rectangle(0, 0, 0, 0));
+    // Paper 0.15 boolean results can shift by five times its diagonal * 1e-7 tolerance.
+    const tolerance = Math.max(1e-6, Math.hypot(bounds.width, bounds.height) * 5e-7);
+
     // Paper reports overlap endpoints as curve locations: use their parameters,
     // never a nearest-point guess that could select the wrong branch of a fold.
     const splits = new Map<paper.Curve, number[]>();
@@ -122,11 +122,11 @@ export function integrateCurvedWhimsies(topology: PuzzleTopology, customs: Custo
     const twinMap = new Map<string, number>();
     const vertexBuckets = new Map<string, Vec2[]>();
     const vertex = (p: paper.Point): Vec2 => {
-      const x = Math.floor(p.x / TOPOLOGY_EPSILON);
-      const y = Math.floor(p.y / TOPOLOGY_EPSILON);
+      const x = Math.floor(p.x / tolerance);
+      const y = Math.floor(p.y / tolerance);
       for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
-          const existing = vertexBuckets.get(`${x + dx},${y + dy}`)?.find((v) => Math.hypot(v[0] - p.x, v[1] - p.y) < TOPOLOGY_EPSILON);
+          const existing = vertexBuckets.get(`${x + dx},${y + dy}`)?.find((v) => Math.hypot(v[0] - p.x, v[1] - p.y) < tolerance);
           if (existing) return existing;
         }
       }
@@ -143,7 +143,7 @@ export function integrateCurvedWhimsies(topology: PuzzleTopology, customs: Custo
           const times = splits.get(curve)!.sort((a, b) => a - b).filter((t, i, all) => i === 0 || t - all[i - 1] > 1e-8);
           for (let i = 1; i < times.length; i++) {
             const part = curve.getPart(times[i - 1], times[i]);
-            if (part.length > TOPOLOGY_EPSILON) parts.push({ curve: part, straight: curve.isStraight() });
+            if (part.length > tolerance) parts.push({ curve: part, straight: curve.isStraight() });
           }
         }
         if (!parts.length) continue;
@@ -157,8 +157,8 @@ export function integrateCurvedWhimsies(topology: PuzzleTopology, customs: Custo
         });
         const piece = { id, halfEdge: halfEdges[0].id, site: contour.site, isCustomPiece: contour.custom, bounds: [0, 0, 0, 0] as const };
         topology.pieces.set(id, { ...piece, bounds: getPieceBounds(piece, topology) });
-        // All geometry here is reconciled; only numerical epsilon is appropriate.
-        linkAndCreateEdges(halfEdges, topology, twinMap, () => false, TOPOLOGY_EPSILON);
+        // Match endpoints and controls within the boolean operation's geometric tolerance.
+        linkAndCreateEdges(halfEdges, topology, twinMap, () => false, tolerance);
       }
       const registered = new Set([...topology.edges.values()].flatMap((edge) => [edge.heLeft, edge.heRight]));
       for (const he of topology.halfEdges.values()) {
@@ -172,7 +172,7 @@ export function integrateCurvedWhimsies(topology: PuzzleTopology, customs: Custo
           });
           if (!onBorder) continue;
           // A separate map prevents this registration pass from relinking an existing cut.
-          linkAndCreateEdges([he], topology, new Map(), () => true, TOPOLOGY_EPSILON);
+          linkAndCreateEdges([he], topology, new Map(), () => true, tolerance);
         } finally {
           path.remove();
         }

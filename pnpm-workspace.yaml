@@ -8,3 +8,5 @@ peerDependencyRules:
     "@lit-labs/ssr>@types/node": ">=20"
 lockfile:
   includeResolutionSettings: true
+minimumReleaseAgeExclude:
+  - paper@0.15.0

@@ -220,14 +220,14 @@ describe('curved outline edge cases', () => {
 });
 
 
-it('preserves shared Hector cuts in a full seeded puzzle with tabs', async () => {
+it.each([1, 10])('preserves shared Hector cuts in a full seeded puzzle with tabs at scale %s', async (scale) => {
   const imported = parseSVGFile(readFileSync('tests/fixtures/whimsies/hector.svg', 'utf8'));
   const custom: CustomPiece = {
     id: 'hector', created: '', path: fitPathToCanvas(imported.commands, 600, 600),
-    transform: { position: [400, 300], rotation: 0.13, scale: [0.12, 0.12] },
+    transform: { position: [400 * scale, 300 * scale], rotation: 0.13, scale: [0.12 * scale, 0.12 * scale] },
   };
   const puzzle = await buildPuzzle({
-    bounds: { width: 800, height: 600 }, border: createRectangleBorder(800, 600), pieceSize: 50, seed: 42,
+    bounds: { width: 800 * scale, height: 600 * scale }, border: createRectangleBorder(800 * scale, 600 * scale), pieceSize: 50 * scale, seed: 42,
     pointConfig: { name: 'PoissonPointGenerator' }, pieceConfig: { name: 'VoronoiPieceGenerator', whimsyMode: 'simple+merge' },
     placementConfig: { name: 'SimpleTabPlacementStrategy' }, tabConfig: { name: 'TraditionalTabGenerator' },
     customPieces: [custom],

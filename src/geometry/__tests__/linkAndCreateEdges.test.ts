@@ -38,6 +38,27 @@ describe('linkAndCreateEdges', () => {
     const twinned = [...topology.halfEdges.values()].filter((he) => he.twin !== -1);
     expect(twinned.length).toBe(2);
   });
+  it('matches noisy curve controls only within the supplied geometric tolerance', () => {
+    const topology = emptyTopology();
+    const twinMap = new Map<string, number>();
+    const curve = createHalfEdgeLoop([[0, 0], [10, 0]], 0, topology);
+    curve[0].segments = [{ type: 'bezier', p1: [0, 5], p2: [10, 5], p3: [10, 0] }];
+    linkAndCreateEdges([curve[0]], topology, twinMap, () => false, 0.0001);
+
+    const different = createHalfEdgeLoop([[10, 0], [0, 0]], 1, topology);
+    different[0].segments = [{ type: 'bezier', p1: [10, 5.001], p2: [0, 5.001], p3: [0, 0] }];
+    linkAndCreateEdges([different[0]], topology, twinMap, () => false, 0.0001);
+    expect(different[0].twin).toBe(-1);
+
+    const noisy = createHalfEdgeLoop([[10, 0], [0, 0]], 2, topology);
+    noisy[0].segments = [{ type: 'bezier', p1: [10, 5.00008], p2: [0, 5.00008], p3: [0, 0] }];
+    linkAndCreateEdges([noisy[0]], topology, twinMap, () => false, 0.0001);
+    expect(noisy[0].twin).toBe(curve[0].id);
+    expect(noisy[0].segments).toEqual(invertSegments(curve[0].segments, curve[0].origin));
+    expect(different[0].twin).toBe(-1);
+    expect(topology.edges.size).toBe(1);
+  });
+
   it('distinguishes curved routes with identical endpoints', () => {
     const topology = emptyTopology();
     const twinMap = new Map<string, number>();

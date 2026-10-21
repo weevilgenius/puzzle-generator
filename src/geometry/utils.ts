@@ -1215,7 +1215,7 @@ export function createHalfEdgeLoop(
  * @param halfEdges - The list of half-edges to process.
  * @param topology - The main puzzle topology object, which will be mutated.
  * @param halfEdgeTwinMap - The map used to look up twin half-edges.
- * @param tolerance - Endpoint matching tolerance; reconciled curved topology uses numerical epsilon.
+ * @param tolerance - Matching tolerance for endpoints and curve control points.
  * @param isBoundaryEdgeFn - A callback function that returns true if a given edge should be treated as part of the puzzle's outer boundary.
  */
 export function linkAndCreateEdges(
@@ -1256,8 +1256,8 @@ export function linkAndCreateEdges(
       return segments.length === reversed.length && segments.every((segment, index) => {
         const other = reversed[index];
         return segment.type === 'bezier' && other.type === 'bezier'
-          ? distanceSq(segment.p1, other.p1) < 1e-10 && distanceSq(segment.p2, other.p2) < 1e-10 && distanceSq(segment.p3, other.p3) < 1e-10
-          : segment.type === 'line' && other.type === 'line' && distanceSq(segment.p, other.p) < 1e-10;
+          ? distanceSq(segment.p1, other.p1) < thresholdSq && distanceSq(segment.p2, other.p2) < thresholdSq && distanceSq(segment.p3, other.p3) < thresholdSq
+          : segment.type === 'line' && other.type === 'line' && distanceSq(segment.p, other.p) < thresholdSq;
       });
     };
     let twinId = halfEdgeTwinMap.get(twinKey);
