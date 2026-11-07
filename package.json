@@ -1,13 +1,12 @@
 {
   "name": "puzzle-generator",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "description": "Browser application for generating jigsaw puzzles",
   "author": "Barry Stump <weevilgenius@users.noreply.github.com>",
   "homepage": "https://github.com/weevilgenius/puzzle-generator#readme",
   "repository": "github:weevilgenius/puzzle-generator",
   "license": "MIT",
   "scripts": {
-    "postinstall": "playwright install chromium",
     "typecheck": "tsc --noEmit --skipLibCheck",
     "lint": "eslint .",
     "dev": "vite",

@@ -33,6 +33,7 @@ import { dirname, resolve } from 'node:path';
 import process from 'node:process';
 import { chromium, devices } from '@playwright/test';
 import { createServer } from 'vite';
+import { chromiumPath } from './chromium.ts';
 
 /** Default base URL probed for an already-running dev server. */
 const DEFAULT_BASE_URL = 'http://localhost:5173';
@@ -101,7 +102,7 @@ if (!reuseExisting) {
 
 const targetUrl = new URL(values.path, targetBaseUrl).toString();
 
-const browser = await chromium.launch();
+const browser = await chromium.launch({ executablePath: chromiumPath() });
 try {
   const context = await browser.newContext({
     colorScheme: theme,

@@ -6,6 +6,8 @@
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "useDefineForClassFields": true,
     "noEmit": true,
+    // Node runs scripts/*.ts directly, which needs the real file extension.
+    "allowImportingTsExtensions": true,
     "paths": {
       "src/*": ["./src/*"]
     },
