@@ -177,8 +177,8 @@ importers:
         specifier: ^6.1.4
         version: 6.1.4
       d3-delaunay:
-        specifier: ^6.0.4
-        version: 6.0.4
+        specifier: ^6.0.6
+        version: 6.0.6
       martinez-polygon-clipping:
         specifier: ^0.9.0
         version: 0.9.0
@@ -995,8 +995,8 @@ packages:
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
 
-  d3-delaunay@6.0.4:
-    resolution: {integrity: sha512-mdjtIZ1XLAM8bm/hx3WwjfHt6Sggek7qH043O8KEjDXN40xi3vx/6pYSVTwLjEgiXQTbvaouWKynLBiUZ6SK6A==}
+  d3-delaunay@6.0.6:
+    resolution: {integrity: sha512-DMQIEvSJhZCB6pwedcXaAlQ+MeKU5LlM2XakKtc73b/VM+RBiI1SRXycOEOKg2jsKj4zZ9F0KGYG6nCGwwWu/g==}
     engines: {node: '>=12'}
 
   data-uri-to-buffer@4.0.1:
@@ -2567,7 +2567,7 @@ snapshots:
 
   csstype@3.2.3: {}
 
-  d3-delaunay@6.0.4:
+  d3-delaunay@6.0.6:
     dependencies:
       delaunator: 5.1.0
 
