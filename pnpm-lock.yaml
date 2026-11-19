@@ -174,8 +174,8 @@ importers:
   .:
     dependencies:
       '@awesome.me/webawesome':
-        specifier: ^3.14.0
-        version: 3.14.0(@floating-ui/utils@0.2.12)(@types/node@26.6.6)(@types/react@19.3.0)
+        specifier: ^3.15.0
+        version: 3.15.0(@floating-ui/utils@0.2.12)(@types/node@26.6.6)(@types/react@19.3.0)
       bezier-js:
         specifier: ^6.1.4
         version: 6.1.4
@@ -285,8 +285,8 @@ importers:
 
 packages:
 
-  '@awesome.me/webawesome@3.14.0':
-    resolution: {integrity: sha512-m5rTGLK/iOvaVFOkYxRjiBOp8lwrBap5tv+zz1gsqLgAxlfwdvElB7BVGjs+Lf9gDps7bWRPTkG0FwZk40mk2A==}
+  '@awesome.me/webawesome@3.15.0':
+    resolution: {integrity: sha512-r2RWOu/QAaTShbTy3QfpOw+j2Mc7z+iY/PA1rBbsmrWOm2DMv7K2wNYe4IXt6TgTswkrKuQM19RCGC5FJh7GFg==}
     engines: {node: '>=14.17.0'}
 
   '@babel/code-frame@7.29.7':
@@ -1427,6 +1427,10 @@ packages:
     resolution: {integrity: sha512-8q7VEgMJW4J8tcfVPy8g09NcQwZdbwFEqhe/WZkoIzjn/3TGDwtOCYtXGxA3O8tPzpczCCDgv+P2P5y00ZJOOg==}
     engines: {node: '>= 8'}
 
+  microlighter@2.2.0:
+    resolution: {integrity: sha512-XFUHmKclX4taKWVpYkqJ/GlfUS27FzQTCph1u3v9OwkmQJGXry3Pk1e7SivLz6xGOCxRVyi3DSrztF3e460jrg==}
+    engines: {node: '>=18'}
+
   micromatch@4.0.8:
     resolution: {integrity: sha512-PXwfBhYu0hBCPw8Dn0E+WDYb7af3dSLVWKi3HGv84IdF4TyFoC0ysxFd0Goxw7nSv4T/PzEJQxsYsEiFCKo2BA==}
     engines: {node: '>=8.6'}
@@ -1887,7 +1891,7 @@ packages:
 
 snapshots:
 
-  '@awesome.me/webawesome@3.14.0(@floating-ui/utils@0.2.12)(@types/node@26.6.6)(@types/react@19.3.0)':
+  '@awesome.me/webawesome@3.15.0(@floating-ui/utils@0.2.12)(@types/node@26.6.6)(@types/react@19.3.0)':
     dependencies:
       '@ctrl/tinycolor': 4.1.0
       '@floating-ui/dom': 1.8.0
@@ -1901,6 +1905,7 @@ snapshots:
       composed-offset-position: 0.0.6(@floating-ui/utils@0.2.12)
       lit: 3.3.3
       marked: 11.2.0
+      microlighter: 2.2.0
       nanoid: 5.1.16
     transitivePeerDependencies:
       - '@floating-ui/utils'
@@ -2919,6 +2924,8 @@ snapshots:
       tinyqueue: 3.0.0
 
   merge2@1.4.1: {}
+
+  microlighter@2.2.0: {}
 
   micromatch@4.0.8:
     dependencies:

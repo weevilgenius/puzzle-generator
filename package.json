@@ -59,7 +59,7 @@
     "vitest": "^5.1.0"
   },
   "dependencies": {
-    "@awesome.me/webawesome": "^3.14.0",
+    "@awesome.me/webawesome": "^3.15.0",
     "bezier-js": "^6.1.4",
     "d3-delaunay": "^6.0.6",
     "martinez-polygon-clipping": "^0.9.1",
