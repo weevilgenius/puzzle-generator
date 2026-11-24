@@ -23,7 +23,7 @@
     "screenshot": "node scripts/screenshot.ts",
     "check": "pnpm typecheck && pnpm lint && pnpm test"
   },
-  "packageManager": "pnpm@12.21.0",
+  "packageManager": "pnpm@12.23.0",
   "type": "module",
   "engines": {
     "node": ">=24"
