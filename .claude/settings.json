@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm run build:*)",
+      "Bash(pnpm run lint:*)",
+      "WebSearch",
+      "WebFetch(domain:webawesome.com)",
+      "Bash(pnpm exec eslint:*)",
+      "Bash(find:*)",
+      "Bash(pnpm run typecheck:*)",
+      "Bash(pnpm run check:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

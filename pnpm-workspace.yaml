@@ -1,5 +1,6 @@
-allowBuilds:
-  esbuild: true
+permissions:
+  esbuild:
+    build: true
 autoDedupe: true
 saveTypes: true
 peerDependencyRules:
@@ -8,7 +9,8 @@ peerDependencyRules:
     "@lit-labs/ssr>@types/node": ">=20"
 lockfile:
   includeResolutionSettings: true
-minimumReleaseAgeExclude:
-  - paper@0.15.0
 overrides:
   minimatch: ">=11.0.1"
+skills:
+  dirs:
+    - .agents/skills
